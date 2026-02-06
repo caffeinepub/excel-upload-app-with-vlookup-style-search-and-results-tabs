@@ -1,10 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useAppState } from '../state/appState';
-import { performVlookup } from '../lib/vlookup/vlookup';
+import { performMultiVlookup } from '../lib/vlookup/vlookup';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
-import { Input } from '../components/ui/input';
+import { Textarea } from '../components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { RadioGroup, RadioGroupItem } from '../components/ui/radio-group';
@@ -32,6 +32,7 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
   const [returnColumn, setReturnColumn] = useState('');
   const [matchType, setMatchType] = useState<'exact' | 'approximate'>('exact');
   const [error, setError] = useState<string | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
   
   // New search/filter state
   const [searchMode, setSearchMode] = useState<'vlookup' | 'filter'>('vlookup');
@@ -42,10 +43,18 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
   // Load previous search params
   useEffect(() => {
     if (searchParams) {
-      setLookupValue(searchParams.lookupValue);
-      setKeyColumn(searchParams.keyColumn);
-      setReturnColumn(searchParams.returnColumn);
-      setMatchType(searchParams.matchType);
+      // Handle both single and multi search params
+      if ('lookupValue' in searchParams) {
+        setLookupValue(searchParams.lookupValue);
+        setKeyColumn(searchParams.keyColumn);
+        setReturnColumn(searchParams.returnColumn);
+        setMatchType(searchParams.matchType);
+      } else if ('lookupValues' in searchParams) {
+        setLookupValue(searchParams.lookupValues.join('\n'));
+        setKeyColumn(searchParams.keyColumn);
+        setReturnColumn(searchParams.returnColumn);
+        setMatchType(searchParams.matchType);
+      }
     }
   }, [searchParams]);
 
@@ -111,37 +120,65 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
   }, [filterColumn, filterText, filteredData, setFilterState]);
 
   const handleSearch = () => {
+    console.log('VLOOKUP Search initiated');
     setError(null);
+    setIsSearching(true);
 
-    if (!workbook || !workbook.sheetData) {
-      setError('Please upload an Excel file and select a sheet first.');
-      return;
-    }
+    try {
+      if (!workbook || !workbook.sheetData) {
+        setError('Please upload an Excel file and select a sheet first.');
+        setIsSearching(false);
+        return;
+      }
 
-    if (!lookupValue.trim()) {
-      setError('Please enter a lookup value.');
-      return;
-    }
+      if (!lookupValue.trim()) {
+        setError('Please enter a lookup value.');
+        setIsSearching(false);
+        return;
+      }
 
-    if (!keyColumn) {
-      setError('Please select a key column.');
-      return;
-    }
+      if (!keyColumn) {
+        setError('Please select a key column.');
+        setIsSearching(false);
+        return;
+      }
 
-    if (!returnColumn) {
-      setError('Please select a return column.');
-      return;
-    }
+      if (!returnColumn) {
+        setError('Please select a return column.');
+        setIsSearching(false);
+        return;
+      }
 
-    const params = { lookupValue, keyColumn, returnColumn, matchType };
-    setSearchParams(params);
+      // Parse lookup values (comma or newline separated)
+      const rawValues = lookupValue.split(/[\n,]+/).map(v => v.trim()).filter(v => v.length > 0);
+      
+      if (rawValues.length === 0) {
+        setError('Please enter at least one valid lookup value.');
+        setIsSearching(false);
+        return;
+      }
 
-    const result = performVlookup(workbook.sheetData, params);
-    setSearchResult(result);
+      const params = { lookupValues: rawValues, keyColumn, returnColumn, matchType };
+      console.log('Multi-VLOOKUP params:', params);
+      
+      setSearchParams(params);
 
-    // Navigate to results tab after search completes
-    if (onSearchComplete) {
-      onSearchComplete();
+      const result = performMultiVlookup(workbook.sheetData, params);
+      console.log('Multi-VLOOKUP result:', result);
+      
+      // This will clear update checking results and set VLOOKUP results
+      setSearchResult(result);
+
+      // Navigate to results tab after search completes
+      if (onSearchComplete) {
+        console.log('Navigating to results tab');
+        onSearchComplete();
+      }
+    } catch (err) {
+      console.error('VLOOKUP search error:', err);
+      setError(err instanceof Error ? err.message : 'An error occurred during search');
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -225,20 +262,25 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                 <div>
                   <CardTitle>VLOOKUP Search</CardTitle>
                   <CardDescription>
-                    Configure your search parameters to find matching data
+                    Enter multiple lookup values (comma or newline separated) to find matching data
                   </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label htmlFor="lookup-value">Lookup Value</Label>
-                <Input
+                <Label htmlFor="lookup-value">Lookup Values (one per line or comma-separated)</Label>
+                <Textarea
                   id="lookup-value"
-                  placeholder="Enter the value to search for..."
+                  placeholder="Enter values to search for...&#10;Example:&#10;A12&#10;B34, C56&#10;D78"
                   value={lookupValue}
                   onChange={(e) => setLookupValue(e.target.value)}
+                  rows={5}
+                  className="font-mono"
                 />
+                <p className="text-xs text-muted-foreground">
+                  Tip: You can paste multiple values separated by commas or new lines
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -319,9 +361,14 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                 </Alert>
               )}
 
-              <Button onClick={handleSearch} className="w-full" size="lg">
+              <Button 
+                onClick={handleSearch} 
+                className="w-full" 
+                size="lg"
+                disabled={isSearching || !lookupValue.trim() || !keyColumn || !returnColumn}
+              >
                 <Search className="w-4 h-4 mr-2" />
-                Run VLOOKUP
+                {isSearching ? 'Searching...' : 'Run VLOOKUP'}
               </Button>
             </CardContent>
           </Card>
@@ -362,12 +409,13 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                   <Label htmlFor="filter-text">Search Text</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
+                    <Textarea
                       id="filter-text"
                       placeholder="Type to search..."
                       value={filterText}
                       onChange={(e) => setFilterText(e.target.value)}
                       className="pl-10"
+                      rows={1}
                     />
                   </div>
                 </div>

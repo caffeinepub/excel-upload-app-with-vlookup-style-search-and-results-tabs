@@ -1,17 +1,25 @@
 import { useAppState } from '../state/appState';
+import { useListHistory, useClearHistory } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { History, Search, Filter, GitCompare, Download, Trash2, Clock } from 'lucide-react';
+import { Alert, AlertDescription } from '../components/ui/alert';
+import { History, Search, Filter, GitCompare, Download, Trash2, Clock, AlertCircle, Loader2 } from 'lucide-react';
 import { exportToExcel } from '../lib/export/exportXlsx';
 import { exportToPdf } from '../lib/export/exportPdf';
 import { useState } from 'react';
 
 export function HistoryTab() {
-  const { history, clearHistory } = useAppState();
+  const { history: localHistory, clearHistory: clearLocalHistory } = useAppState();
+  const { data: backendHistory, isLoading, error } = useListHistory();
+  const clearHistoryMutation = useClearHistory();
   const [exporting, setExporting] = useState(false);
+
+  // Use backend history if available, otherwise fall back to local history
+  const history = backendHistory && backendHistory.length > 0 ? backendHistory : localHistory;
+  const isUsingBackend = backendHistory && backendHistory.length > 0;
 
   const vlookupHistory = history.filter((item) => item.type === 'vlookup');
   const filterHistory = history.filter((item) => item.type === 'filter');
@@ -20,6 +28,19 @@ export function HistoryTab() {
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleString();
+  };
+
+  const handleClearAll = async () => {
+    if (isUsingBackend) {
+      try {
+        await clearHistoryMutation.mutateAsync();
+      } catch (error) {
+        console.error('Failed to clear backend history:', error);
+        alert('Failed to clear history from backend. Please try again.');
+      }
+    } else {
+      clearLocalHistory();
+    }
   };
 
   const handleExportVlookup = async (item: any) => {
@@ -114,14 +135,16 @@ export function HistoryTab() {
     setExporting(true);
     try {
       const result = item.data.result;
-      const rows = result.rows.map((row: any) => [String(row.keyValue), ...row.newData]);
+      // Export only NEW rows (unmatched data)
+      const newRows = result.rows.filter((row: any) => row.status === 'new');
+      const rows = newRows.map((row: any) => [String(row.keyValue), ...row.newData]);
 
       await exportToExcel(
         {
           headers: ['Key', ...result.headers],
           rows,
         },
-        `crystal-atlas-comparison-history-${item.timestamp}.xlsx`
+        `crystal-atlas-unmatched-rows-history-${item.timestamp}.xlsx`
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -135,14 +158,16 @@ export function HistoryTab() {
     setExporting(true);
     try {
       const result = item.data.result;
-      const rows = result.rows.map((row: any) => [String(row.keyValue), ...row.newData]);
+      // Export only NEW rows (unmatched data)
+      const newRows = result.rows.filter((row: any) => row.status === 'new');
+      const rows = newRows.map((row: any) => [String(row.keyValue), ...row.newData]);
 
       await exportToPdf(
         {
           headers: ['Key', ...result.headers],
           rows,
         },
-        `crystal-atlas-comparison-history-${item.timestamp}.pdf`
+        `crystal-atlas-unmatched-rows-history-${item.timestamp}.pdf`
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -152,23 +177,73 @@ export function HistoryTab() {
     }
   };
 
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <div>
+              <CardTitle>Loading History</CardTitle>
+              <CardDescription>Fetching your history from the backend...</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  if (error) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <AlertCircle className="w-6 h-6 text-destructive" />
+            <div>
+              <CardTitle>History Error</CardTitle>
+              <CardDescription>Failed to load history from backend</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Unable to load history from the backend. Showing local history instead.
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <History className="w-6 h-6 text-primary" />
-              <div>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <History className="w-6 h-6 text-primary flex-shrink-0" />
+              <div className="min-w-0">
                 <CardTitle>History</CardTitle>
-                <CardDescription>
+                <CardDescription className="break-words">
                   View and export your previous searches, filters, and comparisons
                 </CardDescription>
               </div>
             </div>
             {history.length > 0 && (
-              <Button onClick={clearHistory} variant="outline" size="sm">
-                <Trash2 className="w-4 h-4 mr-2" />
+              <Button 
+                onClick={handleClearAll} 
+                variant="outline" 
+                size="sm"
+                disabled={clearHistoryMutation.isPending}
+                className="flex-shrink-0"
+              >
+                {clearHistoryMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
                 Clear All
               </Button>
             )}
@@ -185,11 +260,11 @@ export function HistoryTab() {
             </div>
           ) : (
             <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="all">All ({history.length})</TabsTrigger>
-                <TabsTrigger value="vlookup">VLOOKUP ({vlookupHistory.length})</TabsTrigger>
-                <TabsTrigger value="filter">Filter ({filterHistory.length})</TabsTrigger>
-                <TabsTrigger value="update">Update ({updateCheckingHistory.length})</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+                <TabsTrigger value="all" className="text-xs sm:text-sm">All ({history.length})</TabsTrigger>
+                <TabsTrigger value="vlookup" className="text-xs sm:text-sm">VLOOKUP ({vlookupHistory.length})</TabsTrigger>
+                <TabsTrigger value="filter" className="text-xs sm:text-sm">Filter ({filterHistory.length})</TabsTrigger>
+                <TabsTrigger value="update" className="text-xs sm:text-sm">Update ({updateCheckingHistory.length})</TabsTrigger>
               </TabsList>
 
               <TabsContent value="all" className="mt-6">
@@ -198,23 +273,23 @@ export function HistoryTab() {
                     {history.map((item, index) => (
                       <Card key={index}>
                         <CardHeader>
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-3">
-                              {item.type === 'vlookup' && <Search className="w-5 h-5 text-primary" />}
-                              {item.type === 'filter' && <Filter className="w-5 h-5 text-primary" />}
-                              {item.type === 'update-checking' && <GitCompare className="w-5 h-5 text-primary" />}
-                              <div>
-                                <CardTitle className="text-base">
+                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              {item.type === 'vlookup' && <Search className="w-5 h-5 text-primary flex-shrink-0" />}
+                              {item.type === 'filter' && <Filter className="w-5 h-5 text-primary flex-shrink-0" />}
+                              {item.type === 'update-checking' && <GitCompare className="w-5 h-5 text-primary flex-shrink-0" />}
+                              <div className="min-w-0">
+                                <CardTitle className="text-base break-words">
                                   {item.type === 'vlookup' && 'VLOOKUP Search'}
                                   {item.type === 'filter' && 'Filter Data'}
                                   {item.type === 'update-checking' && 'Update Checking'}
                                 </CardTitle>
-                                <CardDescription className="text-xs">
+                                <CardDescription className="text-xs break-words">
                                   {formatDate(item.timestamp)}
                                 </CardDescription>
                               </div>
                             </div>
-                            <div className="flex gap-2">
+                            <div className="flex gap-2 flex-wrap">
                               {item.type === 'vlookup' && (
                                 <>
                                   <Button
@@ -285,13 +360,13 @@ export function HistoryTab() {
                           </div>
                         </CardHeader>
                         <CardContent>
-                          {item.type === 'vlookup' && (
+                          {item.type === 'vlookup' && item.data?.searchParams && item.data?.result && (
                             <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Lookup Value:</span>
-                                <span className="font-medium">{item.data.searchParams.lookupValue}</span>
+                                <span className="font-medium break-words">{item.data.searchParams.lookupValue}</span>
                               </div>
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Result:</span>
                                 <Badge variant={item.data.result.found ? 'default' : 'secondary'}>
                                   {item.data.result.found ? 'Match Found' : 'No Match'}
@@ -299,35 +374,35 @@ export function HistoryTab() {
                               </div>
                             </div>
                           )}
-                          {item.type === 'filter' && (
+                          {item.type === 'filter' && item.data?.filterColumn && (
                             <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Column:</span>
-                                <span className="font-medium">{item.data.filterColumn}</span>
+                                <span className="font-medium break-words">{item.data.filterColumn}</span>
                               </div>
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Search Text:</span>
-                                <span className="font-medium">{item.data.filterText}</span>
+                                <span className="font-medium break-words">{item.data.filterText}</span>
                               </div>
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Matches:</span>
-                                <Badge variant="secondary">{item.data.filteredRows.length}</Badge>
+                                <Badge variant="secondary">{item.data.filteredRows?.length || 0}</Badge>
                               </div>
                             </div>
                           )}
-                          {item.type === 'update-checking' && (
+                          {item.type === 'update-checking' && item.data?.result && (
                             <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">Old File:</span>
-                                <span className="font-medium">{item.data.oldFileName}</span>
+                                <span className="font-medium break-words">{item.data.oldFileName}</span>
                               </div>
-                              <div className="flex justify-between">
+                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
                                 <span className="text-muted-foreground">New File:</span>
-                                <span className="font-medium">{item.data.newFileName}</span>
+                                <span className="font-medium break-words">{item.data.newFileName}</span>
                               </div>
                               <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded mt-3 text-center">
-                                <div className="font-bold text-green-600">{item.data.result.summary.newCount}</div>
-                                <div className="text-xs text-muted-foreground">New Rows</div>
+                                <div className="font-bold text-green-600">{item.data.result.summary?.newCount || 0}</div>
+                                <div className="text-xs text-muted-foreground">Unmatched Rows</div>
                               </div>
                             </div>
                           )}
@@ -350,17 +425,17 @@ export function HistoryTab() {
                       vlookupHistory.map((item, index) => (
                         <Card key={index}>
                           <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Search className="w-5 h-5 text-primary" />
-                                <div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Search className="w-5 h-5 text-primary flex-shrink-0" />
+                                <div className="min-w-0">
                                   <CardTitle className="text-base">VLOOKUP Search</CardTitle>
-                                  <CardDescription className="text-xs">
+                                  <CardDescription className="text-xs break-words">
                                     {formatDate(item.timestamp)}
                                   </CardDescription>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <Button
                                   onClick={() => handleExportVlookup(item)}
                                   disabled={exporting}
@@ -383,26 +458,28 @@ export function HistoryTab() {
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Lookup Value:</span>
-                                <span className="font-medium">{item.data.searchParams.lookupValue}</span>
+                            {item.data?.searchParams && item.data?.result && (
+                              <div className="space-y-2 text-sm">
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Lookup Value:</span>
+                                  <span className="font-medium break-words">{item.data.searchParams.lookupValue}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Key Column:</span>
+                                  <span className="font-medium break-words">{item.data.searchParams.keyColumn}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Return Column:</span>
+                                  <span className="font-medium break-words">{item.data.searchParams.returnColumn}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Result:</span>
+                                  <Badge variant={item.data.result.found ? 'default' : 'secondary'}>
+                                    {item.data.result.found ? 'Match Found' : 'No Match'}
+                                  </Badge>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Key Column:</span>
-                                <span className="font-medium">{item.data.searchParams.keyColumn}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Return Column:</span>
-                                <span className="font-medium">{item.data.searchParams.returnColumn}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Result:</span>
-                                <Badge variant={item.data.result.found ? 'default' : 'secondary'}>
-                                  {item.data.result.found ? 'Match Found' : 'No Match'}
-                                </Badge>
-                              </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))
@@ -423,17 +500,17 @@ export function HistoryTab() {
                       filterHistory.map((item, index) => (
                         <Card key={index}>
                           <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <Filter className="w-5 h-5 text-primary" />
-                                <div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <Filter className="w-5 h-5 text-primary flex-shrink-0" />
+                                <div className="min-w-0">
                                   <CardTitle className="text-base">Filter Data</CardTitle>
-                                  <CardDescription className="text-xs">
+                                  <CardDescription className="text-xs break-words">
                                     {formatDate(item.timestamp)}
                                   </CardDescription>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <Button
                                   onClick={() => handleExportFilter(item)}
                                   disabled={exporting}
@@ -456,20 +533,22 @@ export function HistoryTab() {
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Column:</span>
-                                <span className="font-medium">{item.data.filterColumn}</span>
+                            {item.data?.filterColumn && (
+                              <div className="space-y-2 text-sm">
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Column:</span>
+                                  <span className="font-medium break-words">{item.data.filterColumn}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Search Text:</span>
+                                  <span className="font-medium break-words">{item.data.filterText}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Matches:</span>
+                                  <Badge variant="secondary">{item.data.filteredRows?.length || 0}</Badge>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Search Text:</span>
-                                <span className="font-medium">{item.data.filterText}</span>
-                              </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Matches:</span>
-                                <Badge variant="secondary">{item.data.filteredRows.length}</Badge>
-                              </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))
@@ -490,17 +569,17 @@ export function HistoryTab() {
                       updateCheckingHistory.map((item, index) => (
                         <Card key={index}>
                           <CardHeader>
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <GitCompare className="w-5 h-5 text-primary" />
-                                <div>
+                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <GitCompare className="w-5 h-5 text-primary flex-shrink-0" />
+                                <div className="min-w-0">
                                   <CardTitle className="text-base">Update Checking</CardTitle>
-                                  <CardDescription className="text-xs">
+                                  <CardDescription className="text-xs break-words">
                                     {formatDate(item.timestamp)}
                                   </CardDescription>
                                 </div>
                               </div>
-                              <div className="flex gap-2">
+                              <div className="flex gap-2 flex-wrap">
                                 <Button
                                   onClick={() => handleExportComparison(item)}
                                   disabled={exporting}
@@ -523,20 +602,22 @@ export function HistoryTab() {
                             </div>
                           </CardHeader>
                           <CardContent>
-                            <div className="space-y-2 text-sm">
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">Old File:</span>
-                                <span className="font-medium">{item.data.oldFileName}</span>
+                            {item.data?.result && (
+                              <div className="space-y-2 text-sm">
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">Old File:</span>
+                                  <span className="font-medium break-words">{item.data.oldFileName}</span>
+                                </div>
+                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
+                                  <span className="text-muted-foreground">New File:</span>
+                                  <span className="font-medium break-words">{item.data.newFileName}</span>
+                                </div>
+                                <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded mt-3 text-center">
+                                  <div className="font-bold text-green-600">{item.data.result.summary?.newCount || 0}</div>
+                                  <div className="text-xs text-muted-foreground">Unmatched Rows</div>
+                                </div>
                               </div>
-                              <div className="flex justify-between">
-                                <span className="text-muted-foreground">New File:</span>
-                                <span className="font-medium">{item.data.newFileName}</span>
-                              </div>
-                              <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded mt-3 text-center">
-                                <div className="font-bold text-green-600">{item.data.result.summary.newCount}</div>
-                                <div className="text-xs text-muted-foreground">New Rows</div>
-                              </div>
-                            </div>
+                            )}
                           </CardContent>
                         </Card>
                       ))

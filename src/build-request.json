@@ -1,81 +1,130 @@
 {
   "kind": "build_request",
-  "title": "Add keyword/row-name search filtering to Update Checking results",
+  "title": "Update Upload tab animated logo to new round red PATENTED asset + fix PDF/app text overlap",
   "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-31",
-      "text": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
+      "id": "REQ-60",
+      "text": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1"
+          "msg-5"
         ],
         "quotes": [
-          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS ."
+          "BUILD AND LOGO IS I UPLOAD IN ROUND RED COLOUR ALL WRITTEN PATENTED IN MIDDILE OF LOGO FOR FLIPING AND CONTIOUNS ROTATING DONT CHANGE DIRECTION"
         ]
       },
       "acceptanceCriteria": [
-        "When Update Checking has a comparison result, the Results tab shows a clearly labeled search input for filtering those results.",
-        "The search UI is only shown/enabled when an Update Checking comparison result exists; it is not shown for VLOOKUP results.",
-        "The search UI includes a clear action to reset/clear the search so the full comparison results are shown again.",
-        "All user-facing text is in English."
+        "A new transparent-cutout logo file exists in frontend/public/assets/generated with the exact filename specified in the Image Requirements section.",
+        "The asset has a transparent background (no solid rectangle behind the circular logo).",
+        "No other existing branding assets (header logo, PDF header logo, PDF watermark logo) are replaced or modified as part of adding this asset."
       ]
     },
     {
-      "id": "REQ-32",
-      "text": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
+      "id": "REQ-61",
+      "text": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-6"
+          "msg-5"
         ],
         "quotes": [
-          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS .",
-          "ALL OPTIONS"
+          "...LOGO...FOR FLIPING...",
+          "...LITTLE SAMALL."
         ]
       },
       "acceptanceCriteria": [
-        "Filtering is applied after compareWorkbooks() runs (i.e., it does not affect the comparison computation).",
-        "The filter checks the keyword against all available values in each row (including the key value and all visible row cells).",
-        "The user can choose match type: Exact or Contains (partial).",
-        "An empty keyword shows the full, unfiltered comparison results.",
-        "Filtering does not crash for null/undefined cell values; those values are handled safely."
+        "When workbook is null, UploadTab renders the new logo image source (not /assets/generated/ptntd-cutout.dim_1200x1200.png).",
+        "The rendered logo appears centered and is visually smaller than the previous max-w-md presentation (e.g., reduced max width), while remaining clearly readable.",
+        "No changes are made to the app header logo sizing/branding as part of this requirement."
       ]
     },
     {
-      "id": "REQ-33",
-      "text": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+      "id": "REQ-62",
+      "text": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-6"
+          "msg-5"
         ],
         "quotes": [
-          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS .",
-          "1"
+          "...FOR FLIPING AND CONTIOUNS ROTATING DONT CHANGE DIRECTION"
         ]
       },
       "acceptanceCriteria": [
-        "If a keyword filter is active, exporting to Excel/PDF exports only the currently displayed (filtered) rows.",
-        "If no keyword filter is active, exporting exports the full comparison result (current behavior).",
-        "Exported files still include the existing Crystal Atlas branding header (logo + title) as implemented today."
+        "The Upload empty-state logo has a continuous rotation animation that loops smoothly and does not use any alternating/reverse direction behavior.",
+        "The flip animation still occurs on the Upload empty-state logo (flip + rotation both visible, not mutually exclusive).",
+        "The rotation speed is slow/gentle (similar to the prior ‘slow flip’ expectation), and respects motion-reduction (animation disabled with prefers-reduced-motion).",
+        "PDF exports and Excel exports are unchanged (no animated assets or animation logic is introduced into export code paths)."
+      ]
+    },
+    {
+      "id": "REQ-63",
+      "text": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2",
+          "msg-4"
+        ],
+        "quotes": [
+          "IN THE EVERY PDF DONT OVERLAP TEXT ANY WHERE PROPER FORMATING",
+          "3. DO ALL"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Exported PDFs (from Results and History) have no overlapping text in the header, footer, or table area.",
+        "Long header/footer strings and long cell values are handled without overlapping (wrap and/or truncate as needed), and content stays within page margins.",
+        "Multi-page exports preserve the same header/footer spacing and do not overlap with the table content on any page."
+      ]
+    },
+    {
+      "id": "REQ-64",
+      "text": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2",
+          "msg-4"
+        ],
+        "quotes": [
+          "...ALSO IN APP.",
+          "3. DO ALL"
+        ]
+      },
+      "acceptanceCriteria": [
+        "No visible text overlaps other UI elements in the main app layout at typical desktop widths and narrow/mobile widths (responsive).",
+        "Any adjustments preserve existing workflows and do not introduce new user-facing non-English text."
       ]
     }
   ],
   "constraints": [
-    "Frontend must not edit files under frontend/src/components/ui (Shadcn components); compose them instead.",
-    "Keep all visible UI text in English."
+    "Use only English for any visible/user-facing text.",
+    "Do not edit files under frontend/src/components/ui (shadcn UI components must be composed, not modified).",
+    "Do not change the direction of the new continuous rotation animation (must not reverse/alternate).",
+    "The new round red PATENTED logo/animation change applies only to the Upload tab empty state; do not replace the app header logo or any PDF watermark/header logo assets.",
+    "Do not route images through the backend; store and load them as static frontend assets."
   ],
   "nonGoals": [
-    "Do not add backend/Motoko logic for searching or filtering (keep client-side).",
-    "Do not change how compareWorkbooks computes differences; filtering is display/export-only post-comparison.",
-    "Do not implement searching inside the uploaded Old/New sheets prior to comparison."
+    "Changing Internet Identity/authentication behavior.",
+    "Changing Update Checking, VLOOKUP logic, History persistence, or export file formats beyond fixing PDF layout/overlap issues.",
+    "Replacing the existing PDF watermark tablet-logo asset or Crystal Atlas header logo asset."
   ],
   "imageRequirements": {
-    "required": [],
+    "required": [
+      "Round red circular logo with the word \"PATENTED\" centered, transparent background cutout (patented-round-red-cutout.dim_1200x1200.png)"
+    ],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

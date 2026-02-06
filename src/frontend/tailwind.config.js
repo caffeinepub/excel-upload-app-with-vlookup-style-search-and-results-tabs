@@ -88,12 +88,31 @@ export default {
                 'wave': {
                     '0%, 100%': { transform: 'translateY(0)' },
                     '50%': { transform: 'translateY(-4px)' }
+                },
+                'flip-horizontal': {
+                    '0%': { transform: 'scaleX(1)' },
+                    '50%': { transform: 'scaleX(-1)' },
+                    '100%': { transform: 'scaleX(1)' }
+                },
+                'rotate-continuous': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' }
+                },
+                'flip-and-rotate': {
+                    '0%': { transform: 'scaleX(1) rotate(0deg)' },
+                    '25%': { transform: 'scaleX(-1) rotate(90deg)' },
+                    '50%': { transform: 'scaleX(1) rotate(180deg)' },
+                    '75%': { transform: 'scaleX(-1) rotate(270deg)' },
+                    '100%': { transform: 'scaleX(1) rotate(360deg)' }
                 }
             },
             animation: {
                 'accordion-down': 'accordion-down 0.2s ease-out',
                 'accordion-up': 'accordion-up 0.2s ease-out',
-                'wave': 'wave 2s ease-in-out infinite'
+                'wave': 'wave 2s ease-in-out infinite',
+                'flip-horizontal': 'flip-horizontal 12s linear infinite',
+                'rotate-continuous': 'rotate-continuous 20s linear infinite',
+                'flip-and-rotate': 'flip-and-rotate 20s linear infinite'
             }
         }
     },

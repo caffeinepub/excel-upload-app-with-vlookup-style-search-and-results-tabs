@@ -89,10 +89,195 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface backendInterface {
+export interface DataHistoryEntry {
+    dtSensitivityScore: bigint;
+    determinant: string;
+    maintenanceAction: string;
+    mpvShortList: string;
+    trueCheck: boolean;
+    filterLabels: Array<string>;
+    scoreSummary: string;
+    indicatorsUsed: string;
+    itemReviewed: string;
+    varControlStatus: string;
+    manipulatedVariables: string;
+    varDefSummary: string;
+    diagnosticTestResult: string;
+    filterCount: bigint;
 }
+export interface backendInterface {
+    addHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsOpt: Array<string> | null, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
+    clearHistory(): Promise<void>;
+    clearWithFilterCount(filterCount: bigint): Promise<void>;
+    clearWithFilterLabel(filterLabel: string): Promise<void>;
+    convertAndAddHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsArray: Array<string>, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
+    count(): Promise<bigint>;
+    existsWithFilterCount(filterCount: bigint): Promise<boolean>;
+    findByFilterLabel(filterLabel: string): Promise<Array<[bigint, DataHistoryEntry]>>;
+    getEntry(id: bigint): Promise<DataHistoryEntry | null>;
+    listEntries(): Promise<Array<[bigint, DataHistoryEntry]>>;
+}
+import type { DataHistoryEntry as _DataHistoryEntry } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
+    async addHistoryEntry(arg0: string, arg1: string, arg2: bigint, arg3: bigint, arg4: Array<string> | null, arg5: string, arg6: string, arg7: string, arg8: string, arg9: string, arg10: string, arg11: boolean, arg12: string, arg13: string): Promise<[bigint, DataHistoryEntry]> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addHistoryEntry(arg0, arg1, arg2, arg3, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg4), arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
+                return [
+                    result[0],
+                    result[1]
+                ];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addHistoryEntry(arg0, arg1, arg2, arg3, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg4), arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
+            return [
+                result[0],
+                result[1]
+            ];
+        }
+    }
+    async clearHistory(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.clearHistory();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.clearHistory();
+            return result;
+        }
+    }
+    async clearWithFilterCount(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.clearWithFilterCount(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.clearWithFilterCount(arg0);
+            return result;
+        }
+    }
+    async clearWithFilterLabel(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.clearWithFilterLabel(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.clearWithFilterLabel(arg0);
+            return result;
+        }
+    }
+    async convertAndAddHistoryEntry(arg0: string, arg1: string, arg2: bigint, arg3: bigint, arg4: Array<string>, arg5: string, arg6: string, arg7: string, arg8: string, arg9: string, arg10: string, arg11: boolean, arg12: string, arg13: string): Promise<[bigint, DataHistoryEntry]> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.convertAndAddHistoryEntry(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
+                return [
+                    result[0],
+                    result[1]
+                ];
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.convertAndAddHistoryEntry(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
+            return [
+                result[0],
+                result[1]
+            ];
+        }
+    }
+    async count(): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.count();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.count();
+            return result;
+        }
+    }
+    async existsWithFilterCount(arg0: bigint): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.existsWithFilterCount(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.existsWithFilterCount(arg0);
+            return result;
+        }
+    }
+    async findByFilterLabel(arg0: string): Promise<Array<[bigint, DataHistoryEntry]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.findByFilterLabel(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.findByFilterLabel(arg0);
+            return result;
+        }
+    }
+    async getEntry(arg0: bigint): Promise<DataHistoryEntry | null> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEntry(arg0);
+                return from_candid_opt_n2(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEntry(arg0);
+            return from_candid_opt_n2(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async listEntries(): Promise<Array<[bigint, DataHistoryEntry]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.listEntries();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.listEntries();
+            return result;
+        }
+    }
+}
+function from_candid_opt_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DataHistoryEntry]): DataHistoryEntry | null {
+    return value.length === 0 ? null : value[0];
+}
+function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<string> | null): [] | [Array<string>] {
+    return value === null ? candid_none() : candid_some(value);
 }
 export interface CreateActorOptions {
     agent?: Agent;

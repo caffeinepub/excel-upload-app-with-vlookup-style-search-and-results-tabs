@@ -3,11 +3,13 @@
 export interface BrandingConfig {
   title: string;
   logoPath: string;
+  tabletLogoPath: string;
 }
 
 export const CRYSTAL_ATLAS_BRANDING: BrandingConfig = {
   title: 'Crystal Atlas',
   logoPath: '/assets/CRYSTAL ATLAS LOGO.png',
+  tabletLogoPath: '/assets/generated/tablet-logo-cutout.dim_512x512.png',
 };
 
 /**
@@ -16,28 +18,71 @@ export const CRYSTAL_ATLAS_BRANDING: BrandingConfig = {
 export async function loadLogoAsBase64(): Promise<string> {
   try {
     const response = await fetch(CRYSTAL_ATLAS_BRANDING.logoPath);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch logo: ${response.statusText}`);
+    }
     const blob = await response.blob();
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = reject;
+      reader.onerror = () => reject(new Error('Failed to read logo as base64'));
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error('Failed to load logo:', error);
-    return '';
+    console.error('Failed to load logo as base64:', error);
+    throw error;
   }
 }
 
 /**
- * Load the logo as an Image element for canvas/PDF rendering
+ * Load the logo as an Image element for canvas/PDF rendering with robust error handling
+ * Used for PDF exports only (no title text rendering)
  */
 export async function loadLogoAsImage(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
+    
+    const timeout = setTimeout(() => {
+      reject(new Error('Logo loading timed out'));
+    }, 5000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      resolve(img);
+    };
+    
+    img.onerror = (error) => {
+      clearTimeout(timeout);
+      reject(new Error('Failed to load logo image'));
+    };
+    
     img.src = CRYSTAL_ATLAS_BRANDING.logoPath;
+  });
+}
+
+/**
+ * Load the tablet logo watermark as an Image element for PDF rendering
+ */
+export async function loadTabletLogoAsImage(): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    
+    const timeout = setTimeout(() => {
+      reject(new Error('Tablet logo loading timed out'));
+    }, 5000);
+
+    img.onload = () => {
+      clearTimeout(timeout);
+      resolve(img);
+    };
+    
+    img.onerror = (error) => {
+      clearTimeout(timeout);
+      reject(new Error('Failed to load tablet logo watermark. Please ensure the asset is available.'));
+    };
+    
+    img.src = CRYSTAL_ATLAS_BRANDING.tabletLogoPath;
   });
 }

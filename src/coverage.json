@@ -1,52 +1,73 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-06T09:12:52.811Z",
+  "generatedAt": "2026-02-06T13:09:25.554Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 3,
-    "implemented": 3,
+    "total": 5,
+    "implemented": 5,
     "items": [
       {
-        "id": "REQ-31",
-        "summary": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
+        "id": "REQ-60",
+        "summary": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ResultsTab.tsx",
-          "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx"
+          "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ResultsTab.tsx",
-          "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx"
+          "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
         ]
       },
       {
-        "id": "REQ-32",
-        "summary": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
+        "id": "REQ-61",
+        "summary": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/lib/compare/filterComparisonRows.ts",
-          "frontend/src/pages/ResultsTab.tsx"
+          "frontend/src/pages/UploadTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/lib/compare/filterComparisonRows.ts",
-          "frontend/src/pages/ResultsTab.tsx"
+          "frontend/src/pages/UploadTab.tsx"
         ]
       },
       {
-        "id": "REQ-33",
-        "summary": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+        "id": "REQ-62",
+        "summary": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/ResultsTab.tsx",
-          "frontend/src/lib/export/exportPdf.ts",
-          "frontend/src/lib/export/exportXlsx.ts"
+          "frontend/src/index.css",
+          "frontend/src/pages/UploadTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/ResultsTab.tsx"
+          "frontend/src/pages/UploadTab.tsx"
+        ]
+      },
+      {
+        "id": "REQ-63",
+        "summary": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/lib/export/exportPdf.ts"
+        ],
+        "matchedFiles": [
+          "frontend/src/lib/export/exportPdf.ts"
+        ]
+      },
+      {
+        "id": "REQ-64",
+        "summary": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/layout/AppHeader.tsx",
+          "frontend/src/pages/ResultsTab.tsx",
+          "frontend/src/pages/HistoryTab.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/layout/AppHeader.tsx",
+          "frontend/src/pages/ResultsTab.tsx",
+          "frontend/src/pages/HistoryTab.tsx"
         ]
       }
     ]
@@ -56,9 +77,13 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx",
-    "frontend/src/lib/compare/filterComparisonRows.ts",
+    "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png",
+    "frontend/src/components/layout/AppHeader.tsx",
+    "frontend/src/lib/export/exportPdf.ts",
+    "frontend/src/pages/HistoryTab.tsx",
     "frontend/src/pages/ResultsTab.tsx",
+    "frontend/src/pages/UploadTab.tsx",
+    "frontend/tailwind.config.js",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

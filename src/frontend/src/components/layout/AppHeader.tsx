@@ -60,25 +60,20 @@ export function AppHeader() {
   return (
     <header className="border-b bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4 max-w-6xl">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <img
-                src="/assets/CRYSTAL ATLAS LOGO.png"
-                alt="Crystal Atlas Logo"
-                className="w-10 h-10 object-contain"
-              />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold text-foreground tracking-tight">Crystal Atlas</h1>
-              <p className="text-sm text-muted-foreground">Navigate your data with clarity</p>
-            </div>
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div className="flex items-center flex-shrink-0">
+            <img
+              src="/assets/CRYSTAL ATLAS LOGO.png"
+              alt="Logo"
+              className="h-12 sm:h-16 w-auto object-contain"
+            />
           </div>
           {workbook && (
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
               <Button onClick={handleReplaceWorkbook} variant="outline" size="sm" disabled={uploadLoading}>
                 <Upload className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
-                Replace Excel
+                <span className="hidden xs:inline">Replace Excel</span>
+                <span className="xs:hidden">Replace</span>
               </Button>
               <Button onClick={reset} variant="outline" size="sm" disabled={uploadLoading}>
                 <RotateCcw className="w-4 h-4 mr-2" />

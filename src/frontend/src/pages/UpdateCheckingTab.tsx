@@ -9,7 +9,6 @@ import { Label } from '../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Upload, GitCompare, AlertCircle, FileSpreadsheet, Info } from 'lucide-react';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 interface UpdateCheckingTabProps {
   onComparisonComplete?: () => void;
@@ -30,7 +29,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
   const newFileInputRef = useRef<HTMLInputElement>(null);
   const [oldParsedSheets, setOldParsedSheets] = useState<Map<string, any> | null>(null);
   const [newParsedSheets, setNewParsedSheets] = useState<Map<string, any> | null>(null);
-  const [comparisonMode, setComparisonMode] = useState<'row' | 'column'>('row');
+  const [isComparing, setIsComparing] = useState(false);
 
   const handleOldFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -38,6 +37,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
     
     if (!file) return;
 
+    console.log('Uploading old file:', file.name);
+    
     // Clear state before starting parse
     setError(null);
     setOldParsedSheets(null);
@@ -69,6 +70,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
         throw new Error('Failed to read first sheet data. Please try a different file.');
       }
 
+      console.log('Old file parsed successfully:', sanitizedSheetNames);
+      
       setOldParsedSheets(parsed.sheets);
       setUpdateCheckingState({
         oldWorkbook: {
@@ -80,6 +83,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
       });
       setError(null);
     } catch (err) {
+      console.error('Old file upload error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to parse old Excel file. Please try again.';
       setError(errorMessage);
       setOldParsedSheets(null);
@@ -100,6 +104,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
     
     if (!file) return;
 
+    console.log('Uploading new file:', file.name);
+    
     // Clear state before starting parse to prevent intermediate invalid state
     setError(null);
     setNewParsedSheets(null);
@@ -131,6 +137,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
         throw new Error('Failed to read first sheet data. Please try a different file.');
       }
 
+      console.log('New file parsed successfully:', sanitizedSheetNames);
+      
       // Only set state after successful parse
       setNewParsedSheets(parsed.sheets);
       setUpdateCheckingState({
@@ -143,6 +151,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
       });
       setError(null);
     } catch (err) {
+      console.error('New file upload error:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to parse new Excel file. Please try again.';
       setError(errorMessage);
       // Keep state cleared on failure
@@ -207,31 +216,51 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
   };
 
   const handleRunComparison = () => {
+    console.log('Running comparison...');
     setError(null);
-
-    if (!updateCheckingState.oldWorkbook?.sheetData) {
-      setError('Please upload an old Excel file and select a sheet.');
-      return;
-    }
-
-    if (!updateCheckingState.newWorkbook?.sheetData) {
-      setError('Please upload a new Excel file and select a sheet.');
-      return;
-    }
-
-    if (!updateCheckingState.keyColumn) {
-      setError('Please select a key column for comparison.');
-      return;
-    }
+    setIsComparing(true);
 
     try {
+      if (!updateCheckingState.oldWorkbook?.sheetData) {
+        setError('Please upload an old Excel file and select a sheet.');
+        setIsComparing(false);
+        return;
+      }
+
+      if (!updateCheckingState.newWorkbook?.sheetData) {
+        setError('Please upload a new Excel file and select a sheet.');
+        setIsComparing(false);
+        return;
+      }
+
+      if (!updateCheckingState.keyColumn) {
+        setError('Please select a key column for comparison.');
+        setIsComparing(false);
+        return;
+      }
+
+      console.log('Comparison params:', {
+        keyColumn: updateCheckingState.keyColumn,
+        mode: 'key-presence',
+        oldRows: updateCheckingState.oldWorkbook.sheetData.rows.length,
+        newRows: updateCheckingState.newWorkbook.sheetData.rows.length,
+      });
+
+      // Use 'key-presence' mode to find items in New but not in Old
       const result = compareWorkbooks(
         updateCheckingState.oldWorkbook.sheetData,
         updateCheckingState.newWorkbook.sheetData,
         updateCheckingState.keyColumn,
-        comparisonMode
+        'key-presence'
       );
 
+      console.log('Comparison result:', {
+        mode: result.mode,
+        newCount: result.summary.newCount,
+        totalRows: result.rows.length,
+      });
+
+      // This will clear VLOOKUP results and set comparison results
       setUpdateCheckingState({ comparisonResult: result });
 
       // Add to history
@@ -242,17 +271,21 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
           oldFileName: updateCheckingState.oldWorkbook.fileName,
           newFileName: updateCheckingState.newWorkbook.fileName,
           keyColumn: updateCheckingState.keyColumn,
-          comparisonMode: comparisonMode,
+          comparisonMode: 'key-presence',
           result: result,
         },
       });
 
       // Navigate to results tab
       if (onComparisonComplete) {
+        console.log('Navigating to results tab');
         onComparisonComplete();
       }
     } catch (err) {
+      console.error('Comparison error:', err);
       setError(err instanceof Error ? err.message : 'Failed to compare workbooks. Please try again.');
+    } finally {
+      setIsComparing(false);
     }
   };
 
@@ -285,6 +318,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
       // Check if "Patent No." exists in common columns using normalized matching
       const patentNoColumn = commonColumns.find(col => normalizeHeader(col) === normalizeHeader('Patent No.'));
       if (patentNoColumn) {
+        console.log('Auto-selecting Patent No. as key column');
         setUpdateCheckingState({ keyColumn: patentNoColumn });
       }
     }
@@ -321,7 +355,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
             <div>
               <CardTitle>Update Checking</CardTitle>
               <CardDescription>
-                Compare old and new Excel files to identify differences
+                Find new items present in the new file but not in the old file based on the selected key column
               </CardDescription>
             </div>
           </div>
@@ -330,8 +364,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
           <Alert>
             <Info className="h-4 w-4" />
             <AlertDescription>
-              Upload two Excel files (old and new versions) and select a key column to compare them.
-              Choose between row-level or column-level difference checking.
+              Upload two Excel files (old and new versions) and select a key column.
+              The system will identify items that exist in the new file but not in the old file based on the key column values.
             </AlertDescription>
           </Alert>
 
@@ -485,7 +519,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
           {updateCheckingState.oldWorkbook?.sheetData &&
             updateCheckingState.newWorkbook?.sheetData && (
               <div className="space-y-2">
-                <Label htmlFor="key-column">Key Column (for matching rows)</Label>
+                <Label htmlFor="key-column">Key Column</Label>
                 {commonColumns.length > 0 ? (
                   <Select
                     value={safeKeyColumnValue}
@@ -513,33 +547,6 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
               </div>
             )}
 
-          {/* Comparison Mode Selection */}
-          {updateCheckingState.oldWorkbook?.sheetData &&
-            updateCheckingState.newWorkbook?.sheetData && (
-              <div className="space-y-3">
-                <Label>Comparison Mode</Label>
-                <RadioGroup value={comparisonMode} onValueChange={(value) => setComparisonMode(value as 'row' | 'column')}>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="row" id="mode-row" />
-                    <Label htmlFor="mode-row" className="font-normal cursor-pointer">
-                      Row Difference (show new rows only)
-                    </Label>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <RadioGroupItem value="column" id="mode-column" />
-                    <Label htmlFor="mode-column" className="font-normal cursor-pointer">
-                      Column Difference (show which columns changed)
-                    </Label>
-                  </div>
-                </RadioGroup>
-                <p className="text-xs text-muted-foreground">
-                  {comparisonMode === 'row' 
-                    ? 'Identifies rows present in the new file but not in the old file.'
-                    : 'Identifies which columns have different values for matching key values.'}
-                </p>
-              </div>
-            )}
-
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
@@ -551,6 +558,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
             onClick={handleRunComparison}
             disabled={
               loading ||
+              isComparing ||
               !updateCheckingState.oldWorkbook?.sheetData ||
               !updateCheckingState.newWorkbook?.sheetData ||
               !safeKeyColumnValue ||
@@ -560,7 +568,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
             size="lg"
           >
             <GitCompare className="w-4 h-4 mr-2" />
-            Run Comparison
+            {isComparing ? 'Finding New Items...' : 'Find New Items'}
           </Button>
 
           {loading && (

@@ -10,7 +10,73 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface _SERVICE {}
+export interface DataHistoryEntry {
+  'dtSensitivityScore' : bigint,
+  'determinant' : string,
+  'maintenanceAction' : string,
+  'mpvShortList' : string,
+  'trueCheck' : boolean,
+  'filterLabels' : Array<string>,
+  'scoreSummary' : string,
+  'indicatorsUsed' : string,
+  'itemReviewed' : string,
+  'varControlStatus' : string,
+  'manipulatedVariables' : string,
+  'varDefSummary' : string,
+  'diagnosticTestResult' : string,
+  'filterCount' : bigint,
+}
+export interface _SERVICE {
+  'addHistoryEntry' : ActorMethod<
+    [
+      string,
+      string,
+      bigint,
+      bigint,
+      [] | [Array<string>],
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      boolean,
+      string,
+      string,
+    ],
+    [bigint, DataHistoryEntry]
+  >,
+  'clearHistory' : ActorMethod<[], undefined>,
+  'clearWithFilterCount' : ActorMethod<[bigint], undefined>,
+  'clearWithFilterLabel' : ActorMethod<[string], undefined>,
+  'convertAndAddHistoryEntry' : ActorMethod<
+    [
+      string,
+      string,
+      bigint,
+      bigint,
+      Array<string>,
+      string,
+      string,
+      string,
+      string,
+      string,
+      string,
+      boolean,
+      string,
+      string,
+    ],
+    [bigint, DataHistoryEntry]
+  >,
+  'count' : ActorMethod<[], bigint>,
+  'existsWithFilterCount' : ActorMethod<[bigint], boolean>,
+  'findByFilterLabel' : ActorMethod<
+    [string],
+    Array<[bigint, DataHistoryEntry]>
+  >,
+  'getEntry' : ActorMethod<[bigint], [] | [DataHistoryEntry]>,
+  'listEntries' : ActorMethod<[], Array<[bigint, DataHistoryEntry]>>,
+}
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
 export declare const idlFactory: IDL.InterfaceFactory;

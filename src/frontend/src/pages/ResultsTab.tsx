@@ -1,68 +1,97 @@
 import { useAppState } from '../state/appState';
-import { performVlookup } from '../lib/vlookup/vlookup';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { Badge } from '../components/ui/badge';
 import { Label } from '../components/ui/label';
-import { CheckCircle2, XCircle, RefreshCw, Info, Play, Download, GitCompare } from 'lucide-react';
-import { VlookupAnimation } from '../components/vlookup/VlookupAnimation';
-import { useState, useMemo } from 'react';
+import { CheckCircle2, XCircle, Info, Download, GitCompare, Edit2, Save, X as XIcon } from 'lucide-react';
+import { useState, useMemo, useEffect } from 'react';
 import { exportToExcel } from '../lib/export/exportXlsx';
 import { exportToPdf } from '../lib/export/exportPdf';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { UpdateCheckingResultsSearchBar } from '../components/updateChecking/UpdateCheckingResultsSearchBar';
 import { filterComparisonRows, MatchType } from '../lib/compare/filterComparisonRows';
+import type { MultiSearchResult } from '../state/appState';
 
 interface ResultsTabProps {
   onNavigateToUpdateChecking?: () => void;
 }
 
 export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
-  const { workbook, searchParams, searchResult, setSearchResult, updateCheckingState } = useAppState();
-  const [showAnimation, setShowAnimation] = useState(false);
+  const { workbook, searchParams, searchResult, setSearchResult, updateCheckingState, updateWorkbookRow } = useAppState();
   const [exporting, setExporting] = useState(false);
   
   // Search state for Update Checking results
   const [searchKeyword, setSearchKeyword] = useState('');
   const [searchMatchType, setSearchMatchType] = useState<MatchType>('contains');
 
-  const handleRerun = () => {
-    if (!workbook?.sheetData || !searchParams) {
-      alert('Missing workbook or search parameters. Please run a search first.');
-      return;
-    }
-    const result = performVlookup(workbook.sheetData, searchParams);
-    setSearchResult(result);
-    setShowAnimation(false);
-  };
+  // Edit state for VLOOKUP results
+  const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
+  const [editedRow, setEditedRow] = useState<(string | number | boolean | null)[]>([]);
 
-  const handleShowAnimation = () => {
-    setShowAnimation(true);
-  };
+  // Debug logging
+  useEffect(() => {
+    console.log('ResultsTab - searchResult:', searchResult);
+    console.log('ResultsTab - updateCheckingState.comparisonResult:', updateCheckingState.comparisonResult);
+  }, [searchResult, updateCheckingState.comparisonResult]);
 
   const handleClearSearch = () => {
     setSearchKeyword('');
   };
 
+  const handleStartEdit = (rowIndex: number, currentRow: (string | number | boolean | null)[]) => {
+    setEditingRowIndex(rowIndex);
+    setEditedRow([...currentRow]);
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRowIndex(null);
+    setEditedRow([]);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingRowIndex !== null && workbook?.sheetData) {
+      updateWorkbookRow(editingRowIndex, editedRow);
+      setEditingRowIndex(null);
+      setEditedRow([]);
+      
+      // Show success message
+      alert('Row updated successfully. Changes are saved in memory and will be included in exports.');
+    }
+  };
+
+  const handleCellEdit = (colIndex: number, value: string) => {
+    const newRow = [...editedRow];
+    // Try to preserve type
+    let parsedValue: string | number | boolean | null = value;
+    if (value === '') {
+      parsedValue = null;
+    } else if (!isNaN(Number(value)) && value.trim() !== '') {
+      parsedValue = Number(value);
+    } else if (value.toLowerCase() === 'true') {
+      parsedValue = true;
+    } else if (value.toLowerCase() === 'false') {
+      parsedValue = false;
+    }
+    newRow[colIndex] = parsedValue;
+    setEditedRow(newRow);
+  };
+
   const handleExportVlookupExcel = async () => {
-    if (!searchResult || !searchParams) return;
+    if (!searchResult || !searchParams || !workbook?.sheetData) return;
 
     setExporting(true);
     try {
+      const multiResult = searchResult as MultiSearchResult;
+      
+      // Export full workbook with edits
       await exportToExcel(
         {
-          headers: ['Parameter', 'Value'],
-          rows: [
-            ['Lookup Value', searchParams.lookupValue],
-            ['Key Column', searchParams.keyColumn],
-            ['Return Column', searchParams.returnColumn],
-            ['Match Type', searchParams.matchType],
-            ['Result', searchResult.found ? 'Match Found' : 'No Match'],
-            ['Returned Value', searchResult.value === null || searchResult.value === undefined ? '(empty)' : String(searchResult.value)],
-          ],
+          headers: workbook.sheetData.headers,
+          rows: workbook.sheetData.rows,
         },
-        `crystal-atlas-vlookup-${Date.now()}.xlsx`
+        `crystal-atlas-workbook-edited-${Date.now()}.xlsx`
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -73,23 +102,23 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   };
 
   const handleExportVlookupPdf = async () => {
-    if (!searchResult || !searchParams) return;
+    if (!searchResult || !searchParams || !workbook?.sheetData) return;
 
     setExporting(true);
     try {
+      const multiResult = searchResult as MultiSearchResult;
+      
+      // Export matched rows only
+      const matchedRows = multiResult.results
+        .filter(r => r.found && r.fullRow)
+        .map(r => r.fullRow!);
+
       await exportToPdf(
         {
-          headers: ['Parameter', 'Value'],
-          rows: [
-            ['Lookup Value', searchParams.lookupValue],
-            ['Key Column', searchParams.keyColumn],
-            ['Return Column', searchParams.returnColumn],
-            ['Match Type', searchParams.matchType],
-            ['Result', searchResult.found ? 'Match Found' : 'No Match'],
-            ['Returned Value', searchResult.value === null || searchResult.value === undefined ? '(empty)' : String(searchResult.value)],
-          ],
+          headers: workbook.sheetData.headers,
+          rows: matchedRows,
         },
-        `crystal-atlas-vlookup-${Date.now()}.pdf`
+        `crystal-atlas-vlookup-results-${Date.now()}.pdf`
       );
     } catch (error) {
       console.error('Export failed:', error);
@@ -99,58 +128,58 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     }
   };
 
-  // Filter comparison rows based on search
+  // Filter comparison rows based on search - only show NEW rows
   const filteredComparisonRows = useMemo(() => {
-    if (!updateCheckingState.comparisonResult) return null;
+    if (!updateCheckingState.comparisonResult) {
+      console.log('No comparison result available');
+      return null;
+    }
     
-    return filterComparisonRows(
-      updateCheckingState.comparisonResult.rows,
+    // Only include NEW rows
+    const newRowsOnly = updateCheckingState.comparisonResult.rows.filter(row => row.status === 'new');
+    console.log('New rows only (before filtering):', newRowsOnly.length);
+    
+    const filtered = filterComparisonRows(
+      newRowsOnly,
       searchKeyword,
       searchMatchType,
       updateCheckingState.comparisonResult.headers
     );
+    
+    console.log('Filtered comparison rows:', filtered.length);
+    return filtered;
   }, [updateCheckingState.comparisonResult, searchKeyword, searchMatchType]);
 
   const handleExportComparisonExcel = async () => {
-    if (!updateCheckingState.comparisonResult || !filteredComparisonRows) return;
+    if (!updateCheckingState.comparisonResult || !filteredComparisonRows || filteredComparisonRows.length === 0) return;
 
     setExporting(true);
     try {
       const result = updateCheckingState.comparisonResult;
+      const keyColumnName = updateCheckingState.keyColumn || 'Key';
       
-      if (result.mode === 'row') {
-        // Export only filtered new rows
-        const rows = filteredComparisonRows.map((row) => [String(row.keyValue), ...row.newData]);
-        await exportToExcel(
-          {
-            headers: ['Key', ...result.headers],
-            rows,
-          },
-          `crystal-atlas-comparison-new-rows-${Date.now()}.xlsx`
-        );
-      } else {
-        // Export filtered rows with change indicators
-        const rows = filteredComparisonRows.map((row) => {
-          const statusLabel = row.status === 'new' ? 'NEW' : row.status === 'updated' ? 'UPDATED' : 'UNCHANGED';
-          const changedColumnsStr = row.changedColumns && row.changedColumns.length > 0 
-            ? row.changedColumns.map(idx => result.headers[idx]).join(', ')
-            : '-';
-          return [
-            String(row.keyValue),
-            statusLabel,
-            changedColumnsStr,
-            ...row.newData,
-          ];
-        });
-        
-        await exportToExcel(
-          {
-            headers: ['Key', 'Status', 'Changed Columns', ...result.headers],
-            rows,
-          },
-          `crystal-atlas-comparison-column-diff-${Date.now()}.xlsx`
-        );
-      }
+      // Build headers: Key column + all New sheet columns (excluding the key column to avoid duplication)
+      const newSheetHeaders = result.headers;
+      const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
+      
+      // Filter out the key column from trailing headers
+      const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
+      const exportHeaders = [keyColumnName, ...trailingHeaders];
+      
+      // Build rows: Key value + all New sheet row values (excluding the key column cell)
+      const rows = filteredComparisonRows.map((row) => {
+        const keyValue = row.keyValue === null || row.keyValue === undefined ? '' : String(row.keyValue);
+        const trailingCells = row.newData.filter((_, idx) => idx !== keyColumnIndex);
+        return [keyValue, ...trailingCells];
+      });
+      
+      await exportToExcel(
+        {
+          headers: exportHeaders,
+          rows,
+        },
+        `crystal-atlas-new-items-${Date.now()}.xlsx`
+      );
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to Excel. Please try again.');
@@ -160,45 +189,35 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   };
 
   const handleExportComparisonPdf = async () => {
-    if (!updateCheckingState.comparisonResult || !filteredComparisonRows) return;
+    if (!updateCheckingState.comparisonResult || !filteredComparisonRows || filteredComparisonRows.length === 0) return;
 
     setExporting(true);
     try {
       const result = updateCheckingState.comparisonResult;
+      const keyColumnName = updateCheckingState.keyColumn || 'Key';
       
-      if (result.mode === 'row') {
-        // Export only filtered new rows
-        const rows = filteredComparisonRows.map((row) => [String(row.keyValue), ...row.newData]);
-        await exportToPdf(
-          {
-            headers: ['Key', ...result.headers],
-            rows,
-          },
-          `crystal-atlas-comparison-new-rows-${Date.now()}.pdf`
-        );
-      } else {
-        // Export filtered rows with change indicators
-        const rows = filteredComparisonRows.map((row) => {
-          const statusLabel = row.status === 'new' ? 'NEW' : row.status === 'updated' ? 'UPDATED' : 'UNCHANGED';
-          const changedColumnsStr = row.changedColumns && row.changedColumns.length > 0 
-            ? row.changedColumns.map(idx => result.headers[idx]).join(', ')
-            : '-';
-          return [
-            String(row.keyValue),
-            statusLabel,
-            changedColumnsStr,
-            ...row.newData,
-          ];
-        });
-        
-        await exportToPdf(
-          {
-            headers: ['Key', 'Status', 'Changed Columns', ...result.headers],
-            rows,
-          },
-          `crystal-atlas-comparison-column-diff-${Date.now()}.pdf`
-        );
-      }
+      // Build headers: Key column + all New sheet columns (excluding the key column to avoid duplication)
+      const newSheetHeaders = result.headers;
+      const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
+      
+      // Filter out the key column from trailing headers
+      const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
+      const exportHeaders = [keyColumnName, ...trailingHeaders];
+      
+      // Build rows: Key value + all New sheet row values (excluding the key column cell)
+      const rows = filteredComparisonRows.map((row) => {
+        const keyValue = row.keyValue === null || row.keyValue === undefined ? '' : String(row.keyValue);
+        const trailingCells = row.newData.filter((_, idx) => idx !== keyColumnIndex);
+        return [keyValue, ...trailingCells];
+      });
+      
+      await exportToPdf(
+        {
+          headers: exportHeaders,
+          rows,
+        },
+        `crystal-atlas-new-items-${Date.now()}.pdf`
+      );
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to PDF. Please try again.');
@@ -207,33 +226,43 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     }
   };
 
-  // Show comparison results if available
-  if (updateCheckingState.comparisonResult && filteredComparisonRows) {
-    const result = updateCheckingState.comparisonResult;
-    const newRows = filteredComparisonRows.filter(r => r.status === 'new');
-    const updatedRows = filteredComparisonRows.filter(r => r.status === 'updated');
-    const unchangedRows = filteredComparisonRows.filter(r => r.status === 'unchanged');
+  // Determine which results to show
+  const hasComparisonResults = updateCheckingState.comparisonResult !== null;
+  const hasVlookupResults = searchResult !== null;
+
+  console.log('Display decision - hasComparisonResults:', hasComparisonResults, 'hasVlookupResults:', hasVlookupResults);
+
+  // Show comparison results if available - only new items
+  if (hasComparisonResults && filteredComparisonRows !== null) {
+    const result = updateCheckingState.comparisonResult!;
+    const displayRowCount = filteredComparisonRows.length;
+    const keyColumnName = updateCheckingState.keyColumn || 'Key';
+
+    console.log('Displaying comparison results, row count:', displayRowCount);
+
+    // Find key column index to avoid duplication
+    const newSheetHeaders = result.headers;
+    const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
+    const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
 
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <GitCompare className="w-6 h-6 text-primary" />
-                <div>
-                  <CardTitle>Update Checking Results</CardTitle>
-                  <CardDescription>
-                    {result.mode === 'row' 
-                      ? 'New rows found in the new Excel file'
-                      : 'Column-level differences between old and new files'}
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <GitCompare className="w-6 h-6 text-primary flex-shrink-0" />
+                <div className="min-w-0">
+                  <CardTitle className="break-words">Update Checking Results</CardTitle>
+                  <CardDescription className="break-words">
+                    Items present in the new file but not in the old file based on {keyColumnName}
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <Button
                   onClick={handleExportComparisonExcel}
-                  disabled={exporting}
+                  disabled={exporting || displayRowCount === 0}
                   variant="outline"
                   size="sm"
                 >
@@ -242,7 +271,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 </Button>
                 <Button
                   onClick={handleExportComparisonPdf}
-                  disabled={exporting}
+                  disabled={exporting || displayRowCount === 0}
                   variant="outline"
                   size="sm"
                 >
@@ -251,7 +280,6 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 </Button>
                 {onNavigateToUpdateChecking && (
                   <Button onClick={onNavigateToUpdateChecking} variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
                     Re-run
                   </Button>
                 )}
@@ -268,249 +296,76 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               onClear={handleClearSearch}
             />
 
-            {/* Summary Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {/* Summary Card - Only New Items */}
+            <div className="grid grid-cols-1 gap-4">
               <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{newRows.length}</div>
+                <div className="text-2xl font-bold text-green-600">{displayRowCount}</div>
                 <div className="text-sm text-muted-foreground">
-                  {searchKeyword ? 'Filtered New Rows' : 'New Rows'}
+                  {searchKeyword ? 'Filtered New Items' : 'New Items'}
                 </div>
               </div>
-              {result.mode === 'column' && (
-                <>
-                  <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 rounded-lg">
-                    <div className="text-2xl font-bold text-amber-600">{updatedRows.length}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {searchKeyword ? 'Filtered Updated Rows' : 'Updated Rows'}
-                    </div>
-                  </div>
-                  <div className="p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-900 rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{unchangedRows.length}</div>
-                    <div className="text-sm text-muted-foreground">
-                      {searchKeyword ? 'Filtered Unchanged Rows' : 'Unchanged Rows'}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
 
-            {/* Row Difference Mode: Show only new rows */}
-            {result.mode === 'row' && (
-              <>
-                {newRows.length > 0 ? (
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2">
-                      <Info className="w-4 h-4" />
-                      New Rows
-                    </Label>
-                    <ScrollArea className="h-[500px] rounded-md border">
-                      <div className="p-4">
-                        <table className="w-full border-collapse">
-                          <thead className="sticky top-0 bg-background z-10">
-                            <tr className="border-b">
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">
-                                Key
-                              </th>
-                              {result.headers.map((header, idx) => (
-                                <th
-                                  key={idx}
-                                  className="text-left p-2 text-sm font-semibold text-muted-foreground"
-                                >
-                                  {header}
-                                </th>
+            {/* Show only new items */}
+            {displayRowCount > 0 ? (
+              <div className="space-y-3">
+                <Label className="flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  New Items (present in new file but not in old file)
+                </Label>
+                <ScrollArea className="h-[500px] rounded-md border">
+                  <div className="p-4 overflow-x-auto">
+                    <table className="w-full border-collapse min-w-max">
+                      <thead className="sticky top-0 bg-background z-10">
+                        <tr className="border-b">
+                          <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                            {keyColumnName}
+                          </th>
+                          {trailingHeaders.map((header, idx) => (
+                            <th
+                              key={idx}
+                              className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap"
+                            >
+                              {header}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredComparisonRows.map((row, idx) => {
+                          const trailingCells = row.newData.filter((_, cellIdx) => cellIdx !== keyColumnIndex);
+                          return (
+                            <tr
+                              key={idx}
+                              className="border-b hover:bg-muted/50 transition-colors"
+                            >
+                              <td className="p-2 text-sm font-medium break-words max-w-xs">
+                                {row.keyValue === null || row.keyValue === undefined
+                                  ? '-'
+                                  : String(row.keyValue)}
+                              </td>
+                              {trailingCells.map((cell, cellIdx) => (
+                                <td key={cellIdx} className="p-2 text-sm break-words max-w-xs">
+                                  {cell === null || cell === undefined ? '-' : String(cell)}
+                                </td>
                               ))}
                             </tr>
-                          </thead>
-                          <tbody>
-                            {newRows.map((row, idx) => (
-                              <tr
-                                key={idx}
-                                className="border-b hover:bg-muted/50 transition-colors"
-                              >
-                                <td className="p-2 text-sm font-medium">
-                                  {row.keyValue === null || row.keyValue === undefined
-                                    ? '-'
-                                    : String(row.keyValue)}
-                                </td>
-                                {row.newData.map((cell, cellIdx) => (
-                                  <td key={cellIdx} className="p-2 text-sm">
-                                    {cell === null || cell === undefined ? '-' : String(cell)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </ScrollArea>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
-                ) : (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      {searchKeyword 
-                        ? `No rows match your search criteria "${searchKeyword}".`
-                        : 'No new rows found. All rows in the new file already exist in the old file.'}
-                    </AlertDescription>
-                  </Alert>
-                )}
-              </>
-            )}
-
-            {/* Column Difference Mode: Show all rows with change indicators */}
-            {result.mode === 'column' && (
-              <div className="space-y-4">
-                {/* New Rows */}
-                {newRows.length > 0 && (
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2">
-                      <Badge variant="default" className="bg-green-600">NEW</Badge>
-                      New Rows ({newRows.length})
-                    </Label>
-                    <ScrollArea className="h-[300px] rounded-md border">
-                      <div className="p-4">
-                        <table className="w-full border-collapse">
-                          <thead className="sticky top-0 bg-background z-10">
-                            <tr className="border-b">
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Key</th>
-                              {result.headers.map((header, idx) => (
-                                <th key={idx} className="text-left p-2 text-sm font-semibold text-muted-foreground">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {newRows.map((row, idx) => (
-                              <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                                <td className="p-2 text-sm font-medium">
-                                  {row.keyValue === null || row.keyValue === undefined ? '-' : String(row.keyValue)}
-                                </td>
-                                {row.newData.map((cell, cellIdx) => (
-                                  <td key={cellIdx} className="p-2 text-sm">
-                                    {cell === null || cell === undefined ? '-' : String(cell)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-
-                {/* Updated Rows */}
-                {updatedRows.length > 0 && (
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2">
-                      <Badge variant="default" className="bg-amber-600">UPDATED</Badge>
-                      Updated Rows ({updatedRows.length})
-                    </Label>
-                    <ScrollArea className="h-[300px] rounded-md border">
-                      <div className="p-4">
-                        <table className="w-full border-collapse">
-                          <thead className="sticky top-0 bg-background z-10">
-                            <tr className="border-b">
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Key</th>
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Changed Columns</th>
-                              {result.headers.map((header, idx) => (
-                                <th key={idx} className="text-left p-2 text-sm font-semibold text-muted-foreground">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {updatedRows.map((row, idx) => (
-                              <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                                <td className="p-2 text-sm font-medium">
-                                  {row.keyValue === null || row.keyValue === undefined ? '-' : String(row.keyValue)}
-                                </td>
-                                <td className="p-2 text-xs">
-                                  {row.changedColumns && row.changedColumns.length > 0 ? (
-                                    <div className="flex flex-wrap gap-1">
-                                      {row.changedColumns.map((colIdx) => (
-                                        <Badge key={colIdx} variant="outline" className="text-xs">
-                                          {result.headers[colIdx]}
-                                        </Badge>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    '-'
-                                  )}
-                                </td>
-                                {row.newData.map((cell, cellIdx) => {
-                                  const isChanged = row.changedColumns?.includes(cellIdx);
-                                  return (
-                                    <td
-                                      key={cellIdx}
-                                      className={`p-2 text-sm ${isChanged ? 'bg-amber-100 dark:bg-amber-950/30 font-medium' : ''}`}
-                                    >
-                                      {cell === null || cell === undefined ? '-' : String(cell)}
-                                    </td>
-                                  );
-                                })}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-
-                {/* Unchanged Rows */}
-                {unchangedRows.length > 0 && (
-                  <div className="space-y-3">
-                    <Label className="flex items-center gap-2">
-                      <Badge variant="secondary">UNCHANGED</Badge>
-                      Unchanged Rows ({unchangedRows.length})
-                    </Label>
-                    <ScrollArea className="h-[300px] rounded-md border">
-                      <div className="p-4">
-                        <table className="w-full border-collapse">
-                          <thead className="sticky top-0 bg-background z-10">
-                            <tr className="border-b">
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">Key</th>
-                              {result.headers.map((header, idx) => (
-                                <th key={idx} className="text-left p-2 text-sm font-semibold text-muted-foreground">
-                                  {header}
-                                </th>
-                              ))}
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {unchangedRows.map((row, idx) => (
-                              <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                                <td className="p-2 text-sm font-medium">
-                                  {row.keyValue === null || row.keyValue === undefined ? '-' : String(row.keyValue)}
-                                </td>
-                                {row.newData.map((cell, cellIdx) => (
-                                  <td key={cellIdx} className="p-2 text-sm text-muted-foreground">
-                                    {cell === null || cell === undefined ? '-' : String(cell)}
-                                  </td>
-                                ))}
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </ScrollArea>
-                  </div>
-                )}
-
-                {filteredComparisonRows.length === 0 && (
-                  <Alert>
-                    <Info className="h-4 w-4" />
-                    <AlertDescription>
-                      {searchKeyword 
-                        ? `No rows match your search criteria "${searchKeyword}".`
-                        : 'No rows to compare. Please check your files and try again.'}
-                    </AlertDescription>
-                  </Alert>
-                )}
+                </ScrollArea>
               </div>
+            ) : (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  {searchKeyword 
+                    ? `No items match your search criteria "${searchKeyword}".`
+                    : 'No new items found. All items in the new file already exist in the old file.'}
+                </AlertDescription>
+              </Alert>
             )}
           </CardContent>
         </Card>
@@ -519,135 +374,199 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   }
 
   // Show VLOOKUP results
-  if (!searchResult) {
+  if (hasVlookupResults && workbook?.sheetData) {
+    const multiResult = searchResult as MultiSearchResult;
+    console.log('Displaying Multi-VLOOKUP results:', multiResult);
+    
     return (
-      <Card>
-        <CardHeader>
-          <CardTitle>No Results Yet</CardTitle>
-          <CardDescription>
-            Run a VLOOKUP search in the Search tab or an update check to see results here.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
+                <div className="min-w-0">
+                  <CardTitle>VLOOKUP Search Results</CardTitle>
+                  <CardDescription className="break-words">
+                    {multiResult.summary.foundCount} of {multiResult.summary.totalSearches} lookup values matched
+                  </CardDescription>
+                </div>
+              </div>
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  onClick={handleExportVlookupExcel}
+                  disabled={exporting}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Export Full Workbook</span>
+                  <span className="sm:hidden">Excel</span>
+                </Button>
+                <Button
+                  onClick={handleExportVlookupPdf}
+                  disabled={exporting}
+                  variant="outline"
+                  size="sm"
+                >
+                  <Download className="w-4 h-4 mr-2" />
+                  <span className="hidden sm:inline">Export Results PDF</span>
+                  <span className="sm:hidden">PDF</span>
+                </Button>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {/* Summary */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div className="p-4 bg-muted/50 rounded-lg">
+                <div className="text-2xl font-bold">{multiResult.summary.totalSearches}</div>
+                <div className="text-sm text-muted-foreground">Total Searches</div>
+              </div>
+              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
+                <div className="text-2xl font-bold text-green-600">{multiResult.summary.foundCount}</div>
+                <div className="text-sm text-muted-foreground">Matches Found</div>
+              </div>
+              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
+                <div className="text-2xl font-bold text-red-600">{multiResult.summary.notFoundCount}</div>
+                <div className="text-sm text-muted-foreground">Not Found</div>
+              </div>
+            </div>
+
+            {/* Results Table */}
+            <div className="space-y-3">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <Label className="flex items-center gap-2">
+                  <Info className="w-4 h-4" />
+                  Matched Rows (editable)
+                </Label>
+                {editingRowIndex !== null && (
+                  <div className="flex gap-2">
+                    <Button onClick={handleSaveEdit} size="sm" variant="default">
+                      <Save className="w-4 h-4 mr-2" />
+                      Save Changes
+                    </Button>
+                    <Button onClick={handleCancelEdit} size="sm" variant="outline">
+                      <XIcon className="w-4 h-4 mr-2" />
+                      Cancel
+                    </Button>
+                  </div>
+                )}
+              </div>
+              
+              <ScrollArea className="h-[500px] rounded-md border">
+                <div className="p-4 overflow-x-auto">
+                  <table className="w-full border-collapse min-w-max">
+                    <thead className="sticky top-0 bg-background z-10">
+                      <tr className="border-b">
+                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground w-24 whitespace-nowrap">
+                          Actions
+                        </th>
+                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                          Lookup Value
+                        </th>
+                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
+                          Status
+                        </th>
+                        {workbook.sheetData.headers.map((header, idx) => (
+                          <th
+                            key={idx}
+                            className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap"
+                          >
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {multiResult.results.map((result, idx) => {
+                        if (!result.found || !result.fullRow) {
+                          return (
+                            <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
+                              <td className="p-2 text-sm">-</td>
+                              <td className="p-2 text-sm font-medium break-words max-w-xs">{result.lookupValue}</td>
+                              <td className="p-2 text-sm">
+                                <Badge variant="secondary">
+                                  <XCircle className="w-3 h-3 mr-1" />
+                                  Not Found
+                                </Badge>
+                              </td>
+                              <td colSpan={workbook.sheetData?.headers.length || 1} className="p-2 text-sm text-muted-foreground break-words">
+                                {result.message}
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        const isEditing = editingRowIndex === result.rowIndex;
+                        const displayRow = isEditing ? editedRow : result.fullRow;
+
+                        return (
+                          <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
+                            <td className="p-2 text-sm">
+                              {!isEditing && (
+                                <Button
+                                  onClick={() => handleStartEdit(result.rowIndex!, result.fullRow!)}
+                                  size="sm"
+                                  variant="ghost"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </td>
+                            <td className="p-2 text-sm font-medium break-words max-w-xs">{result.lookupValue}</td>
+                            <td className="p-2 text-sm">
+                              <Badge variant="default">
+                                <CheckCircle2 className="w-3 h-3 mr-1" />
+                                Found
+                              </Badge>
+                            </td>
+                            {displayRow.map((cell, cellIdx) => (
+                              <td key={cellIdx} className="p-2 text-sm">
+                                {isEditing ? (
+                                  <Input
+                                    value={cell === null || cell === undefined ? '' : String(cell)}
+                                    onChange={(e) => handleCellEdit(cellIdx, e.target.value)}
+                                    className="h-8 text-sm min-w-[100px]"
+                                  />
+                                ) : (
+                                  <span className="break-words">{cell === null || cell === undefined ? '-' : String(cell)}</span>
+                                )}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </ScrollArea>
+            </div>
+
+            {multiResult.summary.notFoundCount > 0 && (
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  {multiResult.summary.notFoundCount} lookup value(s) did not match any rows in the key column.
+                </AlertDescription>
+              </Alert>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     );
   }
 
+  // No results yet
+  console.log('No results to display');
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {searchResult.found ? (
-                <CheckCircle2 className="w-6 h-6 text-green-600" />
-              ) : (
-                <XCircle className="w-6 h-6 text-destructive" />
-              )}
-              <div>
-                <CardTitle>Search Results</CardTitle>
-                <CardDescription>
-                  {searchResult.found ? 'Match found' : 'No match found'}
-                </CardDescription>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              {searchParams && workbook?.sheetData && (
-                <>
-                  <Button
-                    onClick={handleExportVlookupExcel}
-                    disabled={exporting}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    Excel
-                  </Button>
-                  <Button
-                    onClick={handleExportVlookupPdf}
-                    disabled={exporting}
-                    variant="outline"
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4 mr-2" />
-                    PDF
-                  </Button>
-                  <Button onClick={handleShowAnimation} variant="default" size="sm">
-                    <Play className="w-4 h-4 mr-2" />
-                    Show Animation
-                  </Button>
-                  <Button onClick={handleRerun} variant="outline" size="sm">
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Re-run
-                  </Button>
-                </>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          {searchParams && (
-            <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-              <h3 className="font-semibold text-sm flex items-center gap-2">
-                <Info className="w-4 h-4" />
-                Search Parameters
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                <div>
-                  <span className="text-muted-foreground">Lookup Value:</span>
-                  <p className="font-medium">{searchParams.lookupValue}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Match Type:</span>
-                  <p className="font-medium capitalize">{searchParams.matchType}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Key Column:</span>
-                  <p className="font-medium">{searchParams.keyColumn}</p>
-                </div>
-                <div>
-                  <span className="text-muted-foreground">Return Column:</span>
-                  <p className="font-medium">{searchParams.returnColumn}</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div className="space-y-3">
-            <h3 className="font-semibold text-sm">Result</h3>
-            {searchResult.found ? (
-              <div className="p-6 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="flex items-start gap-3">
-                  <CheckCircle2 className="w-5 h-5 text-green-600 mt-0.5" />
-                  <div className="flex-1 space-y-2">
-                    <p className="text-sm text-muted-foreground">{searchResult.message}</p>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">Returned Value:</span>
-                      <Badge variant="secondary" className="text-base px-3 py-1">
-                        {searchResult.value === null || searchResult.value === undefined
-                          ? '(empty)'
-                          : String(searchResult.value)}
-                      </Badge>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <Alert variant="destructive">
-                <XCircle className="h-4 w-4" />
-                <AlertDescription>{searchResult.message}</AlertDescription>
-              </Alert>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {showAnimation && workbook?.sheetData && searchParams && (
-        <VlookupAnimation
-          data={workbook.sheetData}
-          searchParams={searchParams}
-          onClose={() => setShowAnimation(false)}
-        />
-      )}
-    </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>No Results Yet</CardTitle>
+        <CardDescription>
+          Run a VLOOKUP search in the Search tab or an update check to see results here.
+        </CardDescription>
+      </CardHeader>
+    </Card>
   );
 }

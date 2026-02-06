@@ -1,76 +1,100 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Update Checking results keyword search + filtered exports",
+  "title": "Upload empty-state logo update + animation + PDF/UI overlap fixes",
   "requirements": [
     {
-      "id": "REQ-31",
-      "summary": "Add a Results-tab search UI for Update Checking comparisons to filter rows by keyword/row name, with a clear/reset action and English labels.",
+      "id": "REQ-60",
+      "summary": "Add a new transparent round red PATENTED logo image asset for Upload tab empty-state animation only",
       "acceptanceCriteria": [
-        "When Update Checking has a comparison result, the Results tab shows a clearly labeled search input for filtering those results.",
-        "The search UI is only shown/enabled when an Update Checking comparison result exists; it is not shown for VLOOKUP results.",
-        "The search UI includes a clear action to reset/clear the search so the full comparison results are shown again.",
-        "All user-facing text is in English."
+        "A new transparent-cutout logo file exists in frontend/public/assets/generated with the exact filename specified in the Image Requirements section.",
+        "The asset has a transparent background (no solid rectangle behind the circular logo).",
+        "No other existing branding assets (header logo, PDF header logo, PDF watermark logo) are replaced or modified as part of adding this asset."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ResultsTab.tsx",
-          "operation": "modify",
-          "description": "Add a dedicated \"Search in Update Checking Results\" UI (keyword input, match type selector, and Clear button) that is rendered only inside the Update Checking comparison-results view (not in the VLOOKUP results view). Wire the UI state to drive which rows are displayed. Use existing shadcn/ui building-block components by composing them (do not edit files under frontend/src/components/ui). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx",
+          "path": "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png",
           "operation": "create",
-          "description": "Create a small presentational component for the Update Checking results search controls (keyword input, match type control, and clear/reset). Compose existing shadcn/ui components; do not modify shadcn components. Verify the component's usage instructions before implementing."
+          "description": "Add the new static generated image asset (transparent background) for use only in the Upload tab empty-state animation."
         }
       ]
     },
     {
-      "id": "REQ-32",
-      "summary": "Implement client-side post-comparison filtering for Update Checking results that matches across all displayed row values and supports Exact and Contains match types with null-safe handling.",
+      "id": "REQ-61",
+      "summary": "Update Upload tab empty-state to use the new PATENTED logo, centered and slightly smaller",
       "acceptanceCriteria": [
-        "Filtering is applied after compareWorkbooks() runs (i.e., it does not affect the comparison computation).",
-        "The filter checks the keyword against all available values in each row (including the key value and all visible row cells).",
-        "The user can choose match type: Exact or Contains (partial).",
-        "An empty keyword shows the full, unfiltered comparison results.",
-        "Filtering does not crash for null/undefined cell values; those values are handled safely."
+        "When workbook is null, UploadTab renders the new logo image source (not /assets/generated/ptntd-cutout.dim_1200x1200.png).",
+        "The rendered logo appears centered and is visually smaller than the previous max-w-md presentation (e.g., reduced max width), while remaining clearly readable.",
+        "No changes are made to the app header logo sizing/branding as part of this requirement."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/lib/compare/filterComparisonRows.ts",
-          "operation": "create",
-          "description": "Add a reusable, null-safe helper that takes Update Checking comparison rows plus a keyword and match type (Exact/Contains) and returns the filtered rows. Ensure matching checks the key value and all visible row cell values, and that empty keyword returns the original row set."
-        },
-        {
-          "path": "frontend/src/pages/ResultsTab.tsx",
+          "path": "frontend/src/pages/UploadTab.tsx",
           "operation": "modify",
-          "description": "Integrate the filtering helper so filtering is applied only after a comparison result exists (post-compareWorkbooks). Ensure filtering is applied to the comparison row set used to render New/Updated/Unchanged sections, and that empty keyword restores full results without recomputing the comparison."
+          "description": "Swap the empty-state image src to frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png and adjust layout sizing utilities so the centered logo renders slightly smaller than before, without touching header branding."
         }
       ]
     },
     {
-      "id": "REQ-33",
-      "summary": "Update Update Checking Excel/PDF exports so they export only the currently displayed (filtered) comparison rows while preserving existing Crystal Atlas branding.",
+      "id": "REQ-62",
+      "summary": "Make Upload empty-state logo continuously rotate in one direction while preserving the flip effect, with motion-reduction support",
       "acceptanceCriteria": [
-        "If a keyword filter is active, exporting to Excel/PDF exports only the currently displayed (filtered) rows.",
-        "If no keyword filter is active, exporting exports the full comparison result (current behavior).",
-        "Exported files still include the existing Crystal Atlas branding header (logo + title) as implemented today."
+        "The Upload empty-state logo has a continuous rotation animation that loops smoothly and does not use any alternating/reverse direction behavior.",
+        "The flip animation still occurs on the Upload empty-state logo (flip + rotation both visible, not mutually exclusive).",
+        "The rotation speed is slow/gentle (similar to the prior ‘slow flip’ expectation), and respects motion-reduction (animation disabled with prefers-reduced-motion).",
+        "PDF exports and Excel exports are unchanged (no animated assets or animation logic is introduced into export code paths)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/ResultsTab.tsx",
+          "path": "frontend/src/index.css",
           "operation": "modify",
-          "description": "Modify the Update Checking export handlers (Excel and PDF) to export from the same filtered row set currently used for display. Ensure branding remains unchanged by continuing to use the existing export helpers."
+          "description": "Add a CSS utility/class for the Upload empty-state logo that combines slow continuous rotation (single direction) with the existing flip effect, and disables animation under prefers-reduced-motion."
         },
+        {
+          "path": "frontend/src/pages/UploadTab.tsx",
+          "operation": "modify",
+          "description": "Apply the new combined flip+rotation class to the empty-state logo only (when workbook is null), ensuring the animation remains on-screen only and does not affect any export-related code paths."
+        }
+      ]
+    },
+    {
+      "id": "REQ-63",
+      "summary": "Fix PDF export layout to prevent any text overlap across header, footer, and table content for multi-page exports",
+      "acceptanceCriteria": [
+        "Exported PDFs (from Results and History) have no overlapping text in the header, footer, or table area.",
+        "Long header/footer strings and long cell values are handled without overlapping (wrap and/or truncate as needed), and content stays within page margins.",
+        "Multi-page exports preserve the same header/footer spacing and do not overlap with the table content on any page."
+      ],
+      "file_operations": [
         {
           "path": "frontend/src/lib/export/exportPdf.ts",
           "operation": "modify",
-          "description": "Confirm the PDF export utility continues to apply the Crystal Atlas branding header (logo + title) with the provided data rows; no behavior changes beyond ensuring compatibility with filtered row sets."
+          "description": "Update PDF rendering to wrap header/footer strings within page margins and to render table cells with wrapping-aware, dynamic row heights (including page-break calculations) so no text overlaps on any page."
+        }
+      ]
+    },
+    {
+      "id": "REQ-64",
+      "summary": "Fix in-app responsive layout/text wrapping to prevent visible UI text overlap while keeping all text in English",
+      "acceptanceCriteria": [
+        "No visible text overlaps other UI elements in the main app layout at typical desktop widths and narrow/mobile widths (responsive).",
+        "Any adjustments preserve existing workflows and do not introduce new user-facing non-English text."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/layout/AppHeader.tsx",
+          "operation": "modify",
+          "description": "Adjust header layout to be more responsive (e.g., allow wrapping/stacking of logo and action buttons at narrow widths) to prevent overlap without changing the header logo asset or branding."
         },
         {
-          "path": "frontend/src/lib/export/exportXlsx.ts",
+          "path": "frontend/src/pages/ResultsTab.tsx",
           "operation": "modify",
-          "description": "Confirm the Excel export utility continues to apply the Crystal Atlas branding header with the provided data rows; no behavior changes beyond ensuring compatibility with filtered row sets."
+          "description": "Improve responsive table/card layouts to prevent text overlap by enabling safe wrapping/truncation in constrained areas (especially table headers/cells and top action rows) while keeping all visible text in English."
+        },
+        {
+          "path": "frontend/src/pages/HistoryTab.tsx",
+          "operation": "modify",
+          "description": "Improve responsive history card/tabs layout to prevent text overlap on smaller widths by adjusting spacing/wrapping/alignment (no workflow changes; English-only UI text)."
         }
       ]
     }

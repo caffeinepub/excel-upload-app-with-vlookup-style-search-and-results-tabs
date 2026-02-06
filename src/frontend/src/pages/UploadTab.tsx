@@ -94,9 +94,9 @@ export function UploadTab() {
           <CardHeader className="text-center pb-4">
             <div className="mx-auto mb-4">
               <img
-                src="/assets/generated/excel-upload-hero.dim_1600x900.png"
+                src="/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
                 alt="Upload Excel"
-                className="w-full max-w-md mx-auto rounded-lg"
+                className="w-full max-w-xs mx-auto rounded-lg animate-flip-and-rotate motion-reduce:animate-none"
               />
             </div>
             <CardTitle className="text-2xl">Upload Your Excel File</CardTitle>
@@ -153,15 +153,15 @@ export function UploadTab() {
       
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <FileSpreadsheet className="w-6 h-6 text-primary" />
-              <div>
-                <CardTitle>File Loaded: {workbook.fileName}</CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <FileSpreadsheet className="w-6 h-6 text-primary flex-shrink-0" />
+              <div className="min-w-0">
+                <CardTitle className="truncate">File Loaded: {workbook.fileName}</CardTitle>
                 <CardDescription>Select a sheet to preview its data</CardDescription>
               </div>
             </div>
-            <Button onClick={handleReplaceFile} variant="outline" size="sm" disabled={uploadLoading}>
+            <Button onClick={handleReplaceFile} variant="outline" size="sm" disabled={uploadLoading} className="flex-shrink-0">
               <RefreshCw className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
               Replace Excel
             </Button>

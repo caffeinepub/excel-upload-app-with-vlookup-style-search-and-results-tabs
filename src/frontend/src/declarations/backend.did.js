@@ -8,10 +8,160 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const idlService = IDL.Service({});
+export const DataHistoryEntry = IDL.Record({
+  'dtSensitivityScore' : IDL.Nat,
+  'determinant' : IDL.Text,
+  'maintenanceAction' : IDL.Text,
+  'mpvShortList' : IDL.Text,
+  'trueCheck' : IDL.Bool,
+  'filterLabels' : IDL.Vec(IDL.Text),
+  'scoreSummary' : IDL.Text,
+  'indicatorsUsed' : IDL.Text,
+  'itemReviewed' : IDL.Text,
+  'varControlStatus' : IDL.Text,
+  'manipulatedVariables' : IDL.Text,
+  'varDefSummary' : IDL.Text,
+  'diagnosticTestResult' : IDL.Text,
+  'filterCount' : IDL.Nat,
+});
+
+export const idlService = IDL.Service({
+  'addHistoryEntry' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Opt(IDL.Vec(IDL.Text)),
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Bool,
+        IDL.Text,
+        IDL.Text,
+      ],
+      [IDL.Nat, DataHistoryEntry],
+      [],
+    ),
+  'clearHistory' : IDL.Func([], [], []),
+  'clearWithFilterCount' : IDL.Func([IDL.Nat], [], []),
+  'clearWithFilterLabel' : IDL.Func([IDL.Text], [], []),
+  'convertAndAddHistoryEntry' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Nat,
+        IDL.Nat,
+        IDL.Vec(IDL.Text),
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Bool,
+        IDL.Text,
+        IDL.Text,
+      ],
+      [IDL.Nat, DataHistoryEntry],
+      [],
+    ),
+  'count' : IDL.Func([], [IDL.Nat], ['query']),
+  'existsWithFilterCount' : IDL.Func([IDL.Nat], [IDL.Bool], ['query']),
+  'findByFilterLabel' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+      ['query'],
+    ),
+  'getEntry' : IDL.Func([IDL.Nat], [IDL.Opt(DataHistoryEntry)], ['query']),
+  'listEntries' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+      ['query'],
+    ),
+});
 
 export const idlInitArgs = [];
 
-export const idlFactory = ({ IDL }) => { return IDL.Service({}); };
+export const idlFactory = ({ IDL }) => {
+  const DataHistoryEntry = IDL.Record({
+    'dtSensitivityScore' : IDL.Nat,
+    'determinant' : IDL.Text,
+    'maintenanceAction' : IDL.Text,
+    'mpvShortList' : IDL.Text,
+    'trueCheck' : IDL.Bool,
+    'filterLabels' : IDL.Vec(IDL.Text),
+    'scoreSummary' : IDL.Text,
+    'indicatorsUsed' : IDL.Text,
+    'itemReviewed' : IDL.Text,
+    'varControlStatus' : IDL.Text,
+    'manipulatedVariables' : IDL.Text,
+    'varDefSummary' : IDL.Text,
+    'diagnosticTestResult' : IDL.Text,
+    'filterCount' : IDL.Nat,
+  });
+  
+  return IDL.Service({
+    'addHistoryEntry' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Opt(IDL.Vec(IDL.Text)),
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Bool,
+          IDL.Text,
+          IDL.Text,
+        ],
+        [IDL.Nat, DataHistoryEntry],
+        [],
+      ),
+    'clearHistory' : IDL.Func([], [], []),
+    'clearWithFilterCount' : IDL.Func([IDL.Nat], [], []),
+    'clearWithFilterLabel' : IDL.Func([IDL.Text], [], []),
+    'convertAndAddHistoryEntry' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Nat,
+          IDL.Nat,
+          IDL.Vec(IDL.Text),
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Bool,
+          IDL.Text,
+          IDL.Text,
+        ],
+        [IDL.Nat, DataHistoryEntry],
+        [],
+      ),
+    'count' : IDL.Func([], [IDL.Nat], ['query']),
+    'existsWithFilterCount' : IDL.Func([IDL.Nat], [IDL.Bool], ['query']),
+    'findByFilterLabel' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+        ['query'],
+      ),
+    'getEntry' : IDL.Func([IDL.Nat], [IDL.Opt(DataHistoryEntry)], ['query']),
+    'listEntries' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+        ['query'],
+      ),
+  });
+};
 
 export const init = ({ IDL }) => { return []; };

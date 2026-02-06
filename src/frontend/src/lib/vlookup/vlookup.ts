@@ -1,5 +1,28 @@
 import { SheetData, SearchParams, SearchResult } from '../../state/appState';
 
+export interface MultiSearchParams {
+  lookupValues: string[];
+  keyColumn: string;
+  returnColumn: string;
+  matchType: 'exact' | 'approximate';
+}
+
+export interface MultiSearchResult {
+  results: Array<{
+    lookupValue: string;
+    found: boolean;
+    value: string | number | boolean | null;
+    rowIndex?: number;
+    fullRow?: (string | number | boolean | null)[];
+    message?: string;
+  }>;
+  summary: {
+    totalSearches: number;
+    foundCount: number;
+    notFoundCount: number;
+  };
+}
+
 export function performVlookup(sheetData: SheetData, params: SearchParams): SearchResult {
   const { lookupValue, keyColumn, returnColumn, matchType } = params;
 
@@ -28,6 +51,81 @@ export function performVlookup(sheetData: SheetData, params: SearchParams): Sear
   } else {
     return performApproximateMatch(sheetData, lookupValue, keyColIndex, returnColIndex);
   }
+}
+
+export function performMultiVlookup(sheetData: SheetData, params: MultiSearchParams): MultiSearchResult {
+  const { lookupValues, keyColumn, returnColumn, matchType } = params;
+
+  // Find column indices
+  const keyColIndex = sheetData.headers.indexOf(keyColumn);
+  const returnColIndex = sheetData.headers.indexOf(returnColumn);
+
+  if (keyColIndex === -1) {
+    return {
+      results: lookupValues.map(val => ({
+        lookupValue: val,
+        found: false,
+        value: null,
+        message: `Key column "${keyColumn}" not found in sheet headers.`,
+      })),
+      summary: {
+        totalSearches: lookupValues.length,
+        foundCount: 0,
+        notFoundCount: lookupValues.length,
+      },
+    };
+  }
+
+  if (returnColIndex === -1) {
+    return {
+      results: lookupValues.map(val => ({
+        lookupValue: val,
+        found: false,
+        value: null,
+        message: `Return column "${returnColumn}" not found in sheet headers.`,
+      })),
+      summary: {
+        totalSearches: lookupValues.length,
+        foundCount: 0,
+        notFoundCount: lookupValues.length,
+      },
+    };
+  }
+
+  const results = lookupValues.map(lookupValue => {
+    let result: SearchResult;
+    if (matchType === 'exact') {
+      result = performExactMatch(sheetData, lookupValue, keyColIndex, returnColIndex);
+    } else {
+      result = performApproximateMatch(sheetData, lookupValue, keyColIndex, returnColIndex);
+    }
+
+    // Get full row data if found
+    let fullRow: (string | number | boolean | null)[] | undefined;
+    if (result.found && result.rowIndex !== undefined) {
+      fullRow = sheetData.rows[result.rowIndex];
+    }
+
+    return {
+      lookupValue,
+      found: result.found,
+      value: result.value,
+      rowIndex: result.rowIndex,
+      fullRow,
+      message: result.message,
+    };
+  });
+
+  const foundCount = results.filter(r => r.found).length;
+
+  return {
+    results,
+    summary: {
+      totalSearches: lookupValues.length,
+      foundCount,
+      notFoundCount: lookupValues.length - foundCount,
+    },
+  };
 }
 
 function performExactMatch(
