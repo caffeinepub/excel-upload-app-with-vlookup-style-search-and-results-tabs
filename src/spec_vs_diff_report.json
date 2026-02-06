@@ -1,0 +1,42 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-06T09:12:52.808Z",
+  "summary": "Diff adds a dedicated Update Checking results search bar component and a client-side row-filtering utility, and begins integrating filtering state into ResultsTab. However, based on the truncated ResultsTab diff, it’s not fully verifiable that the UI is only shown for Update Checking (not VLOOKUP) and that Excel/PDF exports use the filtered rows. The filter implementation also appears to search only `keyValue` + `newData` (not all row cell values, if other fields like `oldData` are part of displayed rows).",
+  "missing_requirements": [
+    {
+      "id": "REQ-31",
+      "requirement": "Search UI is only shown/enabled when an Update Checking comparison result exists; it is not shown for VLOOKUP results.",
+      "reason": "ResultsTab integration is truncated; the diff summary does not show the conditional rendering logic that restricts the search bar to Update Checking comparison results only (and not VLOOKUP results).",
+      "evidence": [
+        "frontend/src/pages/ResultsTab.tsx (truncated)",
+        "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx"
+      ]
+    },
+    {
+      "id": "REQ-32",
+      "requirement": "Filter checks the keyword against all available values in each comparison row (including the key value and all visible row cells).",
+      "reason": "`filterComparisonRows` collects values only from `row.keyValue` and `row.newData`. If displayed comparison rows include additional values (e.g., `oldData` or other fields), they are not searched according to the shown implementation.",
+      "evidence": [
+        "frontend/src/lib/compare/filterComparisonRows.ts"
+      ]
+    },
+    {
+      "id": "REQ-33",
+      "requirement": "Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+      "reason": "No diff evidence shows Update Checking export functions being passed `filteredComparisonRows` (or equivalent) instead of the full comparison result. The only export handlers visible in the truncated ResultsTab are for VLOOKUP exports.",
+      "evidence": [
+        "frontend/src/pages/ResultsTab.tsx (truncated)"
+      ]
+    }
+  ],
+  "hallucinated_features": [],
+  "confidence": 0.62,
+  "changed_files": [
+    "frontend-file-summaries.txt",
+    "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx",
+    "frontend/src/lib/compare/filterComparisonRows.ts",
+    "frontend/src/pages/ResultsTab.tsx",
+    "project_state.json"
+  ]
+}

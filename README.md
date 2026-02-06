@@ -1,2 +1,3 @@
-# excel-upload-app-with-vlookup-style-search-and-results-tabs
-Exported from Caffeine project: Crystal Atlas
+## 
+
+To run app build and run docker image: `docker build -t app . docker run -it --network host app`

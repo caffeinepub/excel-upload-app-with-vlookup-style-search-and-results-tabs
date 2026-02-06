@@ -1,0 +1,78 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Update Checking results keyword search + filtered exports",
+  "requirements": [
+    {
+      "id": "REQ-31",
+      "summary": "Add a Results-tab search UI for Update Checking comparisons to filter rows by keyword/row name, with a clear/reset action and English labels.",
+      "acceptanceCriteria": [
+        "When Update Checking has a comparison result, the Results tab shows a clearly labeled search input for filtering those results.",
+        "The search UI is only shown/enabled when an Update Checking comparison result exists; it is not shown for VLOOKUP results.",
+        "The search UI includes a clear action to reset/clear the search so the full comparison results are shown again.",
+        "All user-facing text is in English."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ResultsTab.tsx",
+          "operation": "modify",
+          "description": "Add a dedicated \"Search in Update Checking Results\" UI (keyword input, match type selector, and Clear button) that is rendered only inside the Update Checking comparison-results view (not in the VLOOKUP results view). Wire the UI state to drive which rows are displayed. Use existing shadcn/ui building-block components by composing them (do not edit files under frontend/src/components/ui). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx",
+          "operation": "create",
+          "description": "Create a small presentational component for the Update Checking results search controls (keyword input, match type control, and clear/reset). Compose existing shadcn/ui components; do not modify shadcn components. Verify the component's usage instructions before implementing."
+        }
+      ]
+    },
+    {
+      "id": "REQ-32",
+      "summary": "Implement client-side post-comparison filtering for Update Checking results that matches across all displayed row values and supports Exact and Contains match types with null-safe handling.",
+      "acceptanceCriteria": [
+        "Filtering is applied after compareWorkbooks() runs (i.e., it does not affect the comparison computation).",
+        "The filter checks the keyword against all available values in each row (including the key value and all visible row cells).",
+        "The user can choose match type: Exact or Contains (partial).",
+        "An empty keyword shows the full, unfiltered comparison results.",
+        "Filtering does not crash for null/undefined cell values; those values are handled safely."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/compare/filterComparisonRows.ts",
+          "operation": "create",
+          "description": "Add a reusable, null-safe helper that takes Update Checking comparison rows plus a keyword and match type (Exact/Contains) and returns the filtered rows. Ensure matching checks the key value and all visible row cell values, and that empty keyword returns the original row set."
+        },
+        {
+          "path": "frontend/src/pages/ResultsTab.tsx",
+          "operation": "modify",
+          "description": "Integrate the filtering helper so filtering is applied only after a comparison result exists (post-compareWorkbooks). Ensure filtering is applied to the comparison row set used to render New/Updated/Unchanged sections, and that empty keyword restores full results without recomputing the comparison."
+        }
+      ]
+    },
+    {
+      "id": "REQ-33",
+      "summary": "Update Update Checking Excel/PDF exports so they export only the currently displayed (filtered) comparison rows while preserving existing Crystal Atlas branding.",
+      "acceptanceCriteria": [
+        "If a keyword filter is active, exporting to Excel/PDF exports only the currently displayed (filtered) rows.",
+        "If no keyword filter is active, exporting exports the full comparison result (current behavior).",
+        "Exported files still include the existing Crystal Atlas branding header (logo + title) as implemented today."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/ResultsTab.tsx",
+          "operation": "modify",
+          "description": "Modify the Update Checking export handlers (Excel and PDF) to export from the same filtered row set currently used for display. Ensure branding remains unchanged by continuing to use the existing export helpers."
+        },
+        {
+          "path": "frontend/src/lib/export/exportPdf.ts",
+          "operation": "modify",
+          "description": "Confirm the PDF export utility continues to apply the Crystal Atlas branding header (logo + title) with the provided data rows; no behavior changes beyond ensuring compatibility with filtered row sets."
+        },
+        {
+          "path": "frontend/src/lib/export/exportXlsx.ts",
+          "operation": "modify",
+          "description": "Confirm the Excel export utility continues to apply the Crystal Atlas branding header with the provided data rows; no behavior changes beyond ensuring compatibility with filtered row sets."
+        }
+      ]
+    }
+  ]
+}

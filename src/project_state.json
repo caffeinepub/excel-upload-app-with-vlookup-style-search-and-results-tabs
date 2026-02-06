@@ -1,0 +1,399 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 31,
+  "summary": "Build an app named \"Crystal Atlas\" that lets users upload Excel sheets, perform VLOOKUP-style and multi-table searches, view results in a results tab, and support branded exports (PDF/Excel). Update Checking supports old vs new workbook comparison and will be enhanced to allow choosing any key column (by header/title) and selecting row-difference vs column/cell-difference modes.",
+  "architectural_notes": [
+    "Visual design direction changed to a blue ocean theme (overrides prior non-blue theme constraint).",
+    "Add export pipeline for Results (PDF + XLSX) with consistent Crystal Atlas branding (title/logo) applied in generated files.",
+    "Support dual-workbook compare workflow (old vs new) to compute and display changes/new rows in Results.",
+    "Add export pipeline support for Update Checking (diff/compare) results in both PDF and XLSX with Crystal Atlas branding.",
+    "Introduce per-feature history tracking/storage and dedicated History pages per feature (VLOOKUP, Filter, Update Checking).",
+    "Update Checking: ensure Select components never receive an empty-string value; use undefined/null for cleared selection and only render Select.Item entries with non-empty value props to prevent Radix/Shadcn Select crashes.",
+    "Update Checking comparison rule: treat \"Patent No.\" as the sole key; Results should include only NEW rows where key exists in New but not in Old (skip change detection for matching keys).",
+    "Update Checking key selection clarification: use the column whose header is exactly \"Patent No.\" as the key (do not hardcode physical Column G), and show only rows present in New but not in Old based on that key.",
+    "Update Checking enhancement: support selecting any key column by its header/title to drive comparisons (not limited to \"Patent No.\").",
+    "Update Checking enhancement: add a comparison-mode toggle to switch between row-difference output and column/cell-difference output for matching keys."
+  ],
+  "known_issues": [
+    "\"Run VLOOKUP\" button is not working (lookup action does not run / produce results).",
+    "Uploading/replacing with a new Excel file immediately results in a white screen (no visible browser console errors).",
+    "Normal single-file upload also results in a white screen (not limited to Update Checking).",
+    "Update Checking: selecting the New Excel file (pressing Enter) causes an instant white screen with no delay, before any sheet list appears (crash during initial file read/parse).",
+    "Update Checking: selecting the New Excel file triggers a runtime crash: \"A <Select.Item /> must have a value prop that is not an empty string\" (likely a Select dropdown rendered with empty-string value immediately after file selection)."
+  ],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-create-a-tabbed-ui-with-three-primary-sections-1-upload-excel-2-search-formula-vlookup-and-3-results-the-results-tab-must-display-the-output-of-the-most-recent-vlookup-search-in-a-clear-table-and-allow-users-to-re-run-searches-without-reloading-the-page",
+      "title": "Create a tabbed UI with three primary sections: (1) Upload Excel, (2) Search/Formula (VLOOKUP), and (3) Results. The Results tab must display the output of the most recent VLOOKUP search in a clear table and allow users to re-run searches without reloading the page.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-excel-file-upload-in-the-upload-tab-and-parse-the-workbook-client-side-to-extract-sheet-names-and-a-preview-of-the-selected-sheet-s-rows-columns-for-user-verification",
+      "title": "Implement Excel file upload in the Upload tab and parse the workbook client-side to extract sheet names and a preview of the selected sheet’s rows/columns for user verification.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-search-formula-page-that-performs-an-excel-like-vlookup-operation-against-the-uploaded-sheet-data-the-page-must-let-the-user-choose-lookup-value-lookup-column-key-column-return-column-and-match-type-exact-vs-approximate-running-the-lookup-must-populate-the-results-tab-with-the-output",
+      "title": "Add a Search/Formula page that performs an Excel-like VLOOKUP operation against the uploaded sheet data. The page must let the user choose: lookup value, lookup column (key column), return column, and match type (Exact vs Approximate). Running the lookup must populate the Results tab with the output.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-maintain-application-state-so-that-the-uploaded-workbook-selected-sheet-and-last-search-parameters-persist-across-tab-switches-during-the-session-provide-a-clear-reset-control-to-remove-the-uploaded-workbook-and-clear-results",
+      "title": "Maintain application state so that the uploaded workbook, selected sheet, and last search parameters persist across tab switches during the session. Provide a clear/reset control to remove the uploaded workbook and clear results.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-apply-a-cohesive-attractive-visual-theme-colors-typography-spacing-and-component-styling-consistently-across-all-pages-tabs-use-a-distinct-style-appropriate-for-a-productivity-utility-app-do-not-use-a-blue-purple-default-theme",
+      "title": "Apply a cohesive, attractive visual theme (colors, typography, spacing, and component styling) consistently across all pages/tabs. Use a distinct style appropriate for a productivity/utility app (do not use a blue/purple default theme).",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-generated-static-images-to-improve-the-ui-polish-app-icon-and-a-simple-hero-empty-state-illustration-and-render-them-from-frontend-public-assets-generated-in-the-ui-where-appropriate",
+      "title": "Add generated static images to improve the UI polish (app icon and a simple hero/empty-state illustration), and render them from frontend/public/assets/generated in the UI where appropriate.",
+      "reqIds": [
+        "REQ-6"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-crystal-atlas-branding-across-the-ui-using-the-user-provided-logo-image-including-a-show-the-logo-in-the-app-header-next-to-the-crystal-atlas-title-b-ensure-the-browser-tab-title-and-favicon-reflect-crystal-atlas-branding-and-c-use-only-english-for-any-visible-text",
+      "title": "Add Crystal Atlas branding across the UI using the user-provided logo image, including: (a) show the logo in the app header next to the \"Crystal Atlas\" title, (b) ensure the browser tab title and favicon reflect Crystal Atlas branding, and (c) use only English for any visible text.",
+      "reqIds": [
+        "REQ-7"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-allow-the-user-to-replace-update-the-currently-loaded-excel-workbook-without-requiring-a-full-app-reload-including-a-clear-control-e-g-replace-excel-or-upload-new-file-accessible-when-a-workbook-is-already-loaded",
+      "title": "Allow the user to replace/update the currently loaded Excel workbook without requiring a full app reload, including a clear control (e.g., \"Replace Excel\" or \"Upload New File\") accessible when a workbook is already loaded.",
+      "reqIds": [
+        "REQ-8"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-export-download-for-the-current-search-output-so-the-user-can-download-results-in-both-excel-xlsx-and-pdf-formats-including-a-branded-header-on-the-export-that-contains-the-crystal-atlas-title-and-the-provided-logo",
+      "title": "Add export/download for the current search output so the user can download results in both Excel (.xlsx) and PDF formats, including a branded header on the export that contains the Crystal Atlas title and the provided logo.",
+      "reqIds": [
+        "REQ-9"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-export-download-for-the-filter-data-results-from-the-search-tab-filter-mode-in-both-excel-xlsx-and-pdf-formats-including-the-crystal-atlas-title-and-logo-in-the-exported-document-header-area",
+      "title": "Add export/download for the Filter Data results (from the Search tab filter mode) in both Excel (.xlsx) and PDF formats, including the Crystal Atlas title and logo in the exported document header area.",
+      "reqIds": [
+        "REQ-10"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-an-update-checking-mode-that-lets-the-user-upload-an-old-excel-and-a-new-excel-side-by-side-then-produces-a-results-view-showing-new-and-updated-data-found-in-the-new-excel-compared-to-the-old-excel",
+      "title": "Implement an \"Update Checking\" mode that lets the user upload an \"Old Excel\" and a \"New Excel\" side-by-side, then produces a Results view showing new and updated data found in the New Excel compared to the Old Excel.",
+      "reqIds": [
+        "REQ-11"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-verify-and-fix-the-run-vlookup-action-so-that-running-a-search-reliably-produces-results-for-the-currently-loaded-workbook-and-chosen-parameters",
+      "title": "Verify and fix the \"Run VLOOKUP\" action so that running a search reliably produces Results for the currently loaded workbook and chosen parameters.",
+      "reqIds": [
+        "REQ-12"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-excel-replace-upload-flow-so-the-app-never-shows-a-blank-white-screen-immediately-after-selecting-a-new-xlsx-file-and-instead-transitions-to-a-valid-state-loaded-workbook-ui-or-a-visible-error-message",
+      "title": "Fix the Excel replace/upload flow so the app never shows a blank white screen immediately after selecting a new .xlsx file, and instead transitions to a valid state (loaded workbook UI or a visible error message).",
+      "reqIds": [
+        "REQ-13"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-replacing-a-workbook-fully-resets-dependent-in-memory-state-that-can-reference-the-previous-workbook-vlookup-search-parameters-last-search-result-filter-state-so-subsequent-renders-cannot-use-stale-values-after-a-new-file-is-selected",
+      "title": "Ensure replacing a workbook fully resets dependent in-memory state that can reference the previous workbook (VLOOKUP search parameters, last search result, filter state), so subsequent renders cannot use stale values after a new file is selected.",
+      "reqIds": [
+        "REQ-14"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-harden-workbook-parsing-and-selection-logic-during-upload-replace-validate-that-at-least-one-sheet-exists-safely-handle-missing-undefined-first-sheet-selection-and-prevent-ui-component-crashes-when-sheet-names-or-selected-sheet-are-not-valid",
+      "title": "Harden workbook parsing and selection logic during upload/replace: validate that at least one sheet exists, safely handle missing/undefined first-sheet selection, and prevent UI component crashes when sheet names or selected sheet are not valid.",
+      "reqIds": [
+        "REQ-15"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-the-upload-inputs-reliably-re-trigger-parsing-when-a-user-selects-the-same-filename-twice-in-a-row-by-resetting-the-file-input-value-after-handling-a-selection-both-for-the-initial-upload-input-and-the-hidden-replace-input",
+      "title": "Make the upload inputs reliably re-trigger parsing when a user selects the same filename twice in a row by resetting the file input value after handling a selection (both for the initial upload input and the hidden replace input).",
+      "reqIds": [
+        "REQ-16"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-the-update-checking-flow-so-selecting-a-new-excel-file-never-causes-a-white-screen-or-ui-crash-and-the-tab-always-remains-usable-showing-either-the-loaded-workbook-ui-or-a-visible-error-message",
+      "title": "Fix the Update Checking flow so selecting a New Excel file never causes a white screen or UI crash, and the tab always remains usable (showing either the loaded workbook UI or a visible error message).",
+      "reqIds": [
+        "REQ-17"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-when-either-the-old-excel-file-new-excel-file-old-sheet-selection-or-new-sheet-selection-changes-in-update-checking-automatically-clear-any-dependent-comparison-inputs-that-may-no-longer-be-valid-at-minimum-reset-update-checking-keycolumn-to-an-empty-value-and-clear-comparisonresult",
+      "title": "When either the Old Excel file, New Excel file, Old sheet selection, or New sheet selection changes in Update Checking, automatically clear any dependent comparison inputs that may no longer be valid (at minimum: reset Update Checking keyColumn to an empty value and clear comparisonResult).",
+      "reqIds": [
+        "REQ-18"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-harden-the-update-checking-key-column-select-rendering-so-it-cannot-crash-when-the-currently-stored-keycolumn-is-not-present-in-the-computed-list-of-common-columns-e-g-due-to-a-newly-uploaded-file-with-different-headers",
+      "title": "Harden the Update Checking key-column Select rendering so it cannot crash when the currently stored keyColumn is not present in the computed list of common columns (e.g., due to a newly uploaded file with different headers).",
+      "reqIds": [
+        "REQ-19"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-identify-and-fix-the-root-cause-s-of-the-full-page-white-screen-that-can-occur-after-uploading-or-replacing-an-xlsx-file-initial-upload-upload-tab-replace-flow-header-replace-excel-flow-and-update-checking-old-new-uploads-the-application-must-remain-usable-after-file-selection-showing-either-the-loaded-workbook-ui-or-a-visible-error-message",
+      "title": "Identify and fix the root cause(s) of the full-page white screen that can occur after uploading or replacing an .xlsx file (initial upload, Upload tab replace flow, header Replace Excel flow, and Update Checking Old/New uploads). The application must remain usable after file selection, showing either the loaded workbook UI or a visible error message.",
+      "reqIds": [
+        "REQ-20"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-top-level-ui-safeguard-so-that-unexpected-render-time-errors-cannot-present-as-a-blank-white-screen-the-safeguard-must-render-a-clear-recovery-ui-in-english-that-allows-the-user-to-reset-the-app-state-and-continue-using-the-application",
+      "title": "Add a top-level UI safeguard so that unexpected render-time errors cannot present as a blank/white screen. The safeguard must render a clear recovery UI in English that allows the user to reset the app state and continue using the application.",
+      "reqIds": [
+        "REQ-21"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-harden-all-upload-replace-state-transitions-so-that-ui-components-cannot-receive-invalid-selection-values-after-a-new-file-is-parsed-e-g-selected-sheet-not-present-in-the-sheet-list-missing-sheet-data-for-the-selected-sheet-ensure-the-ui-gracefully-handles-these-cases-without-crashing-and-surfaces-an-english-error-message-when-user-action-cannot-be-completed",
+      "title": "Harden all upload/replace state transitions so that UI components cannot receive invalid selection values after a new file is parsed (e.g., selected sheet not present in the sheet list, missing sheet data for the selected sheet). Ensure the UI gracefully handles these cases without crashing, and surfaces an English error message when user action cannot be completed.",
+      "reqIds": [
+        "REQ-22"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-prevent-the-application-from-showing-a-blank-white-screen-when-the-user-selects-a-new-excel-file-in-update-checking-mode-the-update-checking-tab-must-remain-usable-after-file-selection-and-must-show-either-the-loaded-workbook-ui-sheet-selector-filename-or-a-visible-english-error-message",
+      "title": "Prevent the application from showing a blank/white screen when the user selects a New Excel file in Update Checking mode; the Update Checking tab must remain usable after file selection and must show either the loaded workbook UI (sheet selector + filename) or a visible English error message.",
+      "reqIds": [
+        "REQ-23"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-global-runtime-error-capture-for-non-render-errors-e-g-unhandled-promise-rejections-and-window-errors-so-that-unexpected-failures-during-file-parsing-or-event-handlers-cannot-present-as-a-blank-white-screen-instead-render-the-existing-recovery-ui-with-a-reset-action-in-english",
+      "title": "Add a global runtime error capture for non-render errors (e.g., unhandled promise rejections and window errors) so that unexpected failures during file parsing or event handlers cannot present as a blank/white screen; instead, render the existing recovery UI with a reset action in English.",
+      "reqIds": [
+        "REQ-24"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-harden-update-checking-file-selection-and-parsing-flow-to-avoid-invalid-intermediate-state-updates-when-starting-a-new-excel-parse-immediately-clear-the-current-new-workbook-state-and-dependent-comparison-state-before-parsing-and-only-set-the-new-workbook-state-after-parse-succeeds-if-parse-fails-keep-new-workbook-state-cleared-and-show-an-english-error",
+      "title": "Harden Update Checking file selection and parsing flow to avoid invalid intermediate state updates: when starting a New Excel parse, immediately clear the current New workbook state (and dependent comparison state) before parsing, and only set the new workbook state after parse succeeds; if parse fails, keep New workbook state cleared and show an English error.",
+      "reqIds": [
+        "REQ-25"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-prevent-the-update-checking-tab-from-crashing-with-the-runtime-error-a-select-item-must-have-a-value-prop-that-is-not-an-empty-string-when-the-user-uploads-a-new-excel-file-especially-when-old-excel-is-already-loaded-ensure-no-selectitem-in-update-checking-is-ever-rendered-with-an-empty-string-value-including-the-key-column-dropdown-and-any-sheet-dropdowns",
+      "title": "Prevent the Update Checking tab from crashing with the runtime error \"A <Select.Item /> must have a value prop that is not an empty string\" when the user uploads a New Excel file (especially when Old Excel is already loaded). Ensure no SelectItem in Update Checking is ever rendered with an empty-string value, including the Key Column dropdown and any sheet dropdowns.",
+      "reqIds": [
+        "REQ-26"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-update-checking-comparison-logic-to-use-the-selected-key-column-intended-to-be-patent-no-to-identify-and-return-only-rows-that-exist-in-the-new-excel-sheet-but-do-not-exist-in-the-old-excel-sheet-do-not-perform-change-detection-for-keys-that-exist-in-both-files",
+      "title": "Update the Update Checking comparison logic to use the selected key column (intended to be \"Patent No.\") to identify and return ONLY rows that exist in the New Excel sheet but do NOT exist in the Old Excel sheet; do not perform change-detection for keys that exist in both files.",
+      "reqIds": [
+        "REQ-27"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-results-tab-ui-for-update-checking-to-display-only-the-new-rows-list-and-summary-based-on-the-new-only-comparison-output-and-ensure-update-checking-exports-excel-pdf-include-only-those-new-rows",
+      "title": "Update the Results tab UI for Update Checking to display only the \"New\" rows list and summary based on the New-only comparison output, and ensure Update Checking exports (Excel/PDF) include only those New rows.",
+      "reqIds": [
+        "REQ-28"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-improve-the-update-checking-ux-to-make-patent-no-the-default-key-column-when-it-exists-as-a-common-column-between-old-and-new-sheets-exact-match-while-still-allowing-the-user-to-change-the-key-column-manually-if-needed",
+      "title": "Improve the Update Checking UX to make \"Patent No.\" the default key column when it exists as a common column between Old and New sheets (exact match), while still allowing the user to change the key column manually if needed.",
+      "reqIds": [
+        "REQ-29"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-update-the-update-checking-comparison-flow-to-use-the-column-whose-header-is-exactly-patent-no-as-the-key-for-identifying-new-patent-numbers-rows-present-in-the-new-sheet-but-not-in-the-old-sheet-and-ensure-no-logic-assumes-a-fixed-physical-column-position-e-g-column-g-if-patent-no-is-not-available-as-a-common-column-between-the-selected-old-new-sheets-keep-the-ui-usable-and-show-an-english-error-prompting-the-user-to-select-a-valid-key-column",
+      "title": "Update the Update Checking comparison flow to use the column whose header is exactly \"Patent No.\" as the key for identifying new patent numbers (rows present in the New sheet but not in the Old sheet), and ensure no logic assumes a fixed physical column position (e.g., Column G). If \"Patent No.\" is not available as a common column between the selected Old/New sheets, keep the UI usable and show an English error prompting the user to select a valid key column.",
+      "reqIds": [
+        "REQ-30"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-update-checking-results-search-ui-that-lets-the-user-enter-a-keyword-row-name-and-filter-the-update-checking-results-after-the-comparison-has-been-generated",
+      "title": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
+      "reqIds": [
+        "REQ-31"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-implement-update-checking-post-comparison-filtering-so-the-keyword-search-matches-across-any-column-in-the-displayed-comparison-rows-and-supports-both-exact-match-and-partial-contains-match",
+      "title": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
+      "reqIds": [
+        "REQ-32"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-ensure-update-checking-exports-excel-and-pdf-respect-the-currently-filtered-result-set-when-a-keyword-filter-is-applied",
+      "title": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+      "reqIds": [
+        "REQ-33"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Upload Excel sheet into the app for processing",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Show a Results tab/page after upload to display lookup outputs",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Provide a Search/Formula page that performs VLOOKUP-style lookup and returns results",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Rename the app to \"Crystal Atlas\" (update title/branding)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Update the UI theme to a \"blue ocean\" design",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Implement a feature/UX similar to the referenced YouTube Short (match behavior and presentation shown in the video)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Support identifying/matching data across two tables (multi-table lookup/join) and provide a corresponding search flow/stream",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Allow users to download/export search or filtered results in both PDF and Excel formats, including Crystal Atlas title and logo in the export",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Add Crystal Atlas branding in-app: display the Crystal Atlas text and include the provided logo (app header/icon area)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Add an \"update checking\" mode: upload an old Excel on one side and a new Excel on the other, then show new/updated data in Results (diff/compare output)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-11",
+      "summary": "Add download/export options (Excel/PDF) for Update Checking results view",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Add separate History pages/logs for each major option/feature (e.g., VLOOKUP, Filter, Update Checking)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-13",
+      "summary": "Update Checking: compare Old vs New using \"Patent No.\" as the key and show only rows present in New but not in Old (no change-detection for existing keys)",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-14",
+      "summary": "Update Checking: allow using a user-selected key column by header/title (not only \"Patent No.\") to compute differences",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-15",
+      "summary": "Update Checking: add a mode option to choose Row Difference (new rows) vs Column/Cell Difference checking for matching keys",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-16",
+      "summary": "Update Checking Column/Cell Difference mode: show cell-level old vs new value changes (and/or highlight changed columns) for matching keys",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-17",
+      "summary": "Update Checking: add a keyword/row-name search that filters the New-only results (post-comparison), searches across any column, and supports both exact and partial/contains matching",
+      "reqIds": [],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "Crystal Atlas",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

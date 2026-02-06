@@ -1,0 +1,61 @@
+{
+  "kind": "feature_evidence_report",
+  "features": [
+    {
+      "featureId": "feature-add-an-update-checking-results-search-ui-that-lets-the-user-enter-a-keyword-row-name-and-filter-the-update-checking-results-after-the-comparison-has-been-generated",
+      "featureTitle": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
+      "files": [
+        "frontend/src/components/updateChecking/UpdateCheckingResultsSearchBar.tsx",
+        "frontend/src/pages/ResultsTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-31"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-implement-update-checking-post-comparison-filtering-so-the-keyword-search-matches-across-any-column-in-the-displayed-comparison-rows-and-supports-both-exact-match-and-partial-contains-match",
+      "featureTitle": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
+      "files": [
+        "frontend/src/lib/compare/filterComparisonRows.ts",
+        "frontend/src/pages/ResultsTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-32"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-ensure-update-checking-exports-excel-and-pdf-respect-the-currently-filtered-result-set-when-a-keyword-filter-is-applied",
+      "featureTitle": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+      "files": [
+        "frontend/src/pages/ResultsTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0"
+      ],
+      "testIds": [
+        "REQ-33"
+      ],
+      "confidence": "high"
+    }
+  ]
+}

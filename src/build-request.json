@@ -1,0 +1,81 @@
+{
+  "kind": "build_request",
+  "title": "Add keyword/row-name search filtering to Update Checking results",
+  "priority": "normal",
+  "requirements": [
+    {
+      "id": "REQ-31",
+      "text": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1"
+        ],
+        "quotes": [
+          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS ."
+        ]
+      },
+      "acceptanceCriteria": [
+        "When Update Checking has a comparison result, the Results tab shows a clearly labeled search input for filtering those results.",
+        "The search UI is only shown/enabled when an Update Checking comparison result exists; it is not shown for VLOOKUP results.",
+        "The search UI includes a clear action to reset/clear the search so the full comparison results are shown again.",
+        "All user-facing text is in English."
+      ]
+    },
+    {
+      "id": "REQ-32",
+      "text": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-6"
+        ],
+        "quotes": [
+          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS .",
+          "ALL OPTIONS"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Filtering is applied after compareWorkbooks() runs (i.e., it does not affect the comparison computation).",
+        "The filter checks the keyword against all available values in each row (including the key value and all visible row cells).",
+        "The user can choose match type: Exact or Contains (partial).",
+        "An empty keyword shows the full, unfiltered comparison results.",
+        "Filtering does not crash for null/undefined cell values; those values are handled safely."
+      ]
+    },
+    {
+      "id": "REQ-33",
+      "text": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-6"
+        ],
+        "quotes": [
+          "GIVE OPTION  IN UPDATE CHECKING I WILL GIVE A KEY WORD OR RAW NAME THEN SEARCH FOR A RESULTS .",
+          "1"
+        ]
+      },
+      "acceptanceCriteria": [
+        "If a keyword filter is active, exporting to Excel/PDF exports only the currently displayed (filtered) rows.",
+        "If no keyword filter is active, exporting exports the full comparison result (current behavior).",
+        "Exported files still include the existing Crystal Atlas branding header (logo + title) as implemented today."
+      ]
+    }
+  ],
+  "constraints": [
+    "Frontend must not edit files under frontend/src/components/ui (Shadcn components); compose them instead.",
+    "Keep all visible UI text in English."
+  ],
+  "nonGoals": [
+    "Do not add backend/Motoko logic for searching or filtering (keep client-side).",
+    "Do not change how compareWorkbooks computes differences; filtering is display/export-only post-comparison.",
+    "Do not implement searching inside the uploaded Old/New sheets prior to comparison."
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}
