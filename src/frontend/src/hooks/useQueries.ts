@@ -1,16 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-
-export interface HistoryEntry {
-  id?: bigint;
-  type: 'vlookup' | 'filter' | 'update-checking';
-  timestamp: number;
-  data: any;
-}
+import type { HistoryEntry, HistoryType } from '../backend';
 
 /**
- * Query to list all history entries - now returns empty array since backend no longer supports history
- * History is managed locally in app state
+ * Query to list all history entries from backend
  */
 export function useListHistory() {
   const { actor, isFetching } = useActor();
@@ -18,9 +11,8 @@ export function useListHistory() {
   return useQuery<HistoryEntry[]>({
     queryKey: ['history'],
     queryFn: async () => {
-      // Backend no longer supports history, return empty array
-      // History is now managed locally in app state
-      return [];
+      if (!actor) throw new Error('Actor not available');
+      return actor.getHistory();
     },
     enabled: !!actor && !isFetching,
     staleTime: 30000, // 30 seconds
@@ -29,21 +21,39 @@ export function useListHistory() {
 }
 
 /**
- * Mutation to add a history entry - now a no-op since backend no longer supports history
- * History is managed locally in app state
+ * Query to get filtered history by type
+ */
+export function useGetFilteredHistory(historyType: HistoryType | null) {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<HistoryEntry[]>({
+    queryKey: ['history', 'filtered', historyType],
+    queryFn: async () => {
+      if (!actor) throw new Error('Actor not available');
+      if (!historyType) return actor.getHistory();
+      return actor.getFilteredHistory(historyType);
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30000,
+    retry: 2,
+  });
+}
+
+/**
+ * Mutation to add a history entry
  */
 export function useAddHistoryEntry() {
   const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (entry: HistoryEntry) => {
-      // Backend no longer supports history
-      // History is now managed locally in app state
-      return { id: BigInt(0), savedEntry: entry };
+    mutationFn: async ({ entryType, details }: { entryType: HistoryType; details: string }) => {
+      if (!actor) throw new Error('Actor not available');
+      const id = await actor.addHistory(entryType, details);
+      return { id };
     },
     onSuccess: () => {
-      // Invalidate and refetch history
+      // Invalidate all history queries
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
     onError: (error) => {
@@ -53,8 +63,7 @@ export function useAddHistoryEntry() {
 }
 
 /**
- * Mutation to clear all history - now a no-op since backend no longer supports history
- * History is managed locally in app state
+ * Mutation to clear all history
  */
 export function useClearHistory() {
   const { actor } = useActor();
@@ -62,12 +71,11 @@ export function useClearHistory() {
 
   return useMutation({
     mutationFn: async () => {
-      // Backend no longer supports history
-      // History is now managed locally in app state
-      return;
+      if (!actor) throw new Error('Actor not available');
+      await actor.clearHistory();
     },
     onSuccess: () => {
-      // Invalidate and refetch history
+      // Invalidate all history queries
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
     onError: (error) => {

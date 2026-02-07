@@ -1,137 +1,156 @@
 {
   "kind": "build_request",
-  "title": "Add Regular Expense tracking with budget + PDF reports and ensure sidebar access",
-  "priority": "high",
+  "title": "Attendance month calendar with date-wise editing and global festival/company leave management",
+  "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
-      "target": "frontend",
+      "text": "Add backend support for reading and editing attendance entries by arbitrary date (past and upcoming), not limited to the current day, so the frontend can fetch a specific date’s entry and update it.",
+      "target": "backend",
       "source": {
         "messageIds": [
-          "msg-2",
-          "msg-3"
-        ],
-        "quotes": [
-          "ADD HISTORY OPTION IN BAR."
-        ]
-      },
-      "acceptanceCriteria": [
-        "On desktop (lg and up), the sidebar shows a \"History\" item.",
-        "Clicking \"History\" opens the existing History tab content without errors."
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "text": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
+          "msg-3",
           "msg-5"
         ],
         "quotes": [
-          "YES, ADD THAT BUTTON ALSO IN SIDE BAR"
-        ]
-      },
-      "acceptanceCriteria": [
-        "On desktop (lg and up), the sidebar includes a \"Regular Expense\" item.",
-        "Clicking \"Regular Expense\" navigates to a new tab/page that renders the expense tracking UI."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-2",
-          "msg-5"
-        ],
-        "quotes": [
-          "AND IN DESK TOP ADD REGULER EXPENCE BUTTON",
+          "IN ATENDENCE ALSO ADD MONTH LIST IN WHICH WE CAN EDIT DATA DATE WISE PREVIOUS AND UPCOMING",
           "YES"
         ]
       },
       "acceptanceCriteria": [
-        "On desktop (lg and up), the Deskboard page shows a \"Regular Expense\" button.",
-        "On mobile/tablet (< lg), the Deskboard \"Regular Expense\" button is not shown.",
-        "Clicking the button navigates to the \"Regular Expense\" tab/page."
+        "Backend exposes a query method to fetch a single AttendanceDayEntry (or null) for a provided YYYY-MM-DD date for the authenticated caller.",
+        "Backend exposes a shared method to upsert (create/update) an AttendanceDayEntry for a provided YYYY-MM-DD date for the authenticated caller, including status and optional check-in/check-out times.",
+        "Backend exposes a query method to list attendance entries for the authenticated caller within an inclusive date range (start YYYY-MM-DD, end YYYY-MM-DD).",
+        "All new methods enforce the same AccessControl permission checks used by existing attendance methods."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Add backend support for global holidays that apply to all users, supporting at minimum two types: festival and company leave, and allow authorized users to create, update, list, and delete those holidays by date.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-3",
+          "msg-5"
+        ],
+        "quotes": [
+          "ALSO SET FESTIVAL AND COMPANY LEAVE",
+          "YES."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Backend defines a persistent collection of global holidays keyed by date (YYYY-MM-DD) with fields sufficient to represent: date, name/label, and type (festival vs company leave).",
+        "Backend exposes a query method to list global holidays within an inclusive date range.",
+        "Backend exposes shared methods to upsert a global holiday and delete a global holiday by date.",
+        "Global holiday mutation methods are permission-protected (admin-only or an equivalent privileged role using the existing AccessControl system)."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Update backend attendance summary logic so that festival and company leave days are counted correctly in summaries over a date range, including when those days come from global holidays.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-3",
+          "msg-5"
+        ],
+        "quotes": [
+          "ALSO SET FESTIVAL AND COMPANY LEAVE",
+          "YES."
+        ]
+      },
+      "acceptanceCriteria": [
+        "AttendanceSummary includes correct counts for festival days and company leave days for the requested range.",
+        "Days that are global holidays are reflected in summary counts even if the user has no explicit AttendanceDayEntry stored for that date.",
+        "Existing summary behavior for present/leave/half-day/weekly-off remains correct for stored user entries."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
-      "target": "both",
+      "text": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2"
+          "msg-3",
+          "msg-5"
         ],
         "quotes": [
-          "ADD REGULER EXPENCE BUTTON IN WHICH WE CAN SET BUDGET AND DAILY UPDATE USE MONEY WITH DATE, TYPE OF EXPENXCE,AND AMOUNT"
+          "ADD MONTH LIST IN WHICH WE CAN EDIT DATA DATE WISE PREVIOUS AND UPCOMING",
+          "calendar‑style month view where users can select any date to view or edit attendance"
         ]
       },
       "acceptanceCriteria": [
-        "The page includes a budget input (numeric) that can be saved for the logged-in user.",
-        "The page includes an expense entry form with fields: Date, Type, Amount, and an \"Add\" action.",
-        "After adding an expense, the new expense appears in a list/table on the same page.",
-        "If the user is not logged in, the page shows an English message indicating login is required to manage expenses, and prevents submitting changes."
+        "AttendanceTab provides a month view calendar UI with month navigation controls (at least previous/next month, and a clear month label).",
+        "Selecting a date shows the stored attendance for that date (or an empty state if none) and allows editing for both past and upcoming dates.",
+        "Edits persist via new backend methods and the UI refreshes to reflect the saved state without requiring a full page reload.",
+        "The month view visually distinguishes: today, days with saved attendance entries, and days that are global holidays (festival/company leave)."
       ]
     },
     {
       "id": "REQ-5",
-      "text": "Add backend persistence for per-user budgets and expense entries, including APIs to save/read the budget, create expense entries, and list expense entries for the caller (authorized users only).",
-      "target": "backend",
+      "text": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2"
+          "msg-3",
+          "msg-5"
         ],
         "quotes": [
-          "WE CAN SET BUDGET AND DAILY UPDATE USE MONEY WITH DATE, TYPE OF EXPENXCE,AND AMOUNT"
+          "EDIT DATA DATE WISE",
+          "YES"
         ]
       },
       "acceptanceCriteria": [
-        "Budget and expenses are stored per Principal and are returned only to the authorized caller.",
-        "Backend exposes methods to: get current budget, set/update budget, add expense entry, list expense entries.",
-        "Unauthorized callers (no #user permission) are rejected consistent with existing backend authorization behavior."
+        "For a selected date, the UI provides controls to update attendance status (including new statuses required to represent company leave distinctly from festival).",
+        "If the user sets a status that implies no working hours (e.g., leave/festival/company leave), the UI makes it clear how working time will be treated (e.g., 0) and prevents inconsistent time inputs.",
+        "Errors from backend mutations are shown as readable English messages (e.g., via existing toast/alert patterns).",
+        "After saving, React Query caches for attendance data relevant to the calendar (selected date entry and month range view) are invalidated/refetched."
       ]
     },
     {
       "id": "REQ-6",
-      "text": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
+      "text": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-2",
+          "msg-3",
           "msg-5"
         ],
         "quotes": [
-          "WE CAN DOWNLOAD EXPENCE WEECKLY, MONTHLY, YEARLY EXPENCE REPORT IN PDF",
-          "CAN CHOOSE REPORT TYPE AND DOWNLOAD - FORMAT ACCORDING TO THE CHOICE"
+          "ALSO SET FESTIVAL AND COMPANY LEAVE",
+          "YES."
         ]
       },
       "acceptanceCriteria": [
-        "The Regular Expense page provides a UI control to select: Weekly, Monthly, or Yearly report type.",
-        "A \"Download PDF\" action generates a PDF using the selected report type.",
-        "The PDF filename clearly indicates the selected range (weekly/monthly/yearly) and the covered dates.",
-        "The PDF table includes at minimum: Date, Type, Amount, and includes totals appropriate to the selected range (e.g., total amount for the period)."
+        "Attendance UI includes a section (e.g., within Attendance settings) to manage global holidays: add/edit holiday name, date (YYYY-MM-DD via date picker), and type (Festival vs Company Leave).",
+        "Holiday list supports viewing holidays for the currently viewed month and deleting an existing holiday date.",
+        "If the current user is not authorized to manage holidays, the management controls are hidden or disabled with a clear English explanation.",
+        "Calendar month view reflects global holidays (festival/company leave) without requiring users to manually create attendance entries for those dates."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo; only add migration.mo if existing stable state requires it.",
-    "Do not edit files under frontend/src/components/ui (compose existing shadcn components instead).",
-    "Do not modify immutable frontend hook paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts/x).",
-    "Use English for all user-facing text.",
-    "Generate PDFs on the frontend using the existing PDF export utilities; do not generate PDFs in the backend."
+    "Backend must remain a single Motoko actor in backend/main.mo; do not introduce additional backend services.",
+    "Do not edit files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts (immutable paths). Compose new hooks/components instead.",
+    "Use English for all user-facing UI text."
   ],
   "nonGoals": [
-    "Adding third-party authentication providers (only Internet Identity is supported).",
-    "Real-time syncing via WebSockets/push notifications.",
-    "Using external databases or non-Motoko backend services.",
-    "Adding mobile-specific navigation for Regular Expense (unless required to make the desktop-only request work)."
+    "Do not add third-party calendar integrations (Google Calendar, Outlook, etc.).",
+    "Do not add real-time syncing or WebSocket-based updates.",
+    "Do not introduce external databases or off-chain storage."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

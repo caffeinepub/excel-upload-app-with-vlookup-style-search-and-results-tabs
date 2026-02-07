@@ -1,11 +1,18 @@
 import { useRef } from 'react';
 import { useAppState } from '../../state/appState';
+import { useInternetIdentity } from '../../hooks/useInternetIdentity';
 import { Button } from '../ui/button';
-import { RotateCcw, Upload } from 'lucide-react';
+import { RotateCcw, Upload, UserCheck } from 'lucide-react';
 import { LoginButton } from '../auth/LoginButton';
 
-export function AppHeader() {
+interface AppHeaderProps {
+  onNavigate?: (tab: string) => void;
+}
+
+export function AppHeader({ onNavigate }: AppHeaderProps) {
   const { workbook, reset, replaceWorkbook, uploadLoading, setUploadLoading, setUploadError } = useAppState();
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleReplaceWorkbook = () => {
@@ -58,6 +65,12 @@ export function AppHeader() {
     }
   };
 
+  const handleAttendanceClick = () => {
+    if (onNavigate) {
+      onNavigate('attendance');
+    }
+  };
+
   return (
     <header className="border-b bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 backdrop-blur-sm">
       <div className="container mx-auto px-4 py-4 max-w-6xl">
@@ -71,6 +84,13 @@ export function AppHeader() {
           </div>
           <div className="flex gap-2 flex-wrap justify-center sm:justify-end items-center">
             <LoginButton />
+            {isAuthenticated && (
+              <Button onClick={handleAttendanceClick} variant="outline" size="sm">
+                <UserCheck className="w-4 h-4 mr-2" />
+                <span className="hidden xs:inline">Attendance</span>
+                <span className="xs:hidden">Attend</span>
+              </Button>
+            )}
             {workbook && (
               <>
                 <Button onClick={handleReplaceWorkbook} variant="outline" size="sm" disabled={uploadLoading}>

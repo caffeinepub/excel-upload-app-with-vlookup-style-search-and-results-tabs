@@ -34,7 +34,6 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
 
   // Quick add form states
   const [reminderTitle, setReminderTitle] = useState('');
-  const [reminderDesc, setReminderDesc] = useState('');
   const [reminderTime, setReminderTime] = useState('');
   const [todoDesc, setTodoDesc] = useState('');
   const [noteTitle, setNoteTitle] = useState('');
@@ -63,15 +62,14 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
       const timeMs = new Date(reminderTime).getTime();
       await createReminderMutation.mutateAsync({
         title: reminderTitle,
-        description: reminderDesc,
         time: BigInt(timeMs),
       });
       setReminderDialogOpen(false);
       setReminderTitle('');
-      setReminderDesc('');
       setReminderTime('');
     } catch (error) {
       console.error('Failed to create reminder:', error);
+      alert('Failed to create reminder. Please try again.');
     }
   };
 
@@ -151,15 +149,11 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                 Search
               </Button>
             </div>
-
-            {/* Inline search results panel */}
-            {showExplorePanel && (
-              <ExploreHerePanel
-                query={searchQuery}
-                isOpen={showExplorePanel}
-                onClose={() => setShowExplorePanel(false)}
-              />
-            )}
+            <ExploreHerePanel 
+              query={searchQuery} 
+              isOpen={showExplorePanel}
+              onClose={() => setShowExplorePanel(false)} 
+            />
           </CardContent>
         </Card>
 
@@ -167,94 +161,86 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
         <Card className="mac-card">
           <CardHeader>
             <CardTitle className="text-lg">Activity Summary</CardTitle>
-            <CardDescription>Overview of your current data and tasks</CardDescription>
+            <CardDescription>Quick overview of your data and tasks</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="text-center p-4 border rounded-xl mac-stat-card">
-                <div className="text-2xl font-semibold text-primary">{workbook ? '1' : '0'}</div>
-                <div className="text-sm text-muted-foreground">Excel File</div>
-              </div>
-              <div className="text-center p-4 border rounded-xl mac-stat-card">
-                <div className="text-2xl font-semibold text-primary">{reminders.length}</div>
-                <div className="text-sm text-muted-foreground">Reminders</div>
-              </div>
-              <div className="text-center p-4 border rounded-xl mac-stat-card">
-                <div className="text-2xl font-semibold text-primary">{todos.filter(t => !t.completed).length}</div>
-                <div className="text-sm text-muted-foreground">Open To-Dos</div>
-              </div>
-              <div className="text-center p-4 border rounded-xl mac-stat-card">
-                <div className="text-2xl font-semibold text-primary">{notes.length}</div>
-                <div className="text-sm text-muted-foreground">Notes</div>
-              </div>
+              <button
+                onClick={() => onNavigate('upload')}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
+              >
+                <Upload className="w-6 h-6 text-primary" />
+                <span className="text-sm font-medium">Upload</span>
+                <span className="text-xs text-muted-foreground">
+                  {workbook ? 'Active' : 'No file'}
+                </span>
+              </button>
+              <button
+                onClick={() => onNavigate('search')}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
+              >
+                <SearchIcon className="w-6 h-6 text-primary" />
+                <span className="text-sm font-medium">Search</span>
+                <span className="text-xs text-muted-foreground">VLOOKUP</span>
+              </button>
+              <button
+                onClick={() => onNavigate('history')}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
+              >
+                <History className="w-6 h-6 text-primary" />
+                <span className="text-sm font-medium">History</span>
+                <span className="text-xs text-muted-foreground">View logs</span>
+              </button>
+              <button
+                onClick={() => onNavigate('update-checking')}
+                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
+              >
+                <FileCheck className="w-6 h-6 text-primary" />
+                <span className="text-sm font-medium">Updates</span>
+                <span className="text-xs text-muted-foreground">Compare</span>
+              </button>
             </div>
           </CardContent>
         </Card>
 
-        {/* Desktop-only Regular Expense Button */}
-        <div className="hidden lg:block">
-          <Card className="mac-card">
-            <CardHeader>
-              <CardTitle className="text-lg">Quick Actions</CardTitle>
-              <CardDescription>Access key features quickly</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <Button
-                onClick={() => onNavigate('regular-expense')}
-                className="w-full"
-                variant="outline"
-              >
-                <Wallet className="w-4 h-4 mr-2" />
-                Regular Expense
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Productivity Previews */}
-        <div className="grid md:grid-cols-2 gap-5">
-          {/* Upcoming Reminders */}
-          <Card className="mac-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Bell className="w-5 h-5" />
-                  Upcoming Reminders
-                </CardTitle>
-              </div>
-              <div className="flex gap-2">
+        {isAuthenticated && (
+          <div className="grid md:grid-cols-2 gap-4">
+            {/* Upcoming Reminders */}
+            <Card className="mac-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Bell className="w-4 h-4" />
+                    Upcoming Reminders
+                  </CardTitle>
+                  <CardDescription className="text-xs">Next 5 reminders</CardDescription>
+                </div>
                 <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" disabled={!isAuthenticated} className="mac-button">Add</Button>
+                    <Button size="sm" variant="ghost">
+                      Add
+                    </Button>
                   </DialogTrigger>
-                  <DialogContent className="mac-dialog">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add Reminder</DialogTitle>
-                      <DialogDescription>Create a new reminder</DialogDescription>
+                      <DialogTitle>Add General Reminder</DialogTitle>
+                      <DialogDescription>Create a new general reminder</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="reminder-title">Title</Label>
+                        <Label htmlFor="quick-reminder-title">Title</Label>
                         <Input
-                          id="reminder-title"
+                          id="quick-reminder-title"
                           value={reminderTitle}
                           onChange={(e) => setReminderTitle(e.target.value)}
-                          placeholder="Reminder title"
+                          placeholder="Team meeting"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="reminder-desc">Description</Label>
-                        <Textarea
-                          id="reminder-desc"
-                          value={reminderDesc}
-                          onChange={(e) => setReminderDesc(e.target.value)}
-                          placeholder="Optional description"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="reminder-time">Time</Label>
+                        <Label htmlFor="quick-reminder-time">Date & Time</Label>
                         <Input
-                          id="reminder-time"
+                          id="quick-reminder-time"
                           type="datetime-local"
                           value={reminderTime}
                           onChange={(e) => setReminderTime(e.target.value)}
@@ -262,211 +248,241 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button onClick={handleCreateReminder} disabled={createReminderMutation.isPending}>
-                        {createReminderMutation.isPending ? 'Adding...' : 'Add Reminder'}
+                      <Button
+                        onClick={handleCreateReminder}
+                        disabled={createReminderMutation.isPending || !reminderTitle.trim() || !reminderTime}
+                      >
+                        {createReminderMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button size="sm" variant="ghost" onClick={() => onNavigate('reminders')}>View All</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!isAuthenticated ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>Please log in to view reminders</AlertDescription>
-                </Alert>
-              ) : remindersLoading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading...</div>
-              ) : upcomingReminders.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No upcoming reminders</div>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingReminders.map((reminder) => (
-                    <div key={Number(reminder.id)} className="p-3 border rounded-lg mac-preview-item">
-                      <div className="font-medium">{reminder.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(Number(reminder.time)).toLocaleString()}
+              </CardHeader>
+              <CardContent>
+                {remindersLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : upcomingReminders.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No upcoming reminders</p>
+                ) : (
+                  <div className="space-y-2">
+                    {upcomingReminders.map((reminder) => (
+                      <div key={Number(reminder.id)} className="text-sm border-l-2 border-primary pl-2">
+                        <p className="font-medium">{reminder.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(Number(reminder.time)).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Upcoming Events */}
-          <Card className="mac-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Calendar className="w-5 h-5" />
-                  Upcoming Events
-                </CardTitle>
-              </div>
-              <Button size="sm" variant="ghost" onClick={() => onNavigate('calendar')}>View All</Button>
-            </CardHeader>
-            <CardContent>
-              {!isAuthenticated ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>Please log in to view events</AlertDescription>
-                </Alert>
-              ) : eventsLoading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading...</div>
-              ) : upcomingEvents.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No upcoming events</div>
-              ) : (
-                <div className="space-y-2">
-                  {upcomingEvents.map((event) => (
-                    <div key={Number(event.id)} className="p-3 border rounded-lg mac-preview-item">
-                      <div className="font-medium">{event.title}</div>
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(Number(event.startTime)).toLocaleString()}
+            {/* Calendar Events */}
+            <Card className="mac-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Calendar className="w-4 h-4" />
+                    Calendar Events
+                  </CardTitle>
+                  <CardDescription className="text-xs">Next 5 events</CardDescription>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => onNavigate('calendar')}>
+                  View
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {eventsLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : upcomingEvents.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No upcoming events</p>
+                ) : (
+                  <div className="space-y-2">
+                    {upcomingEvents.map((event) => (
+                      <div key={Number(event.id)} className="text-sm border-l-2 border-primary pl-2">
+                        <p className="font-medium">{event.title}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(Number(event.startTime)).toLocaleString('en-US', {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: 'numeric',
+                            minute: '2-digit',
+                          })}
+                        </p>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Open To-Dos */}
-          <Card className="mac-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <CheckSquare className="w-5 h-5" />
-                  Open To-Dos
-                </CardTitle>
-              </div>
-              <div className="flex gap-2">
+            {/* To-Do Items */}
+            <Card className="mac-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <CheckSquare className="w-4 h-4" />
+                    To-Do Items
+                  </CardTitle>
+                  <CardDescription className="text-xs">Open tasks</CardDescription>
+                </div>
                 <Dialog open={todoDialogOpen} onOpenChange={setTodoDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" disabled={!isAuthenticated} className="mac-button">Add</Button>
+                    <Button size="sm" variant="ghost">
+                      Add
+                    </Button>
                   </DialogTrigger>
-                  <DialogContent className="mac-dialog">
+                  <DialogContent>
                     <DialogHeader>
-                      <DialogTitle>Add To-Do</DialogTitle>
-                      <DialogDescription>Create a new to-do item</DialogDescription>
+                      <DialogTitle>Add To-Do Item</DialogTitle>
+                      <DialogDescription>Create a new task</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="todo-desc">Description</Label>
+                        <Label htmlFor="quick-todo-desc">Description</Label>
                         <Textarea
-                          id="todo-desc"
+                          id="quick-todo-desc"
                           value={todoDesc}
                           onChange={(e) => setTodoDesc(e.target.value)}
-                          placeholder="What needs to be done?"
+                          placeholder="Complete project report"
+                          rows={3}
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button onClick={handleCreateTodo} disabled={createTodoMutation.isPending}>
-                        {createTodoMutation.isPending ? 'Adding...' : 'Add To-Do'}
+                      <Button
+                        onClick={handleCreateTodo}
+                        disabled={createTodoMutation.isPending || !todoDesc.trim()}
+                      >
+                        {createTodoMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button size="sm" variant="ghost" onClick={() => onNavigate('todo')}>View All</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!isAuthenticated ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>Please log in to view to-dos</AlertDescription>
-                </Alert>
-              ) : todosLoading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading...</div>
-              ) : openTodos.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No open to-dos</div>
-              ) : (
-                <div className="space-y-2">
-                  {openTodos.map((todo) => (
-                    <div key={Number(todo.id)} className="p-3 border rounded-lg mac-preview-item">
-                      <div className="font-medium">{todo.description}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+              </CardHeader>
+              <CardContent>
+                {todosLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : openTodos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No open tasks</p>
+                ) : (
+                  <div className="space-y-2">
+                    {openTodos.map((todo) => (
+                      <div key={Number(todo.id)} className="text-sm border-l-2 border-primary pl-2">
+                        <p className="font-medium">{todo.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
-          {/* Recent Notes */}
-          <Card className="mac-card">
-            <CardHeader className="flex flex-row items-center justify-between">
-              <div>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <StickyNote className="w-5 h-5" />
-                  Recent Notes
-                </CardTitle>
-              </div>
-              <div className="flex gap-2">
+            {/* Notes */}
+            <Card className="mac-card">
+              <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <div>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <StickyNote className="w-4 h-4" />
+                    Notes
+                  </CardTitle>
+                  <CardDescription className="text-xs">Recent notes</CardDescription>
+                </div>
                 <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
                   <DialogTrigger asChild>
-                    <Button size="sm" variant="outline" disabled={!isAuthenticated} className="mac-button">Add</Button>
+                    <Button size="sm" variant="ghost">
+                      Add
+                    </Button>
                   </DialogTrigger>
-                  <DialogContent className="mac-dialog">
+                  <DialogContent>
                     <DialogHeader>
                       <DialogTitle>Add Note</DialogTitle>
                       <DialogDescription>Create a new note</DialogDescription>
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="note-title">Title</Label>
+                        <Label htmlFor="quick-note-title">Title</Label>
                         <Input
-                          id="note-title"
+                          id="quick-note-title"
                           value={noteTitle}
                           onChange={(e) => setNoteTitle(e.target.value)}
-                          placeholder="Note title"
+                          placeholder="Meeting notes"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="note-content">Content</Label>
+                        <Label htmlFor="quick-note-content">Content</Label>
                         <Textarea
-                          id="note-content"
+                          id="quick-note-content"
                           value={noteContent}
                           onChange={(e) => setNoteContent(e.target.value)}
-                          placeholder="Note content"
+                          placeholder="Key discussion points..."
                           rows={4}
                         />
                       </div>
                     </div>
                     <DialogFooter>
-                      <Button onClick={handleCreateNote} disabled={createNoteMutation.isPending}>
-                        {createNoteMutation.isPending ? 'Adding...' : 'Add Note'}
+                      <Button
+                        onClick={handleCreateNote}
+                        disabled={createNoteMutation.isPending || !noteTitle.trim()}
+                      >
+                        {createNoteMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-                <Button size="sm" variant="ghost" onClick={() => onNavigate('notes')}>View All</Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {!isAuthenticated ? (
-                <Alert>
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>Please log in to view notes</AlertDescription>
-                </Alert>
-              ) : notesLoading ? (
-                <div className="text-center py-4 text-muted-foreground">Loading...</div>
-              ) : notes.length === 0 ? (
-                <div className="text-center py-4 text-muted-foreground">No notes yet</div>
-              ) : (
-                <div className="space-y-2">
-                  {notes.slice(0, 5).map((note) => (
-                    <div key={Number(note.id)} className="p-3 border rounded-lg mac-preview-item">
-                      <div className="font-medium">{note.title}</div>
-                      <div className="text-sm text-muted-foreground line-clamp-2">{note.content}</div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+              </CardHeader>
+              <CardContent>
+                {notesLoading ? (
+                  <p className="text-sm text-muted-foreground">Loading...</p>
+                ) : notes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No notes yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {notes.slice(0, 5).map((note) => (
+                      <div key={Number(note.id)} className="text-sm border-l-2 border-primary pl-2">
+                        <p className="font-medium">{note.title}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Regular Expense Quick Action - Desktop Only */}
+        {isAuthenticated && (
+          <div className="hidden lg:block">
+            <Card className="mac-card expense-card">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2">
+                  <Wallet className="w-5 h-5" />
+                  Budget & Expenses
+                </CardTitle>
+                <CardDescription>Manage your budget and track expenses</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => onNavigate('regular-expense')} className="w-full expense-button">
+                  Open Budget & Expenses
+                </Button>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {!isAuthenticated && (
+          <Alert>
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Log in to access productivity features like reminders, calendar, to-dos, and notes.
+            </AlertDescription>
+          </Alert>
+        )}
       </div>
     </div>
   );

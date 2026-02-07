@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { useActor } from './useActor';
+import type { Reminder as BackendReminder } from '../backend';
 
-// Define local types since backend no longer exports these
+// Frontend Reminder type that matches UI expectations
 export interface Reminder {
   id: bigint;
   title: string;
@@ -39,14 +40,32 @@ export interface Note {
   lastUpdated: bigint;
 }
 
+// Convert backend Reminder to frontend Reminder
+function mapBackendReminder(backendReminder: BackendReminder): Reminder {
+  // Combine date (YYYY-MM-DD) and time (HH:MM) into a timestamp
+  const dateTimeString = `${backendReminder.date}T${backendReminder.time}`;
+  const timestamp = new Date(dateTimeString).getTime();
+  
+  return {
+    id: backendReminder.id,
+    title: backendReminder.message,
+    description: '', // Backend doesn't have separate description
+    time: BigInt(timestamp),
+    repeatInterval: null,
+    priority: null,
+    isActive: true,
+  };
+}
+
 export function useGetReminders() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Reminder[]>({
     queryKey: ['reminders'],
     queryFn: async () => {
-      // Backend no longer supports reminders
-      return [];
+      if (!actor) return [];
+      const backendReminders = await actor.getRemindersForCaller();
+      return backendReminders.map(mapBackendReminder);
     },
     enabled: !!actor && !isFetching,
   });

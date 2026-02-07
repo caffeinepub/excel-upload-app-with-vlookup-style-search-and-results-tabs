@@ -1,7 +1,6 @@
-import { Upload, Search, FileText, FileCheck, History, Bell, Calendar, CheckSquare, StickyNote, Home, Wallet } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
+import { Home, Upload, Search, FileText, GitCompare, History, Wallet, Bell, Calendar, CheckSquare, FileEdit, UserCheck } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 
 interface DesktopSidebarNavProps {
   activeTab: string;
@@ -9,95 +8,91 @@ interface DesktopSidebarNavProps {
 }
 
 export function DesktopSidebarNav({ activeTab, onTabChange }: DesktopSidebarNavProps) {
-  const primaryMenuItems = [
-    { id: 'deskboard', label: 'Deskboard', icon: Home },
-    { id: 'upload', label: 'Upload', icon: Upload },
-    { id: 'search', label: 'Search', icon: Search },
-    { id: 'results', label: 'Results', icon: FileText },
-    { id: 'update-checking', label: 'Update', icon: FileCheck },
-    { id: 'history', label: 'History', icon: History },
-    { id: 'regular-expense', label: 'Regular Expense', icon: Wallet },
+  const mainItems = [
+    { id: 'deskboard', icon: Home, label: 'Deskboard' },
+    { id: 'upload', icon: Upload, label: 'Upload' },
+    { id: 'search', icon: Search, label: 'Search' },
+    { id: 'results', icon: FileText, label: 'Results' },
+    { id: 'update-checking', icon: GitCompare, label: 'Update Checking' },
+    { id: 'history', icon: History, label: 'History' },
+    { id: 'regular-expense', icon: Wallet, label: 'Budget & Expenses' },
+    { id: 'attendance', icon: UserCheck, label: 'Attendance' },
   ];
 
   const activityItems = [
-    { id: 'reminders', label: 'Reminders', icon: Bell },
-    { id: 'calendar', label: 'Calendar', icon: Calendar },
-    { id: 'todo', label: 'To-Do', icon: CheckSquare },
-    { id: 'notes', label: 'Notes', icon: StickyNote },
+    { id: 'reminders', icon: Bell, label: 'Reminders' },
+    { id: 'calendar', icon: Calendar, label: 'Calendar' },
+    { id: 'todo', icon: CheckSquare, label: 'To-Do' },
+    { id: 'notes', icon: FileEdit, label: 'Notes' },
   ];
 
   return (
     <TooltipProvider delayDuration={300}>
-      <aside className="w-20 flex-shrink-0 sticky top-8 self-start">
-        <nav className="mac-sidebar-container">
-          {/* Primary Menu */}
-          <div className="space-y-1">
-            {primaryMenuItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => onTabChange(item.id)}
-                      className={`w-full h-14 flex flex-col items-center justify-center gap-1 rounded-xl transition-all ${
+      <div className="mac-sidebar-container w-16 flex-shrink-0">
+        <nav className="flex flex-col gap-2">
+          {mainItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onTabChange(item.id)}
+                    className={`
+                      w-full h-12 flex items-center justify-center rounded-xl
+                      transition-all duration-200
+                      ${
                         isActive
-                          ? 'bg-primary/10 text-primary hover:bg-primary/15'
-                          : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-5 h-5" />
-                      <span className="text-[10px] font-medium">{item.label}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>{item.label}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
+
+          <Separator className="my-2" />
+
+          <div className="text-xs text-muted-foreground text-center mb-1 px-1">
+            Activities
           </div>
 
-          <Separator className="my-4" />
-
-          {/* Activity Section */}
-          <div className="space-y-1">
-            <div className="px-2 mb-2">
-              <p className="text-[9px] font-semibold text-muted-foreground/70 uppercase tracking-wider">
-                Activities
-              </p>
-            </div>
-            {activityItems.map((item) => {
-              const Icon = item.icon;
-              const isActive = activeTab === item.id;
-              return (
-                <Tooltip key={item.id}>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => onTabChange(item.id)}
-                      className={`w-full h-12 flex flex-col items-center justify-center gap-0.5 rounded-lg transition-all ${
+          {activityItems.map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <Tooltip key={item.id}>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => onTabChange(item.id)}
+                    className={`
+                      w-full h-12 flex items-center justify-center rounded-xl
+                      transition-all duration-200
+                      ${
                         isActive
-                          ? 'bg-accent/80 text-accent-foreground'
-                          : 'hover:bg-muted/40 text-muted-foreground hover:text-foreground'
-                      }`}
-                    >
-                      <Icon className="w-4 h-4" />
-                      <span className="text-[9px] font-medium leading-tight">{item.label}</span>
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p>{item.label}</p>
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
-          </div>
+                          ? 'bg-primary text-primary-foreground shadow-md'
+                          : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="w-5 h-5" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>{item.label}</p>
+                </TooltipContent>
+              </Tooltip>
+            );
+          })}
         </nav>
-      </aside>
+      </div>
     </TooltipProvider>
   );
 }

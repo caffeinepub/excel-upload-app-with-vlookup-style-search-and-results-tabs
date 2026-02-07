@@ -1,4 +1,4 @@
-import { loadLogoAsImage, loadTabletLogoAsImage } from './branding';
+import { loadLogoAsImage, loadWatermarkAsImage } from './branding';
 import { PDF_COMPANY_INFO } from './pdfCompanyInfo';
 
 // Define minimal jsPDF types
@@ -59,7 +59,7 @@ export interface ExportData {
 }
 
 /**
- * Export data to professional PDF with logo branding and tablet-logo watermark
+ * Export data to professional PDF with logo branding and single centered capsule watermark
  */
 export async function exportToPdf(data: ExportData, filename: string = 'export.pdf') {
   try {
@@ -75,44 +75,45 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
 
     let currentPage = 1;
 
-    // Load tablet logo watermark
-    let tabletLogo: HTMLImageElement | null = null;
+    // Load capsule watermark
+    let watermarkImage: HTMLImageElement | null = null;
     try {
-      tabletLogo = await loadTabletLogoAsImage();
+      watermarkImage = await loadWatermarkAsImage();
     } catch (error) {
-      console.warn('Could not load tablet logo watermark:', error);
+      console.warn('Could not load capsule watermark:', error);
       // Continue without watermark
     }
 
-    // Function to draw tiled tablet logo watermark on page
+    // Function to draw single large centered capsule watermark on page
     const drawWatermark = () => {
-      if (!tabletLogo) return;
+      if (!watermarkImage) return;
 
-      // Create a tiled pattern of tablet logos with ~30% opacity
-      const logoSize = 40; // mm
-      const spacing = 20; // mm between logos
-      const opacity = 0.3;
+      // Calculate watermark size - large relative to page, preserving aspect ratio
+      const watermarkMaxWidth = pageWidth * 0.6; // 60% of page width
+      const watermarkMaxHeight = pageHeight * 0.6; // 60% of page height
+      
+      const imageAspectRatio = watermarkImage.width / watermarkImage.height;
+      let watermarkWidth = watermarkMaxWidth;
+      let watermarkHeight = watermarkWidth / imageAspectRatio;
+      
+      // If height exceeds max, scale down based on height
+      if (watermarkHeight > watermarkMaxHeight) {
+        watermarkHeight = watermarkMaxHeight;
+        watermarkWidth = watermarkHeight * imageAspectRatio;
+      }
 
-      // Set opacity using GState
-      const gState = new doc.GState({ opacity });
+      // Center the watermark on the page
+      const watermarkX = (pageWidth - watermarkWidth) / 2;
+      const watermarkY = (pageHeight - watermarkHeight) / 2;
+
+      // Set opacity for watermark (readable but visible)
+      const gState = new doc.GState({ opacity: 0.15 });
       doc.setGState(gState);
 
-      // Calculate how many logos fit across and down
-      const cols = Math.ceil(pageWidth / (logoSize + spacing)) + 1;
-      const rows = Math.ceil(pageHeight / (logoSize + spacing)) + 1;
-
-      // Draw tiled pattern
-      for (let row = 0; row < rows; row++) {
-        for (let col = 0; col < cols; col++) {
-          const x = col * (logoSize + spacing) - logoSize / 2;
-          const y = row * (logoSize + spacing) - logoSize / 2;
-          
-          try {
-            doc.addImage(tabletLogo, 'PNG', x, y, logoSize, logoSize);
-          } catch (err) {
-            console.warn('Failed to add watermark tile:', err);
-          }
-        }
+      try {
+        doc.addImage(watermarkImage, 'PNG', watermarkX, watermarkY, watermarkWidth, watermarkHeight);
+      } catch (err) {
+        console.warn('Failed to add watermark:', err);
       }
 
       // Reset opacity

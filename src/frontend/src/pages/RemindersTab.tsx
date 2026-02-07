@@ -3,17 +3,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useGetReminders, type Reminder } from '../hooks/useProductivityQueries';
 import { useCreateReminder, useDeleteReminder } from '../hooks/useProductivityMutations';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { Bell, Trash2, AlertCircle, Plus } from 'lucide-react';
+import { useActor } from '../hooks/useActor';
+import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
+import { Bell, Trash2, AlertCircle, Plus, Loader2 } from 'lucide-react';
 
 export function RemindersTab() {
   const { identity } = useInternetIdentity();
+  const { actor, isFetching: actorFetching } = useActor();
   const isAuthenticated = !!identity;
+  const isActorReady = !!actor && !actorFetching;
 
   const { data: reminders = [], isLoading } = useGetReminders();
   const createMutation = useCreateReminder();
@@ -21,26 +24,28 @@ export function RemindersTab() {
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
   const [time, setTime] = useState('');
+  const [error, setError] = useState('');
 
   const handleCreate = async () => {
-    if (!title.trim() || !time) return;
+    if (!title.trim() || !time) {
+      setError('Please fill in all required fields');
+      return;
+    }
 
     try {
+      setError('');
       const timeMs = new Date(time).getTime();
       await createMutation.mutateAsync({
         title,
-        description,
         time: BigInt(timeMs),
       });
       setDialogOpen(false);
       setTitle('');
-      setDescription('');
       setTime('');
     } catch (error) {
-      console.error('Failed to create reminder:', error);
-      alert('Reminders feature is currently not available');
+      const friendlyError = getUserFriendlyError(error);
+      setError(friendlyError);
     }
   };
 
@@ -49,8 +54,8 @@ export function RemindersTab() {
     try {
       await deleteMutation.mutateAsync(id);
     } catch (error) {
-      console.error('Failed to delete reminder:', error);
-      alert('Reminders feature is currently not available');
+      const friendlyError = getUserFriendlyError(error);
+      alert(friendlyError);
     }
   };
 
@@ -60,7 +65,7 @@ export function RemindersTab() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            Please log in to view and manage your reminders.
+            Please log in to view and manage your general reminders.
           </AlertDescription>
         </Alert>
       </div>
@@ -73,25 +78,34 @@ export function RemindersTab() {
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <Bell className="w-8 h-8" />
-            Meeting Reminders
+            General Reminders
           </h1>
-          <p className="text-muted-foreground mt-1">Manage your meeting reminders</p>
+          <p className="text-muted-foreground mt-1">Manage your general reminders</p>
         </div>
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Add Reminder
+            <Button disabled={!isActorReady}>
+              {actorFetching ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 mr-2" />
+                  Add Reminder
+                </>
+              )}
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>Add Reminder</DialogTitle>
-              <DialogDescription>Create a new meeting reminder</DialogDescription>
+              <DialogTitle>Add General Reminder</DialogTitle>
+              <DialogDescription>Create a new general reminder</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="title">Title</Label>
+                <Label htmlFor="title">Title *</Label>
                 <Input
                   id="title"
                   value={title}
@@ -100,17 +114,7 @@ export function RemindersTab() {
                 />
               </div>
               <div>
-                <Label htmlFor="description">Description</Label>
-                <Textarea
-                  id="description"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Discuss quarterly goals"
-                  rows={3}
-                />
-              </div>
-              <div>
-                <Label htmlFor="time">Date & Time</Label>
+                <Label htmlFor="time">Date & Time *</Label>
                 <Input
                   id="time"
                   type="datetime-local"
@@ -118,22 +122,38 @@ export function RemindersTab() {
                   onChange={(e) => setTime(e.target.value)}
                 />
               </div>
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createMutation.isPending || !title.trim() || !time}>
-                {createMutation.isPending ? 'Creating...' : 'Create'}
+              <Button 
+                onClick={handleCreate} 
+                disabled={createMutation.isPending || !isActorReady || !title.trim() || !time}
+              >
+                {createMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  'Create'
+                )}
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertDescription>
-          The reminders feature is currently not available. Please use the Regular Expense feature instead.
-        </AlertDescription>
-      </Alert>
+      {actorFetching && (
+        <Alert>
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <AlertDescription>Connecting to backend...</AlertDescription>
+        </Alert>
+      )}
 
       {isLoading ? (
         <Card>
@@ -168,17 +188,12 @@ export function RemindersTab() {
                       variant="ghost"
                       size="icon"
                       onClick={() => handleDelete(reminder.id)}
-                      disabled={deleteMutation.isPending}
+                      disabled={deleteMutation.isPending || !isActorReady}
                     >
                       <Trash2 className="w-4 h-4 text-destructive" />
                     </Button>
                   </div>
                 </CardHeader>
-                {reminder.description && (
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground">{reminder.description}</p>
-                  </CardContent>
-                )}
               </Card>
             ))}
         </div>

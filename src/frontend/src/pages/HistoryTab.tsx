@@ -1,66 +1,129 @@
-import { useAppState } from '../state/appState';
+import { useState } from 'react';
 import { useListHistory, useClearHistory } from '../hooks/useQueries';
+import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Badge } from '../components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription } from '../components/ui/alert';
-import { History, Search, Filter, GitCompare, Download, Trash2, Clock, AlertCircle, Loader2 } from 'lucide-react';
-import { exportToExcel } from '../lib/export/exportXlsx';
-import { exportToPdf } from '../lib/export/exportPdf';
-import { useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { History, Search, Filter, GitCompare, Trash2, Clock, AlertCircle, Loader2, Upload, FileText, Wallet, Download, FileSpreadsheet } from 'lucide-react';
+import { HistoryType } from '../backend';
+import { exportHistoryToExcel, exportHistoryToPdf } from '../lib/results/historyExport';
 
 export function HistoryTab() {
-  const { history: localHistory, clearHistory: clearLocalHistory } = useAppState();
-  const { data: backendHistory, isLoading, error } = useListHistory();
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+  const { data: history = [], isLoading, error } = useListHistory();
   const clearHistoryMutation = useClearHistory();
+  
+  const [selectedType, setSelectedType] = useState<string>('all');
+  const [searchKeyword, setSearchKeyword] = useState('');
   const [exporting, setExporting] = useState(false);
 
-  // Use backend history if available, otherwise fall back to local history
-  const history = backendHistory && backendHistory.length > 0 ? backendHistory : localHistory;
-  const isUsingBackend = backendHistory && backendHistory.length > 0;
+  // Filter history by type and keyword
+  const filteredHistory = history.filter((item) => {
+    // Filter by type
+    if (selectedType !== 'all' && item.entryType !== selectedType) {
+      return false;
+    }
+    // Filter by keyword (search in details)
+    if (searchKeyword.trim() && !item.details.toLowerCase().includes(searchKeyword.toLowerCase())) {
+      return false;
+    }
+    return true;
+  });
 
-  const vlookupHistory = history.filter((item) => item.type === 'vlookup');
-  const filterHistory = history.filter((item) => item.type === 'filter');
-  const updateCheckingHistory = history.filter((item) => item.type === 'update-checking');
+  // Group by type
+  const uploadHistory = history.filter((item) => item.entryType === HistoryType.upload);
+  const searchHistory = history.filter((item) => item.entryType === HistoryType.search);
+  const resultsHistory = history.filter((item) => item.entryType === HistoryType.results);
+  const updateCheckingHistory = history.filter((item) => item.entryType === HistoryType.updateChecking);
+  const budgetHistory = history.filter((item) => item.entryType === HistoryType.budgetChange);
+  const expenseHistory = history.filter((item) => item.entryType === HistoryType.expenseChange);
 
-  const formatDate = (timestamp: number) => {
-    const date = new Date(timestamp);
+  const formatDate = (timestamp: bigint) => {
+    const date = new Date(Number(timestamp) / 1000000); // Convert nanoseconds to milliseconds
     return date.toLocaleString();
   };
 
+  const getTypeIcon = (type: string) => {
+    switch (type) {
+      case HistoryType.upload:
+        return <Upload className="w-4 h-4" />;
+      case HistoryType.search:
+        return <Search className="w-4 h-4" />;
+      case HistoryType.results:
+        return <FileText className="w-4 h-4" />;
+      case HistoryType.updateChecking:
+        return <GitCompare className="w-4 h-4" />;
+      case HistoryType.budgetChange:
+        return <Wallet className="w-4 h-4" />;
+      case HistoryType.expenseChange:
+        return <Wallet className="w-4 h-4" />;
+      default:
+        return <History className="w-4 h-4" />;
+    }
+  };
+
+  const getTypeBadgeVariant = (type: string): "default" | "secondary" | "outline" | "destructive" => {
+    switch (type) {
+      case HistoryType.upload:
+        return 'default';
+      case HistoryType.search:
+        return 'secondary';
+      case HistoryType.results:
+        return 'outline';
+      case HistoryType.updateChecking:
+        return 'default';
+      case HistoryType.budgetChange:
+        return 'secondary';
+      case HistoryType.expenseChange:
+        return 'outline';
+      default:
+        return 'default';
+    }
+  };
+
+  const getTypeLabel = (type: string) => {
+    switch (type) {
+      case HistoryType.upload:
+        return 'Upload';
+      case HistoryType.search:
+        return 'Search';
+      case HistoryType.results:
+        return 'Results';
+      case HistoryType.updateChecking:
+        return 'Update Checking';
+      case HistoryType.budgetChange:
+        return 'Budget';
+      case HistoryType.expenseChange:
+        return 'Expense';
+      default:
+        return type;
+    }
+  };
+
   const handleClearAll = async () => {
-    if (isUsingBackend) {
-      try {
-        await clearHistoryMutation.mutateAsync();
-      } catch (error) {
-        console.error('Failed to clear backend history:', error);
-        alert('Failed to clear history from backend. Please try again.');
-      }
-    } else {
-      clearLocalHistory();
+    if (!window.confirm('Are you sure you want to clear all history? This action cannot be undone.')) {
+      return;
+    }
+    try {
+      await clearHistoryMutation.mutateAsync();
+    } catch (error) {
+      console.error('Failed to clear history:', error);
+      alert('Failed to clear history. Please try again.');
     }
   };
 
-  const handleExportVlookup = async (item: any) => {
+  const handleExportExcel = async () => {
+    if (filteredHistory.length === 0) return;
+    
     setExporting(true);
     try {
-      await exportToExcel(
-        {
-          headers: ['Parameter', 'Value'],
-          rows: [
-            ['Lookup Value', item.data.searchParams.lookupValue],
-            ['Key Column', item.data.searchParams.keyColumn],
-            ['Return Column', item.data.searchParams.returnColumn],
-            ['Match Type', item.data.searchParams.matchType],
-            ['Result', item.data.result.found ? 'Match Found' : 'No Match'],
-            ['Returned Value', item.data.result.value === null || item.data.result.value === undefined ? '(empty)' : String(item.data.result.value)],
-            ['Timestamp', formatDate(item.timestamp)],
-          ],
-        },
-        `crystal-atlas-vlookup-history-${item.timestamp}.xlsx`
-      );
+      await exportHistoryToExcel(filteredHistory, formatDate);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to Excel. Please try again.');
@@ -69,24 +132,12 @@ export function HistoryTab() {
     }
   };
 
-  const handleExportVlookupPdf = async (item: any) => {
+  const handleExportPdf = async () => {
+    if (filteredHistory.length === 0) return;
+    
     setExporting(true);
     try {
-      await exportToPdf(
-        {
-          headers: ['Parameter', 'Value'],
-          rows: [
-            ['Lookup Value', item.data.searchParams.lookupValue],
-            ['Key Column', item.data.searchParams.keyColumn],
-            ['Return Column', item.data.searchParams.returnColumn],
-            ['Match Type', item.data.searchParams.matchType],
-            ['Result', item.data.result.found ? 'Match Found' : 'No Match'],
-            ['Returned Value', item.data.result.value === null || item.data.result.value === undefined ? '(empty)' : String(item.data.result.value)],
-            ['Timestamp', formatDate(item.timestamp)],
-          ],
-        },
-        `crystal-atlas-vlookup-history-${item.timestamp}.pdf`
-      );
+      await exportHistoryToPdf(filteredHistory, formatDate);
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to PDF. Please try again.');
@@ -95,94 +146,30 @@ export function HistoryTab() {
     }
   };
 
-  const handleExportFilter = async (item: any) => {
-    setExporting(true);
-    try {
-      await exportToExcel(
-        {
-          headers: item.data.headers,
-          rows: item.data.filteredRows.map((row: any) => row.data),
-        },
-        `crystal-atlas-filter-history-${item.timestamp}.xlsx`
-      );
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to Excel. Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
+  if (!isAuthenticated) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-2xl font-semibold mb-2">History</h2>
+          <p className="text-muted-foreground">View your activity history</p>
+        </div>
 
-  const handleExportFilterPdf = async (item: any) => {
-    setExporting(true);
-    try {
-      await exportToPdf(
-        {
-          headers: item.data.headers,
-          rows: item.data.filteredRows.map((row: any) => row.data),
-        },
-        `crystal-atlas-filter-history-${item.timestamp}.pdf`
-      );
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportComparison = async (item: any) => {
-    setExporting(true);
-    try {
-      const result = item.data.result;
-      // Export only NEW rows (unmatched data)
-      const newRows = result.rows.filter((row: any) => row.status === 'new');
-      const rows = newRows.map((row: any) => [String(row.keyValue), ...row.newData]);
-
-      await exportToExcel(
-        {
-          headers: ['Key', ...result.headers],
-          rows,
-        },
-        `crystal-atlas-unmatched-rows-history-${item.timestamp}.xlsx`
-      );
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to Excel. Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
-
-  const handleExportComparisonPdf = async (item: any) => {
-    setExporting(true);
-    try {
-      const result = item.data.result;
-      // Export only NEW rows (unmatched data)
-      const newRows = result.rows.filter((row: any) => row.status === 'new');
-      const rows = newRows.map((row: any) => [String(row.keyValue), ...row.newData]);
-
-      await exportToPdf(
-        {
-          headers: ['Key', ...result.headers],
-          rows,
-        },
-        `crystal-atlas-unmatched-rows-history-${item.timestamp}.pdf`
-      );
-    } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
-    } finally {
-      setExporting(false);
-    }
-  };
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Please log in to view your history.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
-      <Card>
+      <Card className="history-card">
         <CardHeader>
           <div className="flex items-center gap-3">
-            <Loader2 className="w-6 h-6 text-primary animate-spin" />
+            <Loader2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 animate-spin" />
             <div>
               <CardTitle>Loading History</CardTitle>
               <CardDescription>Fetching your history from the backend...</CardDescription>
@@ -195,7 +182,7 @@ export function HistoryTab() {
 
   if (error) {
     return (
-      <Card>
+      <Card className="history-card">
         <CardHeader>
           <div className="flex items-center gap-3">
             <AlertCircle className="w-6 h-6 text-destructive" />
@@ -209,7 +196,7 @@ export function HistoryTab() {
           <Alert variant="destructive">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Unable to load history from the backend. Showing local history instead.
+              Unable to load history from the backend. Please try again later.
             </AlertDescription>
           </Alert>
         </CardContent>
@@ -219,414 +206,320 @@ export function HistoryTab() {
 
   return (
     <div className="space-y-6">
-      <Card>
+      <Card className="history-card">
         <CardHeader>
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="flex items-center gap-3 min-w-0">
-              <History className="w-6 h-6 text-primary flex-shrink-0" />
+              <History className="w-6 h-6 text-emerald-600 dark:text-emerald-400 flex-shrink-0" />
               <div className="min-w-0">
-                <CardTitle>History</CardTitle>
-                <CardDescription className="break-words">
-                  View and export your previous searches, filters, and comparisons
+                <CardTitle className="text-xl sm:text-2xl">Activity History</CardTitle>
+                <CardDescription className="text-xs sm:text-sm break-words">
+                  View and filter your activity across all features
                 </CardDescription>
               </div>
             </div>
-            {history.length > 0 && (
-              <Button 
-                onClick={handleClearAll} 
-                variant="outline" 
+            <div className="flex gap-2 flex-wrap">
+              <Button
+                variant="outline"
                 size="sm"
-                disabled={clearHistoryMutation.isPending}
+                onClick={handleExportExcel}
+                disabled={exporting || filteredHistory.length === 0}
+                className="flex-shrink-0"
+              >
+                {exporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <FileSpreadsheet className="w-4 h-4 mr-2" />
+                    Download Excel
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportPdf}
+                disabled={exporting || filteredHistory.length === 0}
+                className="flex-shrink-0"
+              >
+                {exporting ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Exporting...
+                  </>
+                ) : (
+                  <>
+                    <Download className="w-4 h-4 mr-2" />
+                    Download PDF
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={handleClearAll}
+                disabled={clearHistoryMutation.isPending || history.length === 0}
                 className="flex-shrink-0"
               >
                 {clearHistoryMutation.isPending ? (
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Clearing...
+                  </>
                 ) : (
-                  <Trash2 className="w-4 h-4 mr-2" />
+                  <>
+                    <Trash2 className="w-4 h-4 mr-2" />
+                    Clear All
+                  </>
                 )}
-                Clear All
               </Button>
-            )}
+            </div>
           </div>
         </CardHeader>
-        <CardContent>
-          {history.length === 0 ? (
-            <div className="text-center py-12">
-              <Clock className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-              <p className="text-muted-foreground">No history yet</p>
-              <p className="text-sm text-muted-foreground mt-2">
-                Your searches, filters, and comparisons will appear here
-              </p>
+        <CardContent className="space-y-4">
+          {/* Filters */}
+          <div className="grid sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Filter by Type</label>
+              <Select value={selectedType} onValueChange={setSelectedType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Types</SelectItem>
+                  <SelectItem value={HistoryType.upload}>Upload</SelectItem>
+                  <SelectItem value={HistoryType.search}>Search</SelectItem>
+                  <SelectItem value={HistoryType.results}>Results</SelectItem>
+                  <SelectItem value={HistoryType.updateChecking}>Update Checking</SelectItem>
+                  <SelectItem value={HistoryType.budgetChange}>Budget</SelectItem>
+                  <SelectItem value={HistoryType.expenseChange}>Expense</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Search Details</label>
+              <Input
+                placeholder="Search in details..."
+                value={searchKeyword}
+                onChange={(e) => setSearchKeyword(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2 sm:gap-4">
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Total</p>
+              <p className="text-lg sm:text-xl font-semibold text-emerald-600 dark:text-emerald-400">{history.length}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Upload</p>
+              <p className="text-lg sm:text-xl font-semibold">{uploadHistory.length}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Search</p>
+              <p className="text-lg sm:text-xl font-semibold">{searchHistory.length}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Results</p>
+              <p className="text-lg sm:text-xl font-semibold">{resultsHistory.length}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Update</p>
+              <p className="text-lg sm:text-xl font-semibold">{updateCheckingHistory.length}</p>
+            </div>
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-xs text-muted-foreground">Budget/Exp</p>
+              <p className="text-lg sm:text-xl font-semibold">{budgetHistory.length + expenseHistory.length}</p>
+            </div>
+          </div>
+
+          {/* History List */}
+          {filteredHistory.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              {history.length === 0 ? (
+                <>
+                  <History className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No history entries yet. Start using the app to see your activity here.</p>
+                </>
+              ) : (
+                <>
+                  <Search className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No entries match your filters. Try adjusting your search criteria.</p>
+                </>
+              )}
             </div>
           ) : (
-            <Tabs defaultValue="all" className="w-full">
-              <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
-                <TabsTrigger value="all" className="text-xs sm:text-sm">All ({history.length})</TabsTrigger>
-                <TabsTrigger value="vlookup" className="text-xs sm:text-sm">VLOOKUP ({vlookupHistory.length})</TabsTrigger>
-                <TabsTrigger value="filter" className="text-xs sm:text-sm">Filter ({filterHistory.length})</TabsTrigger>
-                <TabsTrigger value="update" className="text-xs sm:text-sm">Update ({updateCheckingHistory.length})</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="all" className="mt-6">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-4">
-                    {history.map((item, index) => (
-                      <Card key={index}>
-                        <CardHeader>
-                          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                            <div className="flex items-center gap-3 min-w-0">
-                              {item.type === 'vlookup' && <Search className="w-5 h-5 text-primary flex-shrink-0" />}
-                              {item.type === 'filter' && <Filter className="w-5 h-5 text-primary flex-shrink-0" />}
-                              {item.type === 'update-checking' && <GitCompare className="w-5 h-5 text-primary flex-shrink-0" />}
-                              <div className="min-w-0">
-                                <CardTitle className="text-base break-words">
-                                  {item.type === 'vlookup' && 'VLOOKUP Search'}
-                                  {item.type === 'filter' && 'Filter Data'}
-                                  {item.type === 'update-checking' && 'Update Checking'}
-                                </CardTitle>
-                                <CardDescription className="text-xs break-words">
-                                  {formatDate(item.timestamp)}
-                                </CardDescription>
-                              </div>
-                            </div>
-                            <div className="flex gap-2 flex-wrap">
-                              {item.type === 'vlookup' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleExportVlookup(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Excel
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleExportVlookupPdf(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    PDF
-                                  </Button>
-                                </>
-                              )}
-                              {item.type === 'filter' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleExportFilter(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Excel
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleExportFilterPdf(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    PDF
-                                  </Button>
-                                </>
-                              )}
-                              {item.type === 'update-checking' && (
-                                <>
-                                  <Button
-                                    onClick={() => handleExportComparison(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    Excel
-                                  </Button>
-                                  <Button
-                                    onClick={() => handleExportComparisonPdf(item)}
-                                    disabled={exporting}
-                                    variant="outline"
-                                    size="sm"
-                                  >
-                                    <Download className="w-4 h-4 mr-2" />
-                                    PDF
-                                  </Button>
-                                </>
-                              )}
-                            </div>
-                          </div>
-                        </CardHeader>
-                        <CardContent>
-                          {item.type === 'vlookup' && item.data?.searchParams && item.data?.result && (
-                            <div className="space-y-2 text-sm">
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Lookup Value:</span>
-                                <span className="font-medium break-words">{item.data.searchParams.lookupValue}</span>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Result:</span>
-                                <Badge variant={item.data.result.found ? 'default' : 'secondary'}>
-                                  {item.data.result.found ? 'Match Found' : 'No Match'}
-                                </Badge>
-                              </div>
-                            </div>
-                          )}
-                          {item.type === 'filter' && item.data?.filterColumn && (
-                            <div className="space-y-2 text-sm">
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Column:</span>
-                                <span className="font-medium break-words">{item.data.filterColumn}</span>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Search Text:</span>
-                                <span className="font-medium break-words">{item.data.filterText}</span>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Matches:</span>
-                                <Badge variant="secondary">{item.data.filteredRows?.length || 0}</Badge>
-                              </div>
-                            </div>
-                          )}
-                          {item.type === 'update-checking' && item.data?.result && (
-                            <div className="space-y-2 text-sm">
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">Old File:</span>
-                                <span className="font-medium break-words">{item.data.oldFileName}</span>
-                              </div>
-                              <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                <span className="text-muted-foreground">New File:</span>
-                                <span className="font-medium break-words">{item.data.newFileName}</span>
-                              </div>
-                              <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded mt-3 text-center">
-                                <div className="font-bold text-green-600">{item.data.result.summary?.newCount || 0}</div>
-                                <div className="text-xs text-muted-foreground">Unmatched Rows</div>
-                              </div>
-                            </div>
-                          )}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="vlookup" className="mt-6">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-4">
-                    {vlookupHistory.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Search className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No VLOOKUP history</p>
+            <ScrollArea className="h-[500px] pr-4">
+              <div className="space-y-3">
+                {filteredHistory.map((entry) => (
+                  <div
+                    key={Number(entry.id)}
+                    className="p-4 border rounded-lg hover:bg-muted/30 transition-colors history-item"
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="flex-shrink-0 mt-1">
+                        {getTypeIcon(entry.entryType)}
                       </div>
-                    ) : (
-                      vlookupHistory.map((item, index) => (
-                        <Card key={index}>
-                          <CardHeader>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Search className="w-5 h-5 text-primary flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <CardTitle className="text-base">VLOOKUP Search</CardTitle>
-                                  <CardDescription className="text-xs break-words">
-                                    {formatDate(item.timestamp)}
-                                  </CardDescription>
-                                </div>
-                              </div>
-                              <div className="flex gap-2 flex-wrap">
-                                <Button
-                                  onClick={() => handleExportVlookup(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Excel
-                                </Button>
-                                <Button
-                                  onClick={() => handleExportVlookupPdf(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  PDF
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {item.data?.searchParams && item.data?.result && (
-                              <div className="space-y-2 text-sm">
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Lookup Value:</span>
-                                  <span className="font-medium break-words">{item.data.searchParams.lookupValue}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Key Column:</span>
-                                  <span className="font-medium break-words">{item.data.searchParams.keyColumn}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Return Column:</span>
-                                  <span className="font-medium break-words">{item.data.searchParams.returnColumn}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Result:</span>
-                                  <Badge variant={item.data.result.found ? 'default' : 'secondary'}>
-                                    {item.data.result.found ? 'Match Found' : 'No Match'}
-                                  </Badge>
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="filter" className="mt-6">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-4">
-                    {filterHistory.length === 0 ? (
-                      <div className="text-center py-12">
-                        <Filter className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No filter history</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
+                          <Badge variant={getTypeBadgeVariant(entry.entryType)} className="history-badge">
+                            {getTypeLabel(entry.entryType)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground flex items-center gap-1">
+                            <Clock className="w-3 h-3" />
+                            {formatDate(entry.timestamp)}
+                          </span>
+                        </div>
+                        <p className="text-sm break-words">{entry.details}</p>
                       </div>
-                    ) : (
-                      filterHistory.map((item, index) => (
-                        <Card key={index}>
-                          <CardHeader>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <Filter className="w-5 h-5 text-primary flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <CardTitle className="text-base">Filter Data</CardTitle>
-                                  <CardDescription className="text-xs break-words">
-                                    {formatDate(item.timestamp)}
-                                  </CardDescription>
-                                </div>
-                              </div>
-                              <div className="flex gap-2 flex-wrap">
-                                <Button
-                                  onClick={() => handleExportFilter(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Excel
-                                </Button>
-                                <Button
-                                  onClick={() => handleExportFilterPdf(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  PDF
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {item.data?.filterColumn && (
-                              <div className="space-y-2 text-sm">
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Column:</span>
-                                  <span className="font-medium break-words">{item.data.filterColumn}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Search Text:</span>
-                                  <span className="font-medium break-words">{item.data.filterText}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Matches:</span>
-                                  <Badge variant="secondary">{item.data.filteredRows?.length || 0}</Badge>
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
+                    </div>
                   </div>
-                </ScrollArea>
-              </TabsContent>
-
-              <TabsContent value="update" className="mt-6">
-                <ScrollArea className="h-[600px]">
-                  <div className="space-y-4">
-                    {updateCheckingHistory.length === 0 ? (
-                      <div className="text-center py-12">
-                        <GitCompare className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-                        <p className="text-muted-foreground">No update checking history</p>
-                      </div>
-                    ) : (
-                      updateCheckingHistory.map((item, index) => (
-                        <Card key={index}>
-                          <CardHeader>
-                            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <GitCompare className="w-5 h-5 text-primary flex-shrink-0" />
-                                <div className="min-w-0">
-                                  <CardTitle className="text-base">Update Checking</CardTitle>
-                                  <CardDescription className="text-xs break-words">
-                                    {formatDate(item.timestamp)}
-                                  </CardDescription>
-                                </div>
-                              </div>
-                              <div className="flex gap-2 flex-wrap">
-                                <Button
-                                  onClick={() => handleExportComparison(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  Excel
-                                </Button>
-                                <Button
-                                  onClick={() => handleExportComparisonPdf(item)}
-                                  disabled={exporting}
-                                  variant="outline"
-                                  size="sm"
-                                >
-                                  <Download className="w-4 h-4 mr-2" />
-                                  PDF
-                                </Button>
-                              </div>
-                            </div>
-                          </CardHeader>
-                          <CardContent>
-                            {item.data?.result && (
-                              <div className="space-y-2 text-sm">
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">Old File:</span>
-                                  <span className="font-medium break-words">{item.data.oldFileName}</span>
-                                </div>
-                                <div className="flex flex-col sm:flex-row sm:justify-between gap-1">
-                                  <span className="text-muted-foreground">New File:</span>
-                                  <span className="font-medium break-words">{item.data.newFileName}</span>
-                                </div>
-                                <div className="p-2 bg-green-50 dark:bg-green-950/20 rounded mt-3 text-center">
-                                  <div className="font-bold text-green-600">{item.data.result.summary?.newCount || 0}</div>
-                                  <div className="text-xs text-muted-foreground">Unmatched Rows</div>
-                                </div>
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </TabsContent>
-            </Tabs>
+                ))}
+              </div>
+            </ScrollArea>
           )}
+        </CardContent>
+      </Card>
+
+      {/* Category Tabs */}
+      <Card className="history-card">
+        <CardHeader>
+          <CardTitle>View by Category</CardTitle>
+          <CardDescription>Browse history entries grouped by function type</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="all" className="w-full">
+            <TabsList className="grid w-full grid-cols-3 lg:grid-cols-7 gap-1">
+              <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
+              <TabsTrigger value="upload" className="text-xs">Upload</TabsTrigger>
+              <TabsTrigger value="search" className="text-xs">Search</TabsTrigger>
+              <TabsTrigger value="results" className="text-xs">Results</TabsTrigger>
+              <TabsTrigger value="update" className="text-xs">Update</TabsTrigger>
+              <TabsTrigger value="budget" className="text-xs">Budget</TabsTrigger>
+              <TabsTrigger value="expense" className="text-xs">Expense</TabsTrigger>
+            </TabsList>
+            <TabsContent value="all" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {history.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No history entries</p>
+                  ) : (
+                    history.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <div className="flex items-center gap-2 mb-1">
+                          <Badge variant={getTypeBadgeVariant(entry.entryType)} className="text-xs history-badge">
+                            {getTypeLabel(entry.entryType)}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{formatDate(entry.timestamp)}</span>
+                        </div>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="upload" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {uploadHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No upload history</p>
+                  ) : (
+                    uploadHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="search" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {searchHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No search history</p>
+                  ) : (
+                    searchHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="results" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {resultsHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No results history</p>
+                  ) : (
+                    resultsHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="update" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {updateCheckingHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No update checking history</p>
+                  ) : (
+                    updateCheckingHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="budget" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {budgetHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No budget history</p>
+                  ) : (
+                    budgetHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+            <TabsContent value="expense" className="mt-4">
+              <ScrollArea className="h-[300px]">
+                <div className="space-y-2">
+                  {expenseHistory.length === 0 ? (
+                    <p className="text-center text-muted-foreground py-8">No expense history</p>
+                  ) : (
+                    expenseHistory.map((entry) => (
+                      <div key={Number(entry.id)} className="p-3 border rounded text-sm">
+                        <p className="text-xs text-muted-foreground mb-1">{formatDate(entry.timestamp)}</p>
+                        <p className="break-words">{entry.details}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
         </CardContent>
       </Card>
     </div>

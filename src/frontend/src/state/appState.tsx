@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 import { useAddHistoryEntry } from '../hooks/useQueries';
+import { HistoryType } from '../backend';
 
 export interface SheetData {
   headers: string[];
@@ -29,34 +30,22 @@ export interface MultiSearchParams {
 
 export interface SearchResult {
   found: boolean;
-  value: string | number | boolean | null;
+  value: string | number | boolean | null | (string | number | boolean | null)[];
   rowIndex?: number;
+  fullRow?: { index: number; data: (string | number | boolean | null)[] };
   message?: string;
 }
 
-export interface MultiSearchResult {
-  results: Array<{
-    lookupValue: string;
-    found: boolean;
-    value: string | number | boolean | null;
-    rowIndex?: number;
-    fullRow?: (string | number | boolean | null)[];
-    message?: string;
-  }>;
-  summary: {
-    totalSearches: number;
-    foundCount: number;
-    notFoundCount: number;
-  };
+export interface VlookupResult {
+  lookupValue: string;
+  result: SearchResult;
 }
 
-export interface FilterState {
+export interface FilterResults {
+  headers: string[];
+  filteredRows: { index: number; data: (string | number | boolean | null)[] }[];
   filterColumn: string;
-  filterText: string;
-  filteredRows: {
-    rowIndex: number;
-    data: (string | number | boolean | null)[];
-  }[];
+  filterValue: string;
 }
 
 export interface ComparisonRow {
@@ -78,13 +67,6 @@ export interface ComparisonResult {
   mode: 'row' | 'column' | 'key-presence';
 }
 
-export interface UpdateCheckingState {
-  oldWorkbook: WorkbookState | null;
-  newWorkbook: WorkbookState | null;
-  keyColumn: string;
-  comparisonResult: ComparisonResult | null;
-}
-
 export interface HistoryItem {
   type: 'vlookup' | 'filter' | 'update-checking';
   timestamp: number;
@@ -94,18 +76,19 @@ export interface HistoryItem {
 interface AppState {
   workbook: WorkbookState | null;
   searchParams: SearchParams | MultiSearchParams | null;
-  searchResult: SearchResult | MultiSearchResult | null;
-  filterState: FilterState | null;
-  updateCheckingState: UpdateCheckingState;
+  vlookupResults: VlookupResult[] | null;
+  filterResults: FilterResults | null;
+  updateCheckingResults: ComparisonResult | null;
   uploadLoading: boolean;
   uploadError: string | null;
   history: HistoryItem[];
   setWorkbook: (workbook: WorkbookState | null) => void;
   replaceWorkbook: (workbook: WorkbookState | null) => void;
   setSearchParams: (params: SearchParams | MultiSearchParams | null) => void;
-  setSearchResult: (result: SearchResult | MultiSearchResult | null) => void;
-  setFilterState: (state: FilterState | null) => void;
-  setUpdateCheckingState: (state: Partial<UpdateCheckingState>) => void;
+  setVlookupResults: (results: VlookupResult[] | null) => void;
+  setFilterResults: (results: FilterResults | null) => void;
+  setUpdateCheckingResults: (results: ComparisonResult | null) => void;
+  clearUpdateCheckingResults: () => void;
   setUploadLoading: (loading: boolean) => void;
   setUploadError: (error: string | null) => void;
   addToHistory: (item: HistoryItem) => void;
@@ -150,16 +133,11 @@ function normalizeWorkbook(workbook: WorkbookState | null): WorkbookState | null
 export function AppStateProvider({ children }: { children: ReactNode | ((context: AppState) => ReactNode) }) {
   const [workbook, setWorkbookInternal] = useState<WorkbookState | null>(null);
   const [searchParams, setSearchParams] = useState<SearchParams | MultiSearchParams | null>(null);
-  const [searchResult, setSearchResultInternal] = useState<SearchResult | MultiSearchResult | null>(null);
-  const [filterState, setFilterState] = useState<FilterState | null>(null);
+  const [vlookupResults, setVlookupResults] = useState<VlookupResult[] | null>(null);
+  const [filterResults, setFilterResults] = useState<FilterResults | null>(null);
+  const [updateCheckingResults, setUpdateCheckingResults] = useState<ComparisonResult | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [updateCheckingState, setUpdateCheckingStateInternal] = useState<UpdateCheckingState>({
-    oldWorkbook: null,
-    newWorkbook: null,
-    keyColumn: '',
-    comparisonResult: null,
-  });
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     try {
       const stored = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -189,8 +167,12 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
     setWorkbookInternal(normalizeWorkbook(newWorkbook));
     // Clear dependent state when workbook is replaced
     setSearchParams(null);
-    setSearchResultInternal(null);
-    setFilterState(null);
+    setVlookupResults(null);
+    setFilterResults(null);
+  };
+
+  const clearUpdateCheckingResults = () => {
+    setUpdateCheckingResults(null);
   };
 
   const updateWorkbookCell = (rowIndex: number, colIndex: number, value: string | number | boolean | null) => {
@@ -235,85 +217,6 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
     });
   };
 
-  const setSearchResult = (result: SearchResult | MultiSearchResult | null) => {
-    // Clear update checking results when setting VLOOKUP results
-    if (result !== null) {
-      setUpdateCheckingStateInternal(prev => ({
-        ...prev,
-        comparisonResult: null,
-      }));
-    }
-    
-    setSearchResultInternal(result);
-    
-    // Add to history if result is not null and searchParams exist
-    if (result && searchParams && workbook) {
-      const historyItem: HistoryItem = {
-        type: 'vlookup',
-        timestamp: Date.now(),
-        data: {
-          searchParams,
-          result,
-          fileName: workbook.fileName,
-        },
-      };
-      addToHistory(historyItem);
-    }
-  };
-
-  const setUpdateCheckingState = (partial: Partial<UpdateCheckingState>) => {
-    setUpdateCheckingStateInternal((prev) => {
-      const updated = { ...prev, ...partial };
-      
-      // Normalize workbooks in update checking state
-      if (partial.oldWorkbook !== undefined) {
-        updated.oldWorkbook = normalizeWorkbook(partial.oldWorkbook);
-      }
-      if (partial.newWorkbook !== undefined) {
-        updated.newWorkbook = normalizeWorkbook(partial.newWorkbook);
-      }
-      
-      // Clear VLOOKUP results when setting comparison results
-      if (partial.comparisonResult !== undefined && partial.comparisonResult !== null) {
-        setSearchResultInternal(null);
-      }
-      
-      // Prevent invalid intermediate state: if clearing a workbook, also clear dependent fields
-      if (partial.oldWorkbook === null || partial.newWorkbook === null) {
-        // When either workbook is cleared, ensure keyColumn and comparisonResult are also cleared
-        // unless explicitly set in the partial update
-        if (partial.keyColumn === undefined) {
-          updated.keyColumn = '';
-        }
-        if (partial.comparisonResult === undefined) {
-          updated.comparisonResult = null;
-        }
-      }
-      
-      return updated;
-    });
-  };
-
-  const handleSetFilterState = (state: FilterState | null) => {
-    setFilterState(state);
-    
-    // Add to history if state is not null and has results
-    if (state && state.filteredRows.length > 0 && workbook) {
-      const historyItem: HistoryItem = {
-        type: 'filter',
-        timestamp: Date.now(),
-        data: {
-          filterColumn: state.filterColumn,
-          filterText: state.filterText,
-          filteredRows: state.filteredRows,
-          headers: workbook.sheetData?.headers || [],
-          fileName: workbook.fileName,
-        },
-      };
-      addToHistory(historyItem);
-    }
-  };
-
   const addToHistory = (item: HistoryItem) => {
     // Add to local history
     setHistory((prev) => {
@@ -323,7 +226,24 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
 
     // Try to persist to backend (non-blocking)
     try {
-      addHistoryMutation.mutate(item);
+      // Map local history type to backend HistoryType
+      let entryType: HistoryType;
+      switch (item.type) {
+        case 'vlookup':
+          entryType = HistoryType.search;
+          break;
+        case 'filter':
+          entryType = HistoryType.search;
+          break;
+        case 'update-checking':
+          entryType = HistoryType.updateChecking;
+          break;
+        default:
+          entryType = HistoryType.search;
+      }
+      
+      const details = JSON.stringify(item.data).substring(0, 500); // Limit details length
+      addHistoryMutation.mutate({ entryType, details });
     } catch (error) {
       console.error('Failed to persist history to backend:', error);
       // Continue with local history even if backend fails
@@ -337,33 +257,29 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
   const reset = () => {
     setWorkbookInternal(null);
     setSearchParams(null);
-    setSearchResultInternal(null);
-    setFilterState(null);
+    setVlookupResults(null);
+    setFilterResults(null);
+    setUpdateCheckingResults(null);
     setUploadLoading(false);
     setUploadError(null);
-    setUpdateCheckingStateInternal({
-      oldWorkbook: null,
-      newWorkbook: null,
-      keyColumn: '',
-      comparisonResult: null,
-    });
   };
 
   const contextValue: AppState = {
     workbook,
     searchParams,
-    searchResult,
-    filterState,
-    updateCheckingState,
+    vlookupResults,
+    filterResults,
+    updateCheckingResults,
     uploadLoading,
     uploadError,
     history,
     setWorkbook,
     replaceWorkbook,
     setSearchParams,
-    setSearchResult,
-    setFilterState: handleSetFilterState,
-    setUpdateCheckingState,
+    setVlookupResults,
+    setFilterResults,
+    setUpdateCheckingResults,
+    clearUpdateCheckingResults,
     setUploadLoading,
     setUploadError,
     addToHistory,

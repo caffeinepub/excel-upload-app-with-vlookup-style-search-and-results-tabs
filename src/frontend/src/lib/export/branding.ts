@@ -3,13 +3,13 @@
 export interface BrandingConfig {
   title: string;
   logoPath: string;
-  tabletLogoPath: string;
+  watermarkPath: string;
 }
 
 export const CRYSTAL_ATLAS_BRANDING: BrandingConfig = {
   title: 'Crystal Atlas',
   logoPath: '/assets/CRYSTAL ATLAS LOGO.png',
-  tabletLogoPath: '/assets/generated/tablet-logo-cutout.dim_512x512.png',
+  watermarkPath: '/assets/generated/pill-watermark-capsule-cutout.dim_1600x900.png',
 };
 
 /**
@@ -62,15 +62,15 @@ export async function loadLogoAsImage(): Promise<HTMLImageElement> {
 }
 
 /**
- * Load the tablet logo watermark as an Image element for PDF rendering
+ * Load the capsule watermark as an Image element for PDF rendering
  */
-export async function loadTabletLogoAsImage(): Promise<HTMLImageElement> {
+export async function loadWatermarkAsImage(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
     
     const timeout = setTimeout(() => {
-      reject(new Error('Tablet logo loading timed out'));
+      reject(new Error('Watermark loading timed out'));
     }, 5000);
 
     img.onload = () => {
@@ -80,9 +80,9 @@ export async function loadTabletLogoAsImage(): Promise<HTMLImageElement> {
     
     img.onerror = (error) => {
       clearTimeout(timeout);
-      reject(new Error('Failed to load tablet logo watermark. Please ensure the asset is available.'));
+      reject(new Error('Failed to load capsule watermark. Please ensure the asset is available.'));
     };
     
-    img.src = CRYSTAL_ATLAS_BRANDING.tabletLogoPath;
+    img.src = CRYSTAL_ATLAS_BRANDING.watermarkPath;
   });
 }

@@ -1,4 +1,5 @@
 import { SheetData } from '../../state/appState';
+import { sanitizeHeaders } from './normalizeHeader';
 
 // Define minimal XLSX types we need
 interface WorkSheet {
@@ -136,7 +137,10 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
           continue;
         }
 
-        const headers = (jsonData[0] as any[]).map((h) => (h === null ? '' : String(h)));
+        // Parse raw headers and sanitize them
+        const rawHeaders = (jsonData[0] as any[]).map((h) => (h === null ? '' : String(h)));
+        const headers = sanitizeHeaders(rawHeaders);
+        
         const rows = jsonData.slice(1).map((row: any) =>
           (row as any[]).map((cell) => {
             if (cell === null || cell === undefined) return null;

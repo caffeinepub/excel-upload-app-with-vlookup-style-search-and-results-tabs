@@ -1,105 +1,91 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Regular Expense tracking with budget, PDF reports, and desktop navigation wiring",
+  "title": "Attendance month calendar with date-wise editing and global holiday management (frontend)",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Ensure the desktop sidebar includes a visible History option that opens the existing History tab.",
-      "acceptanceCriteria": [
-        "On desktop (lg and up), the sidebar shows a \"History\" item.",
-        "Clicking \"History\" opens the existing History tab content without errors."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/DesktopSidebarNav.tsx",
-          "operation": "modify",
-          "description": "Confirm the desktop sidebar primary navigation includes a persistent \"History\" item wired to the existing 'history' tab id, and that its label remains exactly \"History\" for visibility and clickability."
-        }
-      ]
-    },
-    {
-      "id": "REQ-2",
-      "summary": "Add a desktop-only sidebar navigation item for Regular Expense that navigates to a new Regular Expense tab/page.",
-      "acceptanceCriteria": [
-        "On desktop (lg and up), the sidebar includes a \"Regular Expense\" item.",
-        "Clicking \"Regular Expense\" navigates to a new tab/page that renders the expense tracking UI."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/DesktopSidebarNav.tsx",
-          "operation": "modify",
-          "description": "Add a new primary menu item labeled \"Regular Expense\" (desktop sidebar only) wired to a new tab id (e.g., 'regular-expense') and choose an appropriate icon. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Register/render a new TabsContent section for the 'regular-expense' tab id so sidebar navigation can display the new Regular Expense page without errors."
-        },
-        {
-          "path": "frontend/src/pages/RegularExpenseTab.tsx",
-          "operation": "create",
-          "description": "Create the new Regular Expense tab/page component that will host budget management, expense entry, expense list, and PDF report download UI. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Add a desktop-only Regular Expense button on the Deskboard page that navigates to the Regular Expense tab/page.",
-      "acceptanceCriteria": [
-        "On desktop (lg and up), the Deskboard page shows a \"Regular Expense\" button.",
-        "On mobile/tablet (< lg), the Deskboard \"Regular Expense\" button is not shown.",
-        "Clicking the button navigates to the \"Regular Expense\" tab/page."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/pages/DeskboardTab.tsx",
-          "operation": "modify",
-          "description": "Add a \"Regular Expense\" button that is only visible on lg+ breakpoints and calls onNavigate('regular-expense') when clicked. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
       "id": "REQ-4",
-      "summary": "Implement the Regular Expense page UI for authenticated users to set a budget and log daily expenses with date, type, and amount, showing login-required messaging when unauthenticated.",
+      "summary": "Add a calendar-style month view inside Attendance to browse months, select dates, and visually distinguish today, saved entries, and global holidays.",
       "acceptanceCriteria": [
-        "The page includes a budget input (numeric) that can be saved for the logged-in user.",
-        "The page includes an expense entry form with fields: Date, Type, Amount, and an \"Add\" action.",
-        "After adding an expense, the new expense appears in a list/table on the same page.",
-        "If the user is not logged in, the page shows an English message indicating login is required to manage expenses, and prevents submitting changes."
+        "AttendanceTab provides a month view calendar UI with month navigation controls (at least previous/next month, and a clear month label).",
+        "Selecting a date shows the stored attendance for that date (or an empty state if none) and allows editing for both past and upcoming dates.",
+        "Edits persist via new backend methods and the UI refreshes to reflect the saved state without requiring a full page reload.",
+        "The month view visually distinguishes: today, days with saved attendance entries, and days that are global holidays (festival/company leave)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useRegularExpense.ts",
+          "path": "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
           "operation": "create",
-          "description": "Add React Query hooks for Regular Expense data: fetch current user's budget, save/update budget, fetch current user's expenses, and add an expense; integrate with the existing useActor hook and invalidate relevant queries on success."
+          "description": "Create a reusable month calendar component that renders a month grid with previous/next controls, a month label, and per-day visual states (today, has saved attendance, festival/company leave). Use shadcn-ui building blocks (e.g., Card/Button) for UI consistency. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/RegularExpenseTab.tsx",
+          "path": "frontend/src/pages/AttendanceTab.tsx",
           "operation": "modify",
-          "description": "Implement the Regular Expense UI: (1) authentication gate using the existing Internet Identity state (show English login-required message and disable save/add actions when unauthenticated), (2) budget numeric input with Save action, (3) expense form fields Date/Type/Amount (+ optional description if desired) with Add action, and (4) an on-page list of expenses that updates after adding. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
+          "description": "Wire the month calendar view into the Attendance page UI (within existing Attendance tabs) with state for the currently viewed month and selected date, and pass derived month-range attendance/holiday data into AttendanceMonthCalendar. Use English UI text. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useAttendance.ts",
+          "operation": "modify",
+          "description": "Add React Query hooks to fetch date-specific attendance and month-range attendance data needed by the calendar view (compose with existing actor/identity readiness checks and existing summary hook patterns). Ensure query keys are stable for selected date and month range."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Provide a date editor for attendance entries with status and time inputs, validation, readable English errors, and React Query cache invalidation.",
+      "acceptanceCriteria": [
+        "For a selected date, the UI provides controls to update attendance status (including new statuses required to represent company leave distinctly from festival).",
+        "If the user sets a status that implies no working hours (e.g., leave/festival/company leave), the UI makes it clear how working time will be treated (e.g., 0) and prevents inconsistent time inputs.",
+        "Errors from backend mutations are shown as readable English messages (e.g., via existing toast/alert patterns).",
+        "After saving, React Query caches for attendance data relevant to the calendar (selected date entry and month range view) are invalidated/refetched."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+          "operation": "create",
+          "description": "Create an editor panel for a selected YYYY-MM-DD date that can view/edit an AttendanceDayEntry: status select (present/leave/halfDay/weeklyOff/festival/companyLeave) and optional check-in/check-out time inputs when applicable. Include validation to disable/clear time fields for non-working statuses and show clear English helper/error text. Use shadcn-ui form components (Select/Input/Alert/Button). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useAttendance.ts",
+          "operation": "modify",
+          "description": "Add mutations/queries for date-wise attendance editing using existing backend actor capabilities (getAttendanceEntry, editAttendanceEntry). On successful save, invalidate/refetch the selected-date query and the currently viewed month-range query so the calendar immediately reflects changes."
+        },
+        {
+          "path": "frontend/src/pages/AttendanceTab.tsx",
+          "operation": "modify",
+          "description": "Integrate AttendanceDateEditor with the month calendar: when a date is selected, fetch its entry (or show empty state) and allow saving updates. Display backend errors using getUserFriendlyError/toast patterns in English, and refresh the calendar/editor state after save. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
       "id": "REQ-6",
-      "summary": "Add frontend PDF download for weekly/monthly/yearly expense reports with filenames and totals reflecting the selected range.",
+      "summary": "Add an admin-only UI in Attendance to manage global holidays (festival/company leave) and display them in the month calendar for all users.",
       "acceptanceCriteria": [
-        "The Regular Expense page provides a UI control to select: Weekly, Monthly, or Yearly report type.",
-        "A \"Download PDF\" action generates a PDF using the selected report type.",
-        "The PDF filename clearly indicates the selected range (weekly/monthly/yearly) and the covered dates.",
-        "The PDF table includes at minimum: Date, Type, Amount, and includes totals appropriate to the selected range (e.g., total amount for the period)."
+        "Attendance UI includes a section (e.g., within Attendance settings) to manage global holidays: add/edit holiday name, date (YYYY-MM-DD via date picker), and type (Festival vs Company Leave).",
+        "Holiday list supports viewing holidays for the currently viewed month and deleting an existing holiday date.",
+        "If the current user is not authorized to manage holidays, the management controls are hidden or disabled with a clear English explanation.",
+        "Calendar month view reflects global holidays (festival/company leave) without requiring users to manually create attendance entries for those dates."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/lib/expenses/expenseReport.ts",
+          "path": "frontend/src/hooks/useHolidays.ts",
           "operation": "create",
-          "description": "Create helper utilities to (1) compute weekly/monthly/yearly date ranges, (2) filter expense entries for the selected range, (3) compute totals, and (4) build export data (headers/rows) suitable for the existing exportToPdf utility."
+          "description": "Create React Query hooks for global holidays using existing backend actor capabilities: fetch all holidays (and filter client-side for the currently viewed month), fetch caller admin status, and admin-only mutations to create/update/delete holidays. Ensure mutations invalidate the holidays query so the calendar updates. Use the existing actor/identity readiness patterns. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/RegularExpenseTab.tsx",
+          "path": "frontend/src/components/attendance/HolidayManager.tsx",
+          "operation": "create",
+          "description": "Create an admin-only holiday management section for Attendance: month-scoped list, add/edit form (date picker input type='date', holiday type selector, optional name/label field if supported by backend; otherwise clearly communicate the limitation in UI), and delete action with confirmation. Hide or disable controls for non-admin users with a clear English explanation. Use shadcn-ui components (Card/Dialog/Input/Select/Table/Button/Alert). Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/AttendanceTab.tsx",
           "operation": "modify",
-          "description": "Add report type selection (Weekly/Monthly/Yearly) and a \"Download PDF\" action that uses the existing frontend PDF export utility (frontend/src/lib/export/exportPdf.ts) to generate a report matching the selection; ensure the generated filename includes the report type and covered dates, and include a totals row/section. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
+          "description": "Wire HolidayManager into the Attendance UI (e.g., inside Settings tab or alongside the calendar area). Also ensure the month calendar receives month-scoped holidays so it can visually mark festival vs company leave days for all users. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
+          "operation": "modify",
+          "description": "Update the calendar rendering to accept and display global holiday markers (festival/company leave) on relevant dates, distinct from regular attendance-entry markers and from 'today'. Verify the component's usage instructions before implementing."
         }
       ]
     }

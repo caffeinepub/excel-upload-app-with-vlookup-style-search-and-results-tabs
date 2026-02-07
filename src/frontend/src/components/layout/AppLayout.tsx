@@ -4,12 +4,13 @@ import { InAppReminderNotifier } from '../reminders/InAppReminderNotifier';
 
 interface AppLayoutProps {
   children: ReactNode;
+  onNavigate?: (tab: string) => void;
 }
 
-export function AppLayout({ children }: AppLayoutProps) {
+export function AppLayout({ children, onNavigate }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      <AppHeader />
+      <AppHeader onNavigate={onNavigate} />
       <main className="container mx-auto px-4 py-8 max-w-7xl">
         {children}
       </main>

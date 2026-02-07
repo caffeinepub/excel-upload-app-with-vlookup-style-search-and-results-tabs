@@ -1,75 +1,91 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T05:07:23.605Z",
-  "summary": "Implemented a new Regular Expense tab with hooks and PDF report utilities, added History and Regular Expense items to the desktop sidebar, and added backend APIs for budgets/expenses. However, the diff also removes/neutralizes other existing backend-dependent features (reminders/calendar/todo/notes/history persistence) that were not requested, and some requested UI behaviors are not evidenced in the truncated diff (Deskboard button; explicit logged-out blocking message).",
+  "generatedAt": "2026-02-07T08:01:06.386Z",
+  "summary": "Diff implements major parts of the attendance calendar UI, adds new attendance status (#companyLeave), introduces global holidays state + admin-gated CRUD methods, and adds frontend hooks/components for month calendar, per-date editor, and holiday management. However, several BuildRequest acceptance criteria are either not evidenced in the diff or are only partially implemented (notably holiday name/label, date-range holiday listing, and summary logic including global holidays).",
   "missing_requirements": [
     {
-      "id": "REQ-3",
-      "requirement": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
-      "reason": "DeskboardTab.tsx is truncated and does not show any added desktop-only button or navigation action to the new \"regular-expense\" tab; only the icon import (Wallet) is visible, which is insufficient to confirm the button exists and is hidden on <lg.",
-      "evidence": [
-        "frontend/src/pages/DeskboardTab.tsx (truncated)"
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "requirement": "If the user is not logged in, the Regular Expense page shows an English message indicating login is required to manage expenses, and prevents submitting changes.",
-      "reason": "RegularExpenseTab.tsx shows `isAuthenticated` checks that early-return in handlers, but the truncated content does not show a logged-out message/guard UI for the page itself.",
-      "evidence": [
-        "frontend/src/pages/RegularExpenseTab.tsx (truncated)"
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "requirement": "Add backend persistence for per-user budgets and expense entries.",
-      "reason": "backend/main.mo defines budgets/expenses maps and nextExpenseId as non-stable `let/var` values in the snippet; there is no evidence they are stored in stable variables or otherwise persisted across upgrades. A migration file is added, but it initializes everything empty, which does not demonstrate persistence of new data.",
+      "id": "REQ-2",
+      "requirement": "Global holidays must include fields for date, name/label, and type (festival vs company leave).",
+      "reason": "Backend HolidayEntry shown in the diff contains only { date; holidayType } and no name/label field; frontend HolidayManager UI also provides no name input/display.",
       "evidence": [
         "backend/main.mo",
-        "backend/migration.mo"
+        "frontend/src/components/attendance/HolidayManager.tsx"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "requirement": "Backend exposes a query method to list global holidays within an inclusive date range (start YYYY-MM-DD, end YYYY-MM-DD).",
+      "reason": "Frontend hook calls actor.getAllHolidays() (implying a non-range query), and the visible backend diff shows only create/update/delete holiday methods (range-list method is not evidenced).",
+      "evidence": [
+        "frontend/src/hooks/useHolidays.ts",
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Holiday management UI allows add/edit holiday name, date (YYYY-MM-DD), and type (Festival vs Company Leave).",
+      "reason": "HolidayManager shows controls for date and type only; no name field is present in the shown UI code.",
+      "evidence": [
+        "frontend/src/components/attendance/HolidayManager.tsx"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "requirement": "Attendance summary logic counts festival and company leave correctly over a date range, including counting global holidays even when the user has no stored AttendanceDayEntry for that date.",
+      "reason": "Although AttendanceSummary type now includes festivalDays and companyLeaveDays, the diff excerpt does not show summary computation updated to incorporate globalHolidays (especially for days without stored user entries).",
+      "evidence": [
+        "backend/main.mo"
+      ]
+    },
+    {
+      "id": "REQ-1",
+      "requirement": "Backend exposes methods to (a) fetch a single AttendanceDayEntry (or null) by arbitrary date, (b) upsert an AttendanceDayEntry by date, and (c) list attendance entries in an inclusive date range, all permission-checked like existing attendance methods.",
+      "reason": "Frontend imports/uses hooks like useGetAttendanceEntry/useEditAttendanceEntry, but the backend diff excerpt does not show the new date-based query/upsert/range-list methods or their AccessControl checks; with truncated backend file, these are not verifiable from provided evidence.",
+      "evidence": [
+        "backend/main.mo",
+        "frontend/src/pages/AttendanceTab.tsx",
+        "frontend/src/hooks/useAttendance.ts"
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "requirement": "Holiday list supports viewing holidays for the currently viewed month and deleting an existing holiday date, sourced from a backend month/range query (not necessarily fetching all holidays globally).",
+      "reason": "UI filters holidays client-side after fetching all holidays via getAllHolidays(); a month/range-based backend query is not evidenced.",
+      "evidence": [
+        "frontend/src/components/attendance/HolidayManager.tsx",
+        "frontend/src/hooks/useHolidays.ts"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Disabling/removing backend support for reminders, calendar events, to-do items, notes, and history persistence (replacing hooks/mutations with no-ops or errors).",
-      "reason": "The BuildRequest only asked to add Regular Expense tracking, PDF reports, and ensure sidebar History access. The diff introduces broad unrelated behavior changes indicating these features are \"no longer supported\" and returns empty data / throws errors.",
+      "description": "Added a migration module and wired actor migration (with migration = Migration.run).",
+      "reason": "BuildRequest did not request a data migration system explicitly (though it may be necessary to evolve stable state).",
       "evidence": [
-        "frontend/src/hooks/useProductivityMutations.ts",
-        "frontend/src/hooks/useProductivityQueries.ts",
-        "frontend/src/hooks/useQueries.ts (mentioned in frontend-file-summaries.txt)"
-      ]
-    },
-    {
-      "description": "Migration that appears to drop all previous user data by returning empty maps and resetting IDs.",
-      "reason": "The migration’s `run` function ignores the old state contents and returns a new actor state with empty `budgets`, `expenses`, and `userProfiles`, and `nextExpenseId = 0`. The BuildRequest did not request wiping prior data.",
-      "evidence": [
-        "backend/migration.mo"
-      ]
-    },
-    {
-      "description": "Backend actor refactored to only include profiles/budgets/expenses (implied removal of prior reminder/calendar/todo/note/history APIs).",
-      "reason": "BuildRequest constraint was to keep backend as a single Motoko actor and add expense APIs; it did not request removing other existing APIs. The shown main.mo snippet defines only expense-related types and profile methods plus authorization mixin, suggesting a breaking change beyond scope.",
-      "evidence": [
+        "backend/migration.mo",
         "backend/main.mo"
+      ]
+    },
+    {
+      "description": "Admin-check query method exposed to frontend via useIsCallerAdmin()/actor.isCallerAdmin().",
+      "reason": "BuildRequest required holiday mutations be admin-only but did not explicitly require a dedicated isCallerAdmin API; this is an extra capability beyond the stated AC.",
+      "evidence": [
+        "frontend/src/hooks/useHolidays.ts"
       ]
     }
   ],
-  "confidence": 0.63,
+  "confidence": 0.68,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/App.tsx",
-    "frontend/src/components/layout/DesktopSidebarNav.tsx",
-    "frontend/src/hooks/useInAppReminderNotifications.ts",
-    "frontend/src/hooks/useProductivityMutations.ts",
-    "frontend/src/hooks/useProductivityQueries.ts",
-    "frontend/src/hooks/useRegularExpense.ts",
-    "frontend/src/lib/expenses/expenseReport.ts",
-    "frontend/src/pages/DeskboardTab.tsx",
-    "frontend/src/pages/RegularExpenseTab.tsx",
-    "frontend/src/pages/RemindersTab.tsx",
+    "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+    "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
+    "frontend/src/components/attendance/HolidayManager.tsx",
+    "frontend/src/hooks/useAttendance.ts",
+    "frontend/src/hooks/useHolidays.ts",
+    "frontend/src/pages/AttendanceTab.tsx",
     "project_state.json"
   ]
 }

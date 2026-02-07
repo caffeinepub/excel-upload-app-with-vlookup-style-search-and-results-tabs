@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react';
 import { useAppState } from '../state/appState';
-import { parseWorkbook, getSheetPreview } from '../lib/excel/parseWorkbook';
+import { useAddHistoryEntry } from '../hooks/useQueries';
+import { parseWorkbook } from '../lib/excel/parseWorkbook';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Label } from '../components/ui/label';
@@ -8,12 +9,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Alert, AlertDescription } from '../components/ui/alert';
 import { DataPreviewTable } from '../components/table/DataPreviewTable';
 import { Upload, FileSpreadsheet, AlertCircle, RefreshCw } from 'lucide-react';
+import { HistoryType } from '../backend';
 
 export function UploadTab() {
   const { workbook, replaceWorkbook, uploadLoading, uploadError, setUploadLoading, setUploadError } = useAppState();
   const [parsedData, setParsedData] = useState<Map<string, any> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
+  const addHistory = useAddHistoryEntry();
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -51,6 +54,12 @@ export function UploadTab() {
       });
       
       setUploadError(null);
+
+      // Record history entry for upload
+      addHistory.mutate({
+        entryType: HistoryType.upload,
+        details: `Uploaded workbook: ${file.name} with ${parsed.sheetNames.length} sheet(s)`,
+      });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to parse Excel file. Please try again.';
       setUploadError(errorMessage);
@@ -91,40 +100,49 @@ export function UploadTab() {
     return (
       <div className="space-y-6">
         <Card className="border-2 border-dashed">
-          <CardHeader className="text-center pb-4">
-            <div className="mx-auto mb-4">
-              <img
-                src="/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
-                alt="Upload Excel"
-                className="w-full max-w-xs mx-auto rounded-lg animate-flip-and-rotate motion-reduce:animate-none"
-              />
+          <CardHeader className="text-center">
+            <div className="flex justify-center mb-4">
+              <div className="relative">
+                <img
+                  src="/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
+                  alt="Crystal Atlas"
+                  className="max-w-xs w-full h-auto animate-flip-and-rotate motion-reduce:animate-none"
+                />
+              </div>
             </div>
-            <CardTitle className="text-2xl">Upload Your Excel File</CardTitle>
+            <CardTitle className="text-2xl">Upload Excel File</CardTitle>
             <CardDescription>
-              Select an .xlsx file to get started with VLOOKUP searches and data analysis
+              Select an Excel file (.xlsx, .xls) to begin working with your data
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col items-center gap-4">
-            <Label
-              htmlFor="file-upload"
-              className="cursor-pointer flex flex-col items-center gap-3 p-8 border-2 border-dashed rounded-lg hover:border-primary transition-colors w-full"
-            >
-              <Upload className="w-12 h-12 text-muted-foreground" />
-              <span className="text-sm font-medium">Click to browse or drag and drop</span>
-              <span className="text-xs text-muted-foreground">Supports .xlsx files</span>
-            </Label>
             <input
               ref={fileInputRef}
-              id="file-upload"
               type="file"
-              accept=".xlsx"
+              accept=".xlsx,.xls"
               onChange={handleFileChange}
-              disabled={uploadLoading}
               className="hidden"
+              id="file-upload"
             />
-            {uploadLoading && <p className="text-sm text-muted-foreground">Loading file...</p>}
+            <Label
+              htmlFor="file-upload"
+              className="flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg cursor-pointer hover:bg-primary/90 transition-colors"
+            >
+              {uploadLoading ? (
+                <>
+                  <RefreshCw className="w-5 h-5 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-5 h-5" />
+                  Choose File
+                </>
+              )}
+            </Label>
+
             {uploadError && (
-              <Alert variant="destructive">
+              <Alert variant="destructive" className="w-full">
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{uploadError}</AlertDescription>
               </Alert>
@@ -135,74 +153,92 @@ export function UploadTab() {
     );
   }
 
-  const previewData = workbook.sheetData ? getSheetPreview(workbook.sheetData, 20) : null;
-  
-  // Guard the Select value: ensure it's in the available options
-  const safeSelectedSheet = workbook.sheetNames.includes(workbook.selectedSheet) 
-    ? workbook.selectedSheet 
-    : workbook.sheetNames[0] || '';
+  if (!workbook.sheetData) {
+    return (
+      <div className="space-y-6">
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            Failed to load sheet data. Please try uploading the file again.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      {uploadError && (
-        <Alert variant="destructive">
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>{uploadError}</AlertDescription>
-        </Alert>
-      )}
-      
       <Card>
         <CardHeader>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-            <div className="flex items-center gap-3 min-w-0">
-              <FileSpreadsheet className="w-6 h-6 text-primary flex-shrink-0" />
-              <div className="min-w-0">
-                <CardTitle className="truncate">File Loaded: {workbook.fileName}</CardTitle>
-                <CardDescription>Select a sheet to preview its data</CardDescription>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <FileSpreadsheet className="w-6 h-6 text-primary" />
+              <div>
+                <CardTitle>{workbook.fileName}</CardTitle>
+                <CardDescription>
+                  {workbook.sheetData.headers.length} columns × {workbook.sheetData.rows.length} rows
+                </CardDescription>
               </div>
             </div>
-            <Button onClick={handleReplaceFile} variant="outline" size="sm" disabled={uploadLoading} className="flex-shrink-0">
-              <RefreshCw className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
-              Replace Excel
+            <input
+              ref={replaceInputRef}
+              type="file"
+              accept=".xlsx,.xls"
+              onChange={handleFileChange}
+              className="hidden"
+              id="replace-file-upload"
+            />
+            <Button
+              variant="outline"
+              onClick={handleReplaceFile}
+              disabled={uploadLoading}
+            >
+              {uploadLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Replace File
+                </>
+              )}
             </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="sheet-select">Select Sheet</Label>
-            <Select value={safeSelectedSheet} onValueChange={handleSheetChange}>
-              <SelectTrigger id="sheet-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {workbook.sheetNames.map((name) => (
-                  <SelectItem key={name} value={name}>
-                    {name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {previewData && (
+          {workbook.sheetNames.length > 1 && (
             <div className="space-y-2">
-              <Label>Data Preview (First 20 Rows)</Label>
-              <DataPreviewTable data={previewData} />
+              <Label htmlFor="sheet-select">Select Sheet</Label>
+              <Select value={workbook.selectedSheet} onValueChange={handleSheetChange}>
+                <SelectTrigger id="sheet-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {workbook.sheetNames.map((name) => (
+                    <SelectItem key={name} value={name}>
+                      {name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           )}
+
+          {uploadError && (
+            <Alert variant="destructive">
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>{uploadError}</AlertDescription>
+            </Alert>
+          )}
+
+          <div>
+            <h3 className="text-lg font-semibold mb-3">Data Preview</h3>
+            <DataPreviewTable data={workbook.sheetData} />
+          </div>
         </CardContent>
       </Card>
-
-      {/* Hidden file input for replace functionality */}
-      <input
-        ref={replaceInputRef}
-        id="file-upload-replace"
-        type="file"
-        accept=".xlsx"
-        onChange={handleFileChange}
-        disabled={uploadLoading}
-        className="hidden"
-      />
     </div>
   );
 }

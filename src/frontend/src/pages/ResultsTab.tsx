@@ -1,99 +1,111 @@
+import { useState } from 'react';
 import { useAppState } from '../state/appState';
+import { useAddHistoryEntry } from '../hooks/useQueries';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import { Input } from '../components/ui/input';
 import { Alert, AlertDescription } from '../components/ui/alert';
+import { HorizontalTableScroll } from '../components/table/HorizontalTableScroll';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
 import { Badge } from '../components/ui/badge';
-import { Label } from '../components/ui/label';
-import { CheckCircle2, XCircle, Info, Download, GitCompare, Edit2, Save, X as XIcon } from 'lucide-react';
-import { useState, useMemo, useEffect } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { FileText, Download, AlertCircle, Edit2, FileSpreadsheet, X } from 'lucide-react';
 import { exportToExcel } from '../lib/export/exportXlsx';
 import { exportToPdf } from '../lib/export/exportPdf';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { HorizontalTableScroll } from '../components/table/HorizontalTableScroll';
-import { UpdateCheckingResultsSearchBar } from '../components/updateChecking/UpdateCheckingResultsSearchBar';
-import { filterComparisonRows, MatchType } from '../lib/compare/filterComparisonRows';
-import type { MultiSearchResult } from '../state/appState';
+import { HistoryType } from '../backend';
+import { ResultRowEditModal } from '../components/results/ResultRowEditModal';
+import { applyRowEdits } from '../lib/results/applyRowEdits';
+import { filterExportRows, getAvailableFilterColumns, getAvailableFilterValues } from '../lib/results/exportFilters';
 
 interface ResultsTabProps {
   onNavigateToUpdateChecking?: () => void;
 }
 
+type EditedRowsMap = Map<number, (string | number | boolean | null)[]>;
+
 export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
-  const { workbook, searchParams, searchResult, setSearchResult, updateCheckingState, updateWorkbookRow } = useAppState();
+  const { vlookupResults, filterResults, updateCheckingResults, workbook } = useAppState();
+  const addHistory = useAddHistoryEntry();
   const [exporting, setExporting] = useState(false);
-  
-  // Search state for Update Checking results
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchMatchType, setSearchMatchType] = useState<MatchType>('contains');
 
-  // Edit state for VLOOKUP results
+  // Edit modal state
+  const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [editedRow, setEditedRow] = useState<(string | number | boolean | null)[]>([]);
+  const [editingRowData, setEditingRowData] = useState<(string | number | boolean | null)[]>([]);
+  const [editingRowHeaders, setEditingRowHeaders] = useState<string[]>([]);
+  const [editedRows, setEditedRows] = useState<EditedRowsMap>(new Map());
 
-  // Debug logging
-  useEffect(() => {
-    console.log('ResultsTab - searchResult:', searchResult);
-    console.log('ResultsTab - updateCheckingState.comparisonResult:', updateCheckingState.comparisonResult);
-  }, [searchResult, updateCheckingState.comparisonResult]);
+  // Export filter state
+  const [filterColumn, setFilterColumn] = useState<string>('');
+  const [filterValue, setFilterValue] = useState<string>('');
 
-  const handleClearSearch = () => {
-    setSearchKeyword('');
+  const hasVlookupResults = vlookupResults && vlookupResults.length > 0;
+  const hasFilterResults = filterResults && filterResults.filteredRows.length > 0;
+  const hasUpdateCheckingResults = updateCheckingResults && updateCheckingResults.rows.length > 0;
+
+  const handleOpenEditModal = (rowIndex: number, currentData: (string | number | boolean | null)[], headers: string[]) => {
+    setEditingRowIndex(rowIndex);
+    setEditingRowData([...currentData]);
+    setEditingRowHeaders(headers);
+    setEditModalOpen(true);
   };
 
-  const handleStartEdit = (rowIndex: number, currentRow: (string | number | boolean | null)[]) => {
-    setEditingRowIndex(rowIndex);
-    setEditedRow([...currentRow]);
+  const handleSaveEdit = (editedData: (string | number | boolean | null)[]) => {
+    if (editingRowIndex === null) return;
+    
+    const newEditedRows = new Map(editedRows);
+    newEditedRows.set(editingRowIndex, editedData);
+    setEditedRows(newEditedRows);
+    
+    setEditModalOpen(false);
+    setEditingRowIndex(null);
+    setEditingRowData([]);
+    setEditingRowHeaders([]);
   };
 
   const handleCancelEdit = () => {
+    setEditModalOpen(false);
     setEditingRowIndex(null);
-    setEditedRow([]);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingRowIndex !== null && workbook?.sheetData) {
-      updateWorkbookRow(editingRowIndex, editedRow);
-      setEditingRowIndex(null);
-      setEditedRow([]);
-      
-      // Show success message
-      alert('Row updated successfully. Changes are saved in memory and will be included in exports.');
-    }
-  };
-
-  const handleCellEdit = (colIndex: number, value: string) => {
-    const newRow = [...editedRow];
-    // Try to preserve type
-    let parsedValue: string | number | boolean | null = value;
-    if (value === '') {
-      parsedValue = null;
-    } else if (!isNaN(Number(value)) && value.trim() !== '') {
-      parsedValue = Number(value);
-    } else if (value.toLowerCase() === 'true') {
-      parsedValue = true;
-    } else if (value.toLowerCase() === 'false') {
-      parsedValue = false;
-    }
-    newRow[colIndex] = parsedValue;
-    setEditedRow(newRow);
+    setEditingRowData([]);
+    setEditingRowHeaders([]);
   };
 
   const handleExportVlookupExcel = async () => {
-    if (!searchResult || !searchParams || !workbook?.sheetData) return;
+    if (!hasVlookupResults || !vlookupResults || !workbook || !workbook.sheetData) return;
 
     setExporting(true);
     try {
-      const multiResult = searchResult as MultiSearchResult;
-      
-      // Export full workbook with edits
+      // Get all rows from VLOOKUP results
+      const allRows = vlookupResults
+        .filter((r) => r.result.found && r.result.fullRow)
+        .map((r) => r.result.fullRow!);
+
+      // Apply edits
+      const exportRows = applyRowEdits(
+        allRows.map(r => r.data),
+        editedRows,
+        allRows.map(r => r.index)
+      );
+
+      // Apply export filter
+      const filteredRows = filterExportRows(
+        exportRows,
+        workbook.sheetData.headers,
+        filterColumn,
+        filterValue
+      );
+
       await exportToExcel(
         {
           headers: workbook.sheetData.headers,
-          rows: workbook.sheetData.rows,
+          rows: filteredRows,
         },
-        `crystal-atlas-workbook-edited-${Date.now()}.xlsx`
+        'crystal-atlas-vlookup-results.xlsx'
       );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} VLOOKUP result(s) to Excel`,
+      });
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to Excel. Please try again.');
@@ -103,24 +115,39 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   };
 
   const handleExportVlookupPdf = async () => {
-    if (!searchResult || !searchParams || !workbook?.sheetData) return;
+    if (!hasVlookupResults || !vlookupResults || !workbook || !workbook.sheetData) return;
 
     setExporting(true);
     try {
-      const multiResult = searchResult as MultiSearchResult;
-      
-      // Export matched rows only
-      const matchedRows = multiResult.results
-        .filter(r => r.found && r.fullRow)
-        .map(r => r.fullRow!);
+      const allRows = vlookupResults
+        .filter((r) => r.result.found && r.result.fullRow)
+        .map((r) => r.result.fullRow!);
+
+      const exportRows = applyRowEdits(
+        allRows.map(r => r.data),
+        editedRows,
+        allRows.map(r => r.index)
+      );
+
+      const filteredRows = filterExportRows(
+        exportRows,
+        workbook.sheetData.headers,
+        filterColumn,
+        filterValue
+      );
 
       await exportToPdf(
         {
           headers: workbook.sheetData.headers,
-          rows: matchedRows,
+          rows: filteredRows,
         },
-        `crystal-atlas-vlookup-results-${Date.now()}.pdf`
+        'crystal-atlas-vlookup-results.pdf'
       );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} VLOOKUP result(s) to PDF`,
+      });
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to PDF. Please try again.');
@@ -129,58 +156,36 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     }
   };
 
-  // Filter comparison rows based on search - only show NEW rows
-  const filteredComparisonRows = useMemo(() => {
-    if (!updateCheckingState.comparisonResult) {
-      console.log('No comparison result available');
-      return null;
-    }
-    
-    // Only include NEW rows
-    const newRowsOnly = updateCheckingState.comparisonResult.rows.filter(row => row.status === 'new');
-    console.log('New rows only (before filtering):', newRowsOnly.length);
-    
-    const filtered = filterComparisonRows(
-      newRowsOnly,
-      searchKeyword,
-      searchMatchType,
-      updateCheckingState.comparisonResult.headers
-    );
-    
-    console.log('Filtered comparison rows:', filtered.length);
-    return filtered;
-  }, [updateCheckingState.comparisonResult, searchKeyword, searchMatchType]);
-
-  const handleExportComparisonExcel = async () => {
-    if (!updateCheckingState.comparisonResult || !filteredComparisonRows || filteredComparisonRows.length === 0) return;
+  const handleExportFilterExcel = async () => {
+    if (!hasFilterResults || !filterResults) return;
 
     setExporting(true);
     try {
-      const result = updateCheckingState.comparisonResult;
-      const keyColumnName = updateCheckingState.keyColumn || 'Key';
-      
-      // Build headers: Key column + all New sheet columns (excluding the key column to avoid duplication)
-      const newSheetHeaders = result.headers;
-      const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
-      
-      // Filter out the key column from trailing headers
-      const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
-      const exportHeaders = [keyColumnName, ...trailingHeaders];
-      
-      // Build rows: Key value + all New sheet row values (excluding the key column cell)
-      const rows = filteredComparisonRows.map((row) => {
-        const keyValue = row.keyValue === null || row.keyValue === undefined ? '' : String(row.keyValue);
-        const trailingCells = row.newData.filter((_, idx) => idx !== keyColumnIndex);
-        return [keyValue, ...trailingCells];
-      });
-      
+      const exportRows = applyRowEdits(
+        filterResults.filteredRows.map(r => r.data),
+        editedRows,
+        filterResults.filteredRows.map(r => r.index)
+      );
+
+      const filteredRows = filterExportRows(
+        exportRows,
+        filterResults.headers,
+        filterColumn,
+        filterValue
+      );
+
       await exportToExcel(
         {
-          headers: exportHeaders,
-          rows,
+          headers: filterResults.headers,
+          rows: filteredRows,
         },
-        `crystal-atlas-new-items-${Date.now()}.xlsx`
+        'crystal-atlas-filter-results.xlsx'
       );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} filter result(s) to Excel`,
+      });
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to Excel. Please try again.');
@@ -189,36 +194,36 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     }
   };
 
-  const handleExportComparisonPdf = async () => {
-    if (!updateCheckingState.comparisonResult || !filteredComparisonRows || filteredComparisonRows.length === 0) return;
+  const handleExportFilterPdf = async () => {
+    if (!hasFilterResults || !filterResults) return;
 
     setExporting(true);
     try {
-      const result = updateCheckingState.comparisonResult;
-      const keyColumnName = updateCheckingState.keyColumn || 'Key';
-      
-      // Build headers: Key column + all New sheet columns (excluding the key column to avoid duplication)
-      const newSheetHeaders = result.headers;
-      const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
-      
-      // Filter out the key column from trailing headers
-      const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
-      const exportHeaders = [keyColumnName, ...trailingHeaders];
-      
-      // Build rows: Key value + all New sheet row values (excluding the key column cell)
-      const rows = filteredComparisonRows.map((row) => {
-        const keyValue = row.keyValue === null || row.keyValue === undefined ? '' : String(row.keyValue);
-        const trailingCells = row.newData.filter((_, idx) => idx !== keyColumnIndex);
-        return [keyValue, ...trailingCells];
-      });
-      
+      const exportRows = applyRowEdits(
+        filterResults.filteredRows.map(r => r.data),
+        editedRows,
+        filterResults.filteredRows.map(r => r.index)
+      );
+
+      const filteredRows = filterExportRows(
+        exportRows,
+        filterResults.headers,
+        filterColumn,
+        filterValue
+      );
+
       await exportToPdf(
         {
-          headers: exportHeaders,
-          rows,
+          headers: filterResults.headers,
+          rows: filteredRows,
         },
-        `crystal-atlas-new-items-${Date.now()}.pdf`
+        'crystal-atlas-filter-results.pdf'
       );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} filter result(s) to PDF`,
+      });
     } catch (error) {
       console.error('Export failed:', error);
       alert('Failed to export to PDF. Please try again.');
@@ -227,347 +232,581 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     }
   };
 
-  // Determine which results to show
-  const hasComparisonResults = updateCheckingState.comparisonResult !== null;
-  const hasVlookupResults = searchResult !== null;
+  const handleExportUpdateCheckingExcel = async () => {
+    if (!hasUpdateCheckingResults || !updateCheckingResults) return;
 
-  console.log('Display decision - hasComparisonResults:', hasComparisonResults, 'hasVlookupResults:', hasVlookupResults);
+    setExporting(true);
+    try {
+      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
+      
+      const exportRows = applyRowEdits(
+        newRows.map(r => r.newData),
+        editedRows,
+        newRows.map((_, idx) => idx)
+      );
 
-  // Show comparison results if available - only new items
-  if (hasComparisonResults && filteredComparisonRows !== null) {
-    const result = updateCheckingState.comparisonResult!;
-    const displayRowCount = filteredComparisonRows.length;
-    const keyColumnName = updateCheckingState.keyColumn || 'Key';
+      const headers = ['Key', ...updateCheckingResults.headers];
+      const rowsWithKey = exportRows.map((row, idx) => [
+        String(newRows[idx].keyValue),
+        ...row,
+      ]);
 
-    console.log('Displaying comparison results, row count:', displayRowCount);
+      const filteredRows = filterExportRows(
+        rowsWithKey,
+        headers,
+        filterColumn,
+        filterValue
+      );
 
-    // Find key column index to avoid duplication
-    const newSheetHeaders = result.headers;
-    const keyColumnIndex = newSheetHeaders.findIndex(h => h.toLowerCase() === keyColumnName.toLowerCase());
-    const trailingHeaders = newSheetHeaders.filter((_, idx) => idx !== keyColumnIndex);
+      await exportToExcel(
+        {
+          headers,
+          rows: filteredRows,
+        },
+        'crystal-atlas-update-checking-results.xlsx'
+      );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} update checking result(s) to Excel`,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export to Excel. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleExportUpdateCheckingPdf = async () => {
+    if (!hasUpdateCheckingResults || !updateCheckingResults) return;
+
+    setExporting(true);
+    try {
+      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
+      
+      const exportRows = applyRowEdits(
+        newRows.map(r => r.newData),
+        editedRows,
+        newRows.map((_, idx) => idx)
+      );
+
+      const headers = ['Key', ...updateCheckingResults.headers];
+      const rowsWithKey = exportRows.map((row, idx) => [
+        String(newRows[idx].keyValue),
+        ...row,
+      ]);
+
+      const filteredRows = filterExportRows(
+        rowsWithKey,
+        headers,
+        filterColumn,
+        filterValue
+      );
+
+      await exportToPdf(
+        {
+          headers,
+          rows: filteredRows,
+        },
+        'crystal-atlas-update-checking-results.pdf'
+      );
+
+      addHistory.mutate({
+        entryType: HistoryType.results,
+        details: `Exported ${filteredRows.length} update checking result(s) to PDF`,
+      });
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Failed to export to PDF. Please try again.');
+    } finally {
+      setExporting(false);
+    }
+  };
+
+  const handleResetFilters = () => {
+    setFilterColumn('');
+    setFilterValue('');
+  };
+
+  // Get current dataset for filter options
+  const getCurrentDataset = (): { headers: string[]; rows: (string | number | boolean | null)[][] } | null => {
+    if (hasVlookupResults && vlookupResults && workbook?.sheetData) {
+      const allRows = vlookupResults
+        .filter((r) => r.result.found && r.result.fullRow)
+        .map((r) => r.result.fullRow!.data);
+      return { headers: workbook.sheetData.headers, rows: allRows };
+    }
+    if (hasFilterResults && filterResults) {
+      return { headers: filterResults.headers, rows: filterResults.filteredRows.map(r => r.data) };
+    }
+    if (hasUpdateCheckingResults && updateCheckingResults) {
+      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
+      const headers = ['Key', ...updateCheckingResults.headers];
+      const rows = newRows.map(row => [row.keyValue, ...row.newData]);
+      return { headers, rows };
+    }
+    return null;
+  };
+
+  const currentDataset = getCurrentDataset();
+  const availableColumns = currentDataset ? getAvailableFilterColumns(currentDataset.headers) : [];
+  const availableValues = currentDataset && filterColumn
+    ? getAvailableFilterValues(currentDataset.rows, currentDataset.headers, filterColumn)
+    : [];
+
+  if (!hasVlookupResults && !hasFilterResults && !hasUpdateCheckingResults) {
+    return (
+      <div className="space-y-6">
+        <Alert>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            No results to display. Please perform a search, filter, or update checking operation first.
+          </AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
+
+  if (hasUpdateCheckingResults && updateCheckingResults) {
+    const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
 
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <GitCompare className="w-6 h-6 text-primary flex-shrink-0" />
-                <div className="min-w-0">
-                  <CardTitle className="break-words">Update Checking Results</CardTitle>
-                  <CardDescription className="break-words">
-                    Items present in the new file but not in the old file based on {keyColumnName}
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-primary" />
+                <div>
+                  <CardTitle>Update Checking Results</CardTitle>
+                  <CardDescription>
+                    Found {newRows.length} new item(s) in the updated file
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  onClick={handleExportComparisonExcel}
-                  disabled={exporting || displayRowCount === 0}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  Excel
-                </Button>
-                <Button
-                  onClick={handleExportComparisonPdf}
-                  disabled={exporting || displayRowCount === 0}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  PDF
-                </Button>
-                {onNavigateToUpdateChecking && (
-                  <Button onClick={onNavigateToUpdateChecking} variant="outline" size="sm">
-                    Re-run
-                  </Button>
-                )}
-              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Search Bar */}
-            <UpdateCheckingResultsSearchBar
-              keyword={searchKeyword}
-              matchType={searchMatchType}
-              onKeywordChange={setSearchKeyword}
-              onMatchTypeChange={setSearchMatchType}
-              onClear={handleClearSearch}
-            />
-
-            {/* Summary Card - Only New Items */}
-            <div className="grid grid-cols-1 gap-4">
-              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{displayRowCount}</div>
-                <div className="text-sm text-muted-foreground">
-                  {searchKeyword ? 'Filtered New Items' : 'New Items'}
+          <CardContent className="space-y-4">
+            {/* Export Filters */}
+            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Export Filters</h3>
+                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Column</label>
+                  <Select value={filterColumn} onValueChange={setFilterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select column..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableColumns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Value</label>
+                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select value..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableValues.map((val) => (
+                        <SelectItem key={val} value={val}>
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
+              {filterColumn && filterValue && (
+                <p className="text-xs text-muted-foreground">
+                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                </p>
+              )}
             </div>
 
-            {/* Show only new items */}
-            {displayRowCount > 0 ? (
-              <div className="space-y-3">
-                <Label className="flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  New Items (present in new file but not in old file)
-                </Label>
-                <ScrollArea className="h-[500px] rounded-md border">
-                  <HorizontalTableScroll className="p-4">
-                    <table className="w-full border-collapse">
-                      <thead className="sticky top-0 bg-background z-10">
-                        <tr className="border-b">
-                          <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                            {keyColumnName}
-                          </th>
-                          {trailingHeaders.map((header, idx) => (
-                            <th
-                              key={idx}
-                              className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap"
-                            >
-                              {header}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredComparisonRows.map((row, idx) => {
-                          const trailingCells = row.newData.filter((_, cellIdx) => cellIdx !== keyColumnIndex);
-                          return (
-                            <tr
-                              key={idx}
-                              className="border-b hover:bg-muted/50 transition-colors"
-                            >
-                              <td className="p-2 text-sm font-medium whitespace-nowrap">
-                                {row.keyValue === null || row.keyValue === undefined
-                                  ? '-'
-                                  : String(row.keyValue)}
-                              </td>
-                              {trailingCells.map((cell, cellIdx) => (
-                                <td key={cellIdx} className="p-2 text-sm whitespace-nowrap">
-                                  {cell === null || cell === undefined ? '-' : String(cell)}
-                                </td>
-                              ))}
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </HorizontalTableScroll>
-                </ScrollArea>
-              </div>
+            {/* Export Actions */}
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleExportUpdateCheckingExcel} disabled={exporting || newRows.length === 0} variant="outline" size="sm">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download Excel'}
+              </Button>
+              <Button onClick={handleExportUpdateCheckingPdf} disabled={exporting || newRows.length === 0} size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download PDF'}
+              </Button>
+            </div>
+
+            {newRows.length === 0 ? (
+              <Alert>
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription>
+                  No new items found. All keys in the new file exist in the old file.
+                </AlertDescription>
+              </Alert>
             ) : (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  {searchKeyword 
-                    ? `No items match your search criteria "${searchKeyword}".`
-                    : 'No new items found. All items in the new file already exist in the old file.'}
-                </AlertDescription>
-              </Alert>
+              <HorizontalTableScroll>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="whitespace-nowrap">Key</TableHead>
+                      {updateCheckingResults.headers.map((header, idx) => (
+                        <TableHead key={idx} className="whitespace-nowrap">
+                          {header}
+                        </TableHead>
+                      ))}
+                      <TableHead className="whitespace-nowrap">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {newRows.map((row, idx) => {
+                      const displayData = editedRows.has(idx) ? editedRows.get(idx)! : row.newData;
+                      return (
+                        <TableRow key={idx}>
+                          <TableCell className="font-medium whitespace-nowrap">
+                            {String(row.keyValue)}
+                          </TableCell>
+                          {displayData.map((cell, cellIdx) => (
+                            <TableCell key={cellIdx} className="whitespace-nowrap">
+                              {cell === null || cell === undefined ? '' : String(cell)}
+                            </TableCell>
+                          ))}
+                          <TableCell className="whitespace-nowrap">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleOpenEditModal(idx, row.newData, updateCheckingResults.headers)}
+                            >
+                              <Edit2 className="w-4 h-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </HorizontalTableScroll>
             )}
           </CardContent>
         </Card>
+
+        <ResultRowEditModal
+          open={editModalOpen}
+          onClose={handleCancelEdit}
+          onSave={handleSaveEdit}
+          rowData={editingRowData}
+          headers={editingRowHeaders}
+        />
       </div>
     );
   }
 
-  // Show VLOOKUP results
-  if (hasVlookupResults && workbook?.sheetData) {
-    const multiResult = searchResult as MultiSearchResult;
-    console.log('Displaying Multi-VLOOKUP results:', multiResult);
-    
+  if (hasVlookupResults && vlookupResults) {
+    const matchedCount = vlookupResults.filter((r) => r.result.found).length;
+
     return (
       <div className="space-y-6">
         <Card>
           <CardHeader>
-            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-              <div className="flex items-center gap-3 min-w-0">
-                <CheckCircle2 className="w-6 h-6 text-primary flex-shrink-0" />
-                <div className="min-w-0">
-                  <CardTitle>VLOOKUP Search Results</CardTitle>
-                  <CardDescription className="break-words">
-                    {multiResult.summary.foundCount} of {multiResult.summary.totalSearches} lookup values matched
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-primary" />
+                <div>
+                  <CardTitle>VLOOKUP Results</CardTitle>
+                  <CardDescription>
+                    {matchedCount} of {vlookupResults.length} value(s) matched
                   </CardDescription>
                 </div>
               </div>
-              <div className="flex gap-2 flex-wrap">
-                <Button
-                  onClick={handleExportVlookupExcel}
-                  disabled={exporting}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Export Full Workbook</span>
-                  <span className="sm:hidden">Excel</span>
-                </Button>
-                <Button
-                  onClick={handleExportVlookupPdf}
-                  disabled={exporting}
-                  variant="outline"
-                  size="sm"
-                >
-                  <Download className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Export Results PDF</span>
-                  <span className="sm:hidden">PDF</span>
-                </Button>
-              </div>
             </div>
           </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Summary */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 bg-muted/50 rounded-lg">
-                <div className="text-2xl font-bold">{multiResult.summary.totalSearches}</div>
-                <div className="text-sm text-muted-foreground">Total Searches</div>
+          <CardContent className="space-y-4">
+            {/* Export Filters */}
+            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Export Filters</h3>
+                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
               </div>
-              <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-900 rounded-lg">
-                <div className="text-2xl font-bold text-green-600">{multiResult.summary.foundCount}</div>
-                <div className="text-sm text-muted-foreground">Matches Found</div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Column</label>
+                  <Select value={filterColumn} onValueChange={setFilterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select column..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableColumns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Value</label>
+                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select value..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableValues.map((val) => (
+                        <SelectItem key={val} value={val}>
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
-              <div className="p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900 rounded-lg">
-                <div className="text-2xl font-bold text-red-600">{multiResult.summary.notFoundCount}</div>
-                <div className="text-sm text-muted-foreground">Not Found</div>
-              </div>
+              {filterColumn && filterValue && (
+                <p className="text-xs text-muted-foreground">
+                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                </p>
+              )}
             </div>
 
-            {/* Results Table */}
-            <div className="space-y-3">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <Label className="flex items-center gap-2">
-                  <Info className="w-4 h-4" />
-                  Matched Rows (editable)
-                </Label>
-                {editingRowIndex !== null && (
-                  <div className="flex gap-2">
-                    <Button onClick={handleSaveEdit} size="sm" variant="default">
-                      <Save className="w-4 h-4 mr-2" />
-                      Save Changes
-                    </Button>
-                    <Button onClick={handleCancelEdit} size="sm" variant="outline">
-                      <XIcon className="w-4 h-4 mr-2" />
-                      Cancel
-                    </Button>
-                  </div>
-                )}
-              </div>
-              
-              <ScrollArea className="h-[500px] rounded-md border">
-                <HorizontalTableScroll className="p-4">
-                  <table className="w-full border-collapse">
-                    <thead className="sticky top-0 bg-background z-10">
-                      <tr className="border-b">
-                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground w-24 whitespace-nowrap">
-                          Actions
-                        </th>
-                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                          Lookup Value
-                        </th>
-                        <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                          Status
-                        </th>
-                        {workbook.sheetData.headers.map((header, idx) => (
-                          <th
-                            key={idx}
-                            className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap"
-                          >
-                            {header}
-                          </th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {multiResult.results.map((result, idx) => {
-                        if (!result.found || !result.fullRow) {
-                          return (
-                            <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                              <td className="p-2 text-sm whitespace-nowrap">-</td>
-                              <td className="p-2 text-sm font-medium whitespace-nowrap">{result.lookupValue}</td>
-                              <td className="p-2 text-sm whitespace-nowrap">
-                                <Badge variant="secondary">
-                                  <XCircle className="w-3 h-3 mr-1" />
-                                  Not Found
-                                </Badge>
-                              </td>
-                              <td colSpan={workbook.sheetData?.headers.length || 1} className="p-2 text-sm text-muted-foreground whitespace-nowrap">
-                                {result.message}
-                              </td>
-                            </tr>
-                          );
-                        }
+            {/* Export Actions */}
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleExportVlookupExcel} disabled={exporting || matchedCount === 0} variant="outline" size="sm">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download Excel'}
+              </Button>
+              <Button onClick={handleExportVlookupPdf} disabled={exporting || matchedCount === 0} size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download PDF'}
+              </Button>
+            </div>
 
-                        const isEditing = editingRowIndex === result.rowIndex;
-                        const displayRow = isEditing ? editedRow : result.fullRow;
+            <HorizontalTableScroll>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="whitespace-nowrap">Lookup Value</TableHead>
+                    <TableHead className="whitespace-nowrap">Status</TableHead>
+                    {workbook && workbook.sheetData && workbook.sheetData.headers.map((header, idx) => (
+                      <TableHead key={idx} className="whitespace-nowrap">
+                        {header}
+                      </TableHead>
+                    ))}
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {vlookupResults.map((result, idx) => {
+                    const rowIndex = result.result.fullRow?.index;
+                    const displayData = rowIndex !== undefined && editedRows.has(rowIndex)
+                      ? editedRows.get(rowIndex)!
+                      : result.result.fullRow?.data;
 
-                        return (
-                          <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                            <td className="p-2 text-sm whitespace-nowrap">
-                              {!isEditing && (
-                                <Button
-                                  onClick={() => handleStartEdit(result.rowIndex!, result.fullRow!)}
-                                  size="sm"
-                                  variant="ghost"
-                                >
-                                  <Edit2 className="w-4 h-4" />
-                                </Button>
-                              )}
-                            </td>
-                            <td className="p-2 text-sm font-medium whitespace-nowrap">{result.lookupValue}</td>
-                            <td className="p-2 text-sm whitespace-nowrap">
-                              <Badge variant="default">
-                                <CheckCircle2 className="w-3 h-3 mr-1" />
-                                Found
-                              </Badge>
-                            </td>
-                            {displayRow.map((cell, cellIdx) => (
-                              <td key={cellIdx} className="p-2 text-sm">
-                                {isEditing ? (
-                                  <Input
-                                    value={cell === null || cell === undefined ? '' : String(cell)}
-                                    onChange={(e) => handleCellEdit(cellIdx, e.target.value)}
-                                    className="h-8 text-sm min-w-[100px]"
-                                  />
-                                ) : (
-                                  <span className="whitespace-nowrap">{cell === null || cell === undefined ? '-' : String(cell)}</span>
-                                )}
-                              </td>
+                    return (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium whitespace-nowrap">
+                          {result.lookupValue}
+                        </TableCell>
+                        <TableCell className="whitespace-nowrap">
+                          {result.result.found ? (
+                            <Badge variant="default">Match Found</Badge>
+                          ) : (
+                            <Badge variant="destructive">No Match</Badge>
+                          )}
+                        </TableCell>
+                        {result.result.found && displayData ? (
+                          <>
+                            {displayData.map((cell, cellIdx) => (
+                              <TableCell key={cellIdx} className="whitespace-nowrap">
+                                {cell === null || cell === undefined ? '' : String(cell)}
+                              </TableCell>
                             ))}
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </HorizontalTableScroll>
-              </ScrollArea>
-            </div>
-
-            {multiResult.summary.notFoundCount > 0 && (
-              <Alert>
-                <Info className="h-4 w-4" />
-                <AlertDescription>
-                  {multiResult.summary.notFoundCount} lookup value(s) did not match any rows in the key column.
-                </AlertDescription>
-              </Alert>
-            )}
+                            <TableCell className="whitespace-nowrap">
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                onClick={() =>
+                                  handleOpenEditModal(
+                                    result.result.fullRow!.index,
+                                    result.result.fullRow!.data,
+                                    workbook?.sheetData?.headers || []
+                                  )
+                                }
+                              >
+                                <Edit2 className="w-4 h-4" />
+                              </Button>
+                            </TableCell>
+                          </>
+                        ) : (
+                          <>
+                            {workbook && workbook.sheetData &&
+                              workbook.sheetData.headers.map((_, cellIdx) => (
+                                <TableCell key={cellIdx} className="text-muted-foreground whitespace-nowrap">
+                                  -
+                                </TableCell>
+                              ))}
+                            <TableCell className="whitespace-nowrap">-</TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </HorizontalTableScroll>
           </CardContent>
         </Card>
+
+        <ResultRowEditModal
+          open={editModalOpen}
+          onClose={handleCancelEdit}
+          onSave={handleSaveEdit}
+          rowData={editingRowData}
+          headers={editingRowHeaders}
+        />
       </div>
     );
   }
 
-  // No results yet
-  console.log('No results to display');
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>No Results Yet</CardTitle>
-        <CardDescription>
-          Run a VLOOKUP search in the Search tab or an update check to see results here.
-        </CardDescription>
-      </CardHeader>
-    </Card>
-  );
+  if (hasFilterResults && filterResults) {
+    return (
+      <div className="space-y-6">
+        <Card>
+          <CardHeader>
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <FileText className="w-6 h-6 text-primary" />
+                <div>
+                  <CardTitle>Filter Results</CardTitle>
+                  <CardDescription>
+                    {filterResults.filteredRows.length} row(s) match your filter criteria
+                  </CardDescription>
+                </div>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Export Filters */}
+            <div className="p-4 bg-muted/30 rounded-lg space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Export Filters</h3>
+                <Button variant="ghost" size="sm" onClick={handleResetFilters}>
+                  <X className="w-4 h-4 mr-1" />
+                  Clear
+                </Button>
+              </div>
+              <div className="grid sm:grid-cols-2 gap-3">
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Column</label>
+                  <Select value={filterColumn} onValueChange={setFilterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select column..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableColumns.map((col) => (
+                        <SelectItem key={col} value={col}>
+                          {col}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-medium">Filter by Value</label>
+                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select value..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {availableValues.map((val) => (
+                        <SelectItem key={val} value={val}>
+                          {val}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              {filterColumn && filterValue && (
+                <p className="text-xs text-muted-foreground">
+                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                </p>
+              )}
+            </div>
+
+            {/* Export Actions */}
+            <div className="flex gap-2 flex-wrap">
+              <Button onClick={handleExportFilterExcel} disabled={exporting || filterResults.filteredRows.length === 0} variant="outline" size="sm">
+                <FileSpreadsheet className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download Excel'}
+              </Button>
+              <Button onClick={handleExportFilterPdf} disabled={exporting || filterResults.filteredRows.length === 0} size="sm">
+                <Download className="w-4 h-4 mr-2" />
+                {exporting ? 'Exporting...' : 'Download PDF'}
+              </Button>
+            </div>
+
+            <HorizontalTableScroll>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    {filterResults.headers.map((header, idx) => (
+                      <TableHead key={idx} className="whitespace-nowrap">
+                        {header}
+                      </TableHead>
+                    ))}
+                    <TableHead className="whitespace-nowrap">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filterResults.filteredRows.map((row, idx) => {
+                    const displayData = editedRows.has(row.index) ? editedRows.get(row.index)! : row.data;
+                    return (
+                      <TableRow key={idx}>
+                        {displayData.map((cell, cellIdx) => (
+                          <TableCell key={cellIdx} className="whitespace-nowrap">
+                            {cell === null || cell === undefined ? '' : String(cell)}
+                          </TableCell>
+                        ))}
+                        <TableCell className="whitespace-nowrap">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleOpenEditModal(row.index, row.data, filterResults.headers)}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </HorizontalTableScroll>
+          </CardContent>
+        </Card>
+
+        <ResultRowEditModal
+          open={editModalOpen}
+          onClose={handleCancelEdit}
+          onSave={handleSaveEdit}
+          rowData={editingRowData}
+          headers={editingRowHeaders}
+        />
+      </div>
+    );
+  }
+
+  return null;
 }

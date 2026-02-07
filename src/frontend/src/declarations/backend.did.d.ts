@@ -10,34 +10,117 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AttendanceConfig {
+  'leavePolicy' : bigint,
+  'weeklyOffDays' : Array<bigint>,
+  'regularWorkingTime' : bigint,
+}
+export interface AttendanceDayEntry {
+  'status' : AttendanceStatus,
+  'checkIn' : [] | [Time],
+  'checkOut' : [] | [Time],
+  'workingTime' : bigint,
+}
+export type AttendanceStatus = { 'halfDay' : null } |
+  { 'present' : null } |
+  { 'festival' : null } |
+  { 'weeklyOff' : null } |
+  { 'companyLeave' : null } |
+  { 'leave' : null };
+export interface AttendanceSummary {
+  'halfDays' : bigint,
+  'weeklyOffDays' : bigint,
+  'breakdown' : Array<[string, AttendanceDayEntry]>,
+  'presentDays' : bigint,
+  'totalDays' : bigint,
+  'companyLeaveDays' : bigint,
+  'festivalDays' : bigint,
+  'totalWorkingTime' : bigint,
+  'leaveDays' : bigint,
+}
 export interface Budget {
   'monthlyLimit' : bigint,
   'lastUpdated' : string,
+  'dayLimit' : bigint,
   'savingsGoal' : bigint,
 }
 export interface ExpenseEntry {
   'id' : bigint,
   'date' : string,
-  'type' : string,
+  'time' : bigint,
   'description' : string,
+  'category' : string,
   'amount' : bigint,
 }
+export interface HistoryEntry {
+  'id' : bigint,
+  'entryType' : HistoryType,
+  'user' : Principal,
+  'timestamp' : Time,
+  'details' : string,
+}
+export type HistoryType = { 'expenseChange' : null } |
+  { 'budgetChange' : null } |
+  { 'search' : null } |
+  { 'results' : null } |
+  { 'upload' : null } |
+  { 'updateChecking' : null };
+export interface HolidayEntry { 'holidayType' : HolidayType, 'date' : string }
+export type HolidayType = { 'festival' : null } |
+  { 'companyLeave' : null };
+export interface Reminder {
+  'id' : bigint,
+  'date' : string,
+  'createdAt' : Time,
+  'time' : string,
+  'message' : string,
+}
+export type Time = bigint;
 export interface UserProfile { 'name' : string }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
 export interface _SERVICE {
   '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addExpense' : ActorMethod<[string, string, bigint, string], undefined>,
+  'addExpense' : ActorMethod<[bigint, string, string, string], bigint>,
+  'addHistory' : ActorMethod<[HistoryType, string], bigint>,
+  'addReminder' : ActorMethod<[string, string, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'checkIn' : ActorMethod<[string, AttendanceStatus], undefined>,
+  'checkOut' : ActorMethod<[string], undefined>,
+  'clearAllData' : ActorMethod<[], undefined>,
+  'clearHistory' : ActorMethod<[], undefined>,
+  'createHoliday' : ActorMethod<[string, HolidayType], undefined>,
+  'deleteExpense' : ActorMethod<[bigint], undefined>,
+  'deleteHoliday' : ActorMethod<[string], undefined>,
+  'deleteReminder' : ActorMethod<[bigint], undefined>,
+  'editAttendanceEntry' : ActorMethod<[string, AttendanceDayEntry], undefined>,
+  'editExpense' : ActorMethod<
+    [bigint, bigint, string, string, string],
+    undefined
+  >,
+  'filterByDate' : ActorMethod<[string], Array<ExpenseEntry>>,
+  'filterByType' : ActorMethod<[string], Array<ExpenseEntry>>,
+  'getAllHolidays' : ActorMethod<[], Array<HolidayEntry>>,
+  'getAttendanceConfig' : ActorMethod<[], [] | [AttendanceConfig]>,
+  'getAttendanceEntry' : ActorMethod<[string], [] | [AttendanceDayEntry]>,
+  'getAttendanceSummary' : ActorMethod<[[string, string]], AttendanceSummary>,
   'getBudget' : ActorMethod<[], [] | [Budget]>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
   'getExpensesForCaller' : ActorMethod<[], Array<ExpenseEntry>>,
+  'getFilteredHistory' : ActorMethod<[HistoryType], Array<HistoryEntry>>,
+  'getHistory' : ActorMethod<[], Array<HistoryEntry>>,
+  'getHoliday' : ActorMethod<[string], [] | [HolidayEntry]>,
+  'getRemindersForCaller' : ActorMethod<[], Array<Reminder>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'getVersion' : ActorMethod<[], string>,
+  'getWorkingTime' : ActorMethod<[string], bigint>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
-  'saveBudget' : ActorMethod<[bigint, bigint, string], undefined>,
+  'saveBudget' : ActorMethod<[bigint, bigint, bigint, string], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'setAttendanceConfig' : ActorMethod<[AttendanceConfig], undefined>,
+  'updateHoliday' : ActorMethod<[string, HolidayType], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

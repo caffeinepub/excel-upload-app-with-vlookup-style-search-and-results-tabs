@@ -1,32 +1,73 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
+import { useInternetIdentity } from './useInternetIdentity';
+import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
 
 export function useCreateReminder() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, description, time }: { title: string; description: string; time: bigint }) => {
-      // Backend no longer supports reminders
-      throw new Error('Reminders feature is not available');
+    mutationFn: async ({ title, time }: { title: string; description?: string; time: bigint }) => {
+      // Check authentication first
+      if (!identity) {
+        throw new Error('Please log in to create reminders');
+      }
+      
+      // Check actor readiness
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+      
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+      
+      // Convert timestamp to date and time strings
+      const date = new Date(Number(time));
+      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
+      const timeStr = date.toTimeString().slice(0, 5); // HH:MM
+      
+      return actor.addReminder(title, dateStr, timeStr);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
+    },
+    onError: (error) => {
+      console.error('Create reminder error:', error);
     },
   });
 }
 
 export function useDeleteReminder() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      // Backend no longer supports reminders
-      throw new Error('Reminders feature is not available');
+      // Check authentication first
+      if (!identity) {
+        throw new Error('Please log in to delete reminders');
+      }
+      
+      // Check actor readiness
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+      
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+      
+      return actor.deleteReminder(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
+    },
+    onError: (error) => {
+      console.error('Delete reminder error:', error);
     },
   });
 }

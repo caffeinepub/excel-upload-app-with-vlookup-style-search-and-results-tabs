@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppStateProvider, useAppState } from './state/appState';
 import { AppLayout } from './components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
+import { ScrollArea, ScrollBar } from './components/ui/scroll-area';
 import { DeskboardTab } from './pages/DeskboardTab';
 import { UploadTab } from './pages/UploadTab';
 import { SearchTab } from './pages/SearchTab';
@@ -14,6 +15,7 @@ import { CalendarTab } from './pages/CalendarTab';
 import { TodoTab } from './pages/TodoTab';
 import { NotesTab } from './pages/NotesTab';
 import { RegularExpenseTab } from './pages/RegularExpenseTab';
+import { AttendanceTab } from './pages/AttendanceTab';
 import { AppErrorBoundary } from './components/errors/AppErrorBoundary';
 import { DesktopSidebarNav } from './components/layout/DesktopSidebarNav';
 
@@ -40,16 +42,26 @@ function AppContent() {
   };
 
   return (
-    <AppLayout>
+    <AppLayout onNavigate={setActiveTab}>
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        {/* Mobile navigation - visible on small screens */}
-        <TabsList className="grid w-full grid-cols-5 lg:hidden mb-8 gap-1">
-          <TabsTrigger value="deskboard" className="text-xs sm:text-sm">Deskboard</TabsTrigger>
-          <TabsTrigger value="upload" className="text-xs sm:text-sm">Upload</TabsTrigger>
-          <TabsTrigger value="search" className="text-xs sm:text-sm">Search</TabsTrigger>
-          <TabsTrigger value="results" className="text-xs sm:text-sm">Results</TabsTrigger>
-          <TabsTrigger value="update-checking" className="text-xs sm:text-sm">Update</TabsTrigger>
-        </TabsList>
+        {/* Mobile navigation - visible on small screens with horizontal scroll */}
+        <ScrollArea className="lg:hidden mb-8 w-full whitespace-nowrap">
+          <TabsList className="inline-flex w-auto gap-1 p-1">
+            <TabsTrigger value="deskboard" className="text-xs sm:text-sm">Deskboard</TabsTrigger>
+            <TabsTrigger value="upload" className="text-xs sm:text-sm">Upload</TabsTrigger>
+            <TabsTrigger value="search" className="text-xs sm:text-sm">Search</TabsTrigger>
+            <TabsTrigger value="results" className="text-xs sm:text-sm">Results</TabsTrigger>
+            <TabsTrigger value="update-checking" className="text-xs sm:text-sm">Update</TabsTrigger>
+            <TabsTrigger value="history" className="text-xs sm:text-sm">History</TabsTrigger>
+            <TabsTrigger value="regular-expense" className="text-xs sm:text-sm">Expense</TabsTrigger>
+            <TabsTrigger value="attendance" className="text-xs sm:text-sm">Attendance</TabsTrigger>
+            <TabsTrigger value="reminders" className="text-xs sm:text-sm">Reminders</TabsTrigger>
+            <TabsTrigger value="calendar" className="text-xs sm:text-sm">Calendar</TabsTrigger>
+            <TabsTrigger value="todo" className="text-xs sm:text-sm">To-Do</TabsTrigger>
+            <TabsTrigger value="notes" className="text-xs sm:text-sm">Notes</TabsTrigger>
+          </TabsList>
+          <ScrollBar orientation="horizontal" />
+        </ScrollArea>
 
         {/* Desktop layout with sidebar */}
         <div className="hidden lg:flex gap-6">
@@ -75,6 +87,9 @@ function AppContent() {
             </TabsContent>
             <TabsContent value="regular-expense" className="mt-0">
               <RegularExpenseTab />
+            </TabsContent>
+            <TabsContent value="attendance" className="mt-0">
+              <AttendanceTab />
             </TabsContent>
             <TabsContent value="reminders" className="mt-0">
               <RemindersTab />
@@ -113,6 +128,9 @@ function AppContent() {
           </TabsContent>
           <TabsContent value="regular-expense">
             <RegularExpenseTab />
+          </TabsContent>
+          <TabsContent value="attendance">
+            <AttendanceTab />
           </TabsContent>
           <TabsContent value="reminders">
             <RemindersTab />

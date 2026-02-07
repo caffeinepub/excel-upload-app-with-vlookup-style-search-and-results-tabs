@@ -17,10 +17,21 @@ export function useInAppReminderNotifications(onNotification: NotificationCallba
     const checkReminders = () => {
       const now = Date.now();
       
+      if (!reminders || reminders.length === 0) return;
+      
       reminders.forEach((reminder) => {
         if (!reminder.isActive) return;
         
-        const reminderTime = Number(reminder.time);
+        // Safely convert reminder time to number
+        let reminderTime: number;
+        try {
+          reminderTime = Number(reminder.time);
+          if (isNaN(reminderTime)) return;
+        } catch (error) {
+          console.error('Invalid reminder time:', reminder.time);
+          return;
+        }
+        
         const reminderId = String(reminder.id);
         
         // Check if reminder is due (within 1 second tolerance)
@@ -53,10 +64,19 @@ export function useInAppReminderNotifications(onNotification: NotificationCallba
   // Clean up old notified reminders (older than 1 hour)
   useEffect(() => {
     const cleanupInterval = setInterval(() => {
+      if (!reminders || reminders.length === 0) return;
+      
       const oneHourAgo = Date.now() - 60 * 60 * 1000;
       const activeReminderIds = new Set(
         reminders
-          .filter(r => Number(r.time) > oneHourAgo)
+          .filter(r => {
+            try {
+              const reminderTime = Number(r.time);
+              return !isNaN(reminderTime) && reminderTime > oneHourAgo;
+            } catch {
+              return false;
+            }
+          })
           .map(r => String(r.id))
       );
       

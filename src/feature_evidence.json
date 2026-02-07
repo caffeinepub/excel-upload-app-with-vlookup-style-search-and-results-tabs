@@ -2,70 +2,12 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-ensure-the-desktop-sidebar-navigation-includes-a-visible-clickable-history-option-that-navigates-to-the-existing-history-page-tab",
-      "featureTitle": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
+      "featureId": "feature-implement-an-attendance-calendar-style-month-view-in-the-attendance-page-where-users-can-browse-months-previous-and-upcoming-select-a-date-and-view-edit-attendance-for-that-selected-date",
+      "featureTitle": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
       "files": [
-        "frontend/src/components/layout/DesktopSidebarNav.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-new-regular-expense-entry-to-the-desktop-sidebar-navigation-desktop-only-sidebar-that-navigates-to-a-new-regular-expense-tab-page",
-      "featureTitle": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/layout/DesktopSidebarNav.tsx",
-        "frontend/src/pages/RegularExpenseTab.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-desktop-only-regular-expense-button-on-the-deskboard-page-that-navigates-to-the-regular-expense-tab-page",
-      "featureTitle": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
-      "files": [
-        "frontend/src/pages/DeskboardTab.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-3"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-implement-the-regular-expense-page-ui-that-lets-an-authenticated-user-internet-identity-set-a-budget-and-log-expenses-with-date-expense-type-amount-and-a-daily-update-workflow",
-      "featureTitle": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
-      "files": [
-        "frontend/src/hooks/useRegularExpense.ts",
-        "frontend/src/pages/RegularExpenseTab.tsx"
+        "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
+        "frontend/src/hooks/useAttendance.ts",
+        "frontend/src/pages/AttendanceTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -81,11 +23,34 @@
       "confidence": "high"
     },
     {
-      "featureId": "feature-add-pdf-download-for-expense-reports-where-the-user-can-choose-report-type-weekly-monthly-yearly-and-the-generated-pdf-content-format-reflects-the-selected-range",
-      "featureTitle": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
+      "featureId": "feature-add-a-date-editor-ui-for-attendance-entries-that-allows-changing-status-present-leave-half-day-etc-and-managing-times-where-applicable-with-validation-and-clear-user-facing-error-messages-in-english",
+      "featureTitle": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
       "files": [
-        "frontend/src/lib/expenses/expenseReport.ts",
-        "frontend/src/pages/RegularExpenseTab.tsx"
+        "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+        "frontend/src/hooks/useAttendance.ts",
+        "frontend/src/pages/AttendanceTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
+      ],
+      "testIds": [
+        "REQ-5"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-global-festival-company-leave-management-ui-so-authorized-users-can-set-edit-and-delete-holiday-dates-and-ensure-those-holidays-appear-automatically-across-the-attendance-month-calendar-for-all-users",
+      "featureTitle": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
+      "files": [
+        "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
+        "frontend/src/components/attendance/HolidayManager.tsx",
+        "frontend/src/hooks/useHolidays.ts",
+        "frontend/src/pages/AttendanceTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",

@@ -1,51 +1,35 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Expense tracking app UI with sidebar navigation, including History and Regular Expense features with budgeting, expense logging, and downloadable PDF reports.",
+  "summary": "Attendance module planned: calendar-style month view to view/edit attendance by date (past and upcoming) plus global festival/company leave days.",
   "architectural_notes": [
-    "'History' entry is part of the sidebar navigation.",
-    "'Regular Expense' entry/button should be visible on desktop and accessible from the sidebar.",
-    "Expense logging fields: date, expense type, amount; support budget setting.",
-    "Report download flow: user selects weekly/monthly/yearly range before generating PDF."
+    "Attendance UI includes a month (calendar) view with per-date attendance editing.",
+    "Holidays/leaves are global (festival + company leave) and should automatically reflect in the attendance calendar for all users."
   ],
-  "known_issues": [],
+  "known_issues": [
+    "Automated build/AI execution failed repeatedly when attempting to start building the attendance calendar feature."
+  ],
   "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-ensure-the-desktop-sidebar-navigation-includes-a-visible-clickable-history-option-that-navigates-to-the-existing-history-page-tab",
-      "title": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-new-regular-expense-entry-to-the-desktop-sidebar-navigation-desktop-only-sidebar-that-navigates-to-a-new-regular-expense-tab-page",
-      "title": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-desktop-only-regular-expense-button-on-the-deskboard-page-that-navigates-to-the-regular-expense-tab-page",
-      "title": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-the-regular-expense-page-ui-that-lets-an-authenticated-user-internet-identity-set-a-budget-and-log-expenses-with-date-expense-type-amount-and-a-daily-update-workflow",
-      "title": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
+      "id": "feature-implement-an-attendance-calendar-style-month-view-in-the-attendance-page-where-users-can-browse-months-previous-and-upcoming-select-a-date-and-view-edit-attendance-for-that-selected-date",
+      "title": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
       "reqIds": [
         "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-pdf-download-for-expense-reports-where-the-user-can-choose-report-type-weekly-monthly-yearly-and-the-generated-pdf-content-format-reflects-the-selected-range",
-      "title": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
+      "id": "feature-add-a-date-editor-ui-for-attendance-entries-that-allows-changing-status-present-leave-half-day-etc-and-managing-times-where-applicable-with-validation-and-clear-user-facing-error-messages-in-english",
+      "title": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
+      "reqIds": [
+        "REQ-5"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-global-festival-company-leave-management-ui-so-authorized-users-can-set-edit-and-delete-holiday-dates-and-ensure-those-holidays-appear-automatically-across-the-attendance-month-calendar-for-all-users",
+      "title": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
       "reqIds": [
         "REQ-6"
       ],
@@ -55,32 +39,42 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add 'History' option to the sidebar navigation.",
+      "summary": "Add attendance calendar-style month view with selectable dates to view/edit attendance (including past and upcoming dates).",
       "reqIds": [],
-      "status": "in_progress"
+      "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Add 'Regular Expense' feature (desktop-visible button and also accessible from sidebar) allowing users to set a budget and log expenses with date, type, and amount.",
+      "summary": "Add global festival/company leave day management that appears automatically across the attendance calendar for all users.",
       "reqIds": [],
-      "status": "in_progress"
+      "status": "pending"
     },
     {
       "id": "AR-3",
-      "summary": "Enable downloadable expense reports as PDF with user-selectable time range (weekly/monthly/yearly) and formatting based on the selected range.",
-      "reqIds": [],
-      "status": "in_progress"
+      "summary": "Add backend support for reading and editing attendance entries by arbitrary date (past and upcoming), not limited to the current day, so the frontend can fetch a specific date’s entry and update it.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
     },
     {
-      "id": "AR-8",
-      "summary": "Add backend persistence for per-user budgets and expense entries, including APIs to save/read the budget, create expense entries, and list expense entries for the caller (authorized users only).",
+      "id": "AR-4",
+      "summary": "Add backend support for global holidays that apply to all users, supporting at minimum two types: festival and company leave, and allow authorized users to create, update, list, and delete those holidays by date.",
       "reqIds": [
-        "REQ-5"
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Update backend attendance summary logic so that festival and company leave days are counted correctly in summaries over a date range, including when those days come from global holidays.",
+      "reqIds": [
+        "REQ-3"
       ],
       "status": "pending"
     }
   ],
-  "projectName": "Add Regular Expense tracking with budget + PDF reports and ensure sidebar access",
+  "projectName": "Attendance month calendar with date-wise editing and global festival/company leave management",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

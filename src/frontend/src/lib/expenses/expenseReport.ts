@@ -62,10 +62,10 @@ export function buildExpenseReportData(
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
-  const headers = ['Date', 'Type', 'Amount', 'Description'];
+  const headers = ['Date', 'Category', 'Amount', 'Description'];
   const rows: (string | number)[][] = sortedExpenses.map((expense) => [
     expense.date,
-    expense.type,
+    expense.category,
     Number(expense.amount),
     expense.description || '-',
   ]);

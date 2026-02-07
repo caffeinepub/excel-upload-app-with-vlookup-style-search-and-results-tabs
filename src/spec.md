@@ -1,15 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Add a desktop-accessible Regular Expense feature for authenticated users with budget tracking, daily expense logging, and downloadable PDF reports, and ensure the existing History page is reachable from the desktop sidebar.
+**Goal:** Enable month-based attendance viewing and date-wise editing (past and upcoming), plus centralized global festival/company leave management that reflects across all users and attendance summaries.
 
 **Planned changes:**
-- Update desktop (lg+) sidebar navigation to include a visible, clickable "History" item that opens the existing History content.
-- Add a new desktop (lg+) sidebar item "Regular Expense" that navigates to a new Regular Expense page/tab.
-- Add a desktop-only "Regular Expense" button on the Deskboard page that navigates to the Regular Expense page/tab (hidden on < lg).
-- Create the Regular Expense UI: per-user budget input (save/update), expense entry form (Date, Type, Amount + Add), and an on-page list/table of added expenses.
-- Add backend persistence and authorized APIs for per-user budget and expense entries (get/set budget, add expense, list expenses).
-- Add frontend PDF export from Regular Expense with a selectable report type (weekly/monthly/yearly) and a Download PDF action; generated PDFs include Date/Type/Amount and totals for the selected period, with filenames reflecting range and covered dates.
-- Ensure unauthenticated users see an English login-required message on Regular Expense and cannot submit changes.
+- Backend: Add APIs to fetch, upsert, and range-list attendance entries for any provided date(s) with existing permission checks.
+- Backend: Add persistent global holidays (festival/company leave) with admin-protected upsert/delete and range listing by date.
+- Backend: Update attendance summary calculations to count festival and company leave correctly across a date range, including global-holiday-only dates.
+- Frontend: Add a calendar-style month view on the Attendance page with month navigation and visual indicators for today, saved entries, and global holidays.
+- Frontend: Add a per-date attendance editor (status + optional time inputs) with validation and clear English error messages; refresh relevant cached attendance data after saving.
+- Frontend: Add an authorized-only UI to create/edit/delete global holidays (date, name, type) and show them automatically on the attendance calendar for all users.
 
-**User-visible outcome:** On desktop, users can open History from the sidebar, navigate to a new Regular Expense page from the sidebar or Deskboard, set a budget, log daily expenses, see their entries listed, and download weekly/monthly/yearly expense reports as PDFs when logged in.
+**User-visible outcome:** Users can browse an attendance month calendar, select any date (previous or upcoming) to view/edit attendance, and see festival/company leave days marked; authorized users can manage global holiday dates that automatically apply for everyone and are counted in summaries.
