@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { Reminder as BackendReminder } from '../backend';
+import type { Reminder as BackendReminder, TodoItem as BackendTodoItem, Note as BackendNote } from '../backend';
+import { decodeNoteText } from '../lib/notes/noteEncoding';
 
 // Frontend Reminder type that matches UI expectations
 export interface Reminder {
@@ -25,18 +26,15 @@ export interface CalendarEvent {
 
 export interface ToDoItem {
   id: bigint;
-  description: string;
-  deadline: bigint | null;
-  priority: bigint | null;
+  text: string;
   completed: boolean;
-  tags: string[];
+  timestamp: bigint;
 }
 
 export interface Note {
   id: bigint;
   title: string;
   content: string;
-  tags: string[];
   lastUpdated: bigint;
 }
 
@@ -54,6 +52,28 @@ function mapBackendReminder(backendReminder: BackendReminder): Reminder {
     repeatInterval: null,
     priority: null,
     isActive: true,
+  };
+}
+
+// Convert backend TodoItem to frontend ToDoItem
+function mapBackendTodoItem(backendTodo: BackendTodoItem): ToDoItem {
+  return {
+    id: backendTodo.id,
+    text: backendTodo.text,
+    completed: backendTodo.completed,
+    timestamp: backendTodo.timestamp,
+  };
+}
+
+// Convert backend Note to frontend Note
+function mapBackendNote(backendNote: BackendNote): Note {
+  const { title, content } = decodeNoteText(backendNote.text);
+  
+  return {
+    id: backendNote.id,
+    title,
+    content,
+    lastUpdated: backendNote.lastUpdated,
   };
 }
 
@@ -90,8 +110,9 @@ export function useGetToDoItems() {
   return useQuery<ToDoItem[]>({
     queryKey: ['todoItems'],
     queryFn: async () => {
-      // Backend no longer supports to-do items
-      return [];
+      if (!actor) return [];
+      const backendTodos = await actor.getTodos();
+      return backendTodos.map(mapBackendTodoItem);
     },
     enabled: !!actor && !isFetching,
   });
@@ -103,8 +124,9 @@ export function useGetNotes() {
   return useQuery<Note[]>({
     queryKey: ['notes'],
     queryFn: async () => {
-      // Backend no longer supports notes
-      return [];
+      if (!actor) return [];
+      const backendNotes = await actor.getNotes();
+      return backendNotes.map(mapBackendNote);
     },
     enabled: !!actor && !isFetching,
   });

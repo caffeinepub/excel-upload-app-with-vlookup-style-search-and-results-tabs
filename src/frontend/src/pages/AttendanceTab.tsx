@@ -38,6 +38,7 @@ import { toast } from 'sonner';
 import { AttendanceMonthCalendar } from '../components/attendance/AttendanceMonthCalendar';
 import { AttendanceDateEditor } from '../components/attendance/AttendanceDateEditor';
 import { HolidayManager } from '../components/attendance/HolidayManager';
+import { AttendancePdfExportSection } from '../components/attendance/AttendancePdfExportSection';
 import type { AttendanceDayEntry } from '../backend';
 
 type RangeType = 'week' | 'month' | 'year';
@@ -356,6 +357,9 @@ export function AttendanceTab() {
               )}
             </CardContent>
           </Card>
+
+          {/* PDF Export Section */}
+          <AttendancePdfExportSection />
         </TabsContent>
 
         <TabsContent value="calendar" className="space-y-6">
@@ -467,12 +471,9 @@ export function AttendanceTab() {
                         checked={weeklyOffDays.includes(index)}
                         onCheckedChange={() => toggleWeeklyOffDay(index)}
                       />
-                      <label
-                        htmlFor={`day-${index}`}
-                        className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                      >
+                      <Label htmlFor={`day-${index}`} className="text-sm font-normal cursor-pointer">
                         {day}
-                      </label>
+                      </Label>
                     </div>
                   ))}
                 </div>
@@ -480,22 +481,20 @@ export function AttendanceTab() {
 
               {/* Leave Policy */}
               <div className="space-y-2">
-                <Label htmlFor="leave-policy">Annual Leave Policy (days per year)</Label>
+                <Label htmlFor="leave-policy">Leave Policy (days per year)</Label>
                 <Input
                   id="leave-policy"
                   type="number"
                   min="0"
-                  max="365"
                   value={leavePolicy}
                   onChange={(e) => setLeavePolicy(e.target.value)}
-                  placeholder="e.g., 20"
+                  placeholder="20"
                 />
               </div>
 
               <Button
                 onClick={handleSaveSettings}
                 disabled={saveConfig.isPending || configLoading}
-                className="w-full sm:w-auto"
               >
                 {saveConfig.isPending ? 'Saving...' : 'Save Settings'}
               </Button>

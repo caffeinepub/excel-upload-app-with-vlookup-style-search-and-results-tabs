@@ -4,35 +4,15 @@ import Principal "mo:core/Principal";
 import Text "mo:core/Text";
 
 module {
-  public type OldAttendanceStatus = {
-    #present;
-    #leave;
-    #halfDay;
-    #festival;
-    #weeklyOff;
-  };
-
+  // Types shared with the previous version (old state)
   type OldAttendanceDayEntry = {
     checkIn : ?Int;
     checkOut : ?Int;
     status : OldAttendanceStatus;
-    workingTime : Nat; // in seconds
+    workingTime : Nat;
   };
 
-  public type OldActor = {
-    budgets : Map.Map<Principal, { monthlyLimit : Nat; dayLimit : Nat; savingsGoal : Nat; lastUpdated : Text }>;
-    expenses : Map.Map<Principal, Map.Map<Nat, { id : Nat; amount : Nat; category : Text; description : Text; date : Text; time : Int }>>;
-    histories : Map.Map<Principal, Map.Map<Nat, { id : Nat; user : Principal; timestamp : Int; entryType : { #upload; #search; #results; #updateChecking; #budgetChange; #expenseChange }; details : Text }>>;
-    userProfiles : Map.Map<Principal, { name : Text }>;
-    reminders : Map.Map<Principal, Map.Map<Nat, { id : Nat; message : Text; date : Text; time : Text; createdAt : Int }>>;
-    attendanceConfigs : Map.Map<Principal, { regularWorkingTime : Nat; weeklyOffDays : [Nat]; leavePolicy : Nat }>;
-    attendanceEntries : Map.Map<Principal, Map.Map<Text, OldAttendanceDayEntry>>;
-    nextExpenseId : Nat;
-    nextHistoryId : Nat;
-    nextReminderId : Nat;
-  };
-
-  public type NewAttendanceStatus = {
+  type OldAttendanceStatus = {
     #present;
     #leave;
     #halfDay;
@@ -41,62 +21,113 @@ module {
     #weeklyOff;
   };
 
-  public type HolidayEntry = {
-    date : Text;
-    holidayType : { #festival; #companyLeave };
+  type OldBudget = {
+    monthlyLimit : Nat;
+    dayLimit : Nat;
+    savingsGoal : Nat;
+    lastUpdated : Text;
   };
 
-  public type NewAttendanceDayEntry = {
+  type OldReminder = {
+    id : Nat;
+    message : Text;
+    date : Text;
+    time : Text;
+    createdAt : Int;
+  };
+
+  type OldExpenseEntry = {
+    id : Nat;
+    amount : Nat;
+    category : Text;
+    description : Text;
+    date : Text;
+    time : Int;
+  };
+
+  type OldHistoryEntry = {
+    id : Nat;
+    user : Principal;
+    timestamp : Int;
+    entryType : OldHistoryType;
+    details : Text;
+  };
+
+  type OldHistoryType = {
+    #upload;
+    #search;
+    #results;
+    #updateChecking;
+    #budgetChange;
+    #expenseChange;
+  };
+
+  type OldTodoItem = {
+    id : Nat;
+    text : Text;
+    completed : Bool;
+    timestamp : Int;
+  };
+
+  type OldNote = {
+    id : Nat;
+    text : Text;
+    lastUpdated : Int;
+  };
+
+  // Types for the new actor
+  type NewAttendanceDayEntry = {
     checkIn : ?Int;
     checkOut : ?Int;
-    status : NewAttendanceStatus;
+    note : Text;
+    status : OldAttendanceStatus;
     workingTime : Nat;
   };
 
-  public type NewActor = {
-    budgets : Map.Map<Principal, { monthlyLimit : Nat; dayLimit : Nat; savingsGoal : Nat; lastUpdated : Text }>;
-    expenses : Map.Map<Principal, Map.Map<Nat, { id : Nat; amount : Nat; category : Text; description : Text; date : Text; time : Int }>>;
-    histories : Map.Map<Principal, Map.Map<Nat, { id : Nat; user : Principal; timestamp : Int; entryType : { #upload; #search; #results; #updateChecking; #budgetChange; #expenseChange }; details : Text }>>;
-    userProfiles : Map.Map<Principal, { name : Text }>;
-    reminders : Map.Map<Principal, Map.Map<Nat, { id : Nat; message : Text; date : Text; time : Text; createdAt : Int }>>;
-    attendanceConfigs : Map.Map<Principal, { regularWorkingTime : Nat; weeklyOffDays : [Nat]; leavePolicy : Nat }>;
-    attendanceEntries : Map.Map<Principal, Map.Map<Text, NewAttendanceDayEntry>>;
-    globalHolidays : Map.Map<Text, HolidayEntry>;
+  // Actor types with old/new structure
+  type OldActor = {
+    budgets : Map.Map<Principal, OldBudget>;
+    reminders : Map.Map<Principal, Map.Map<Nat, OldReminder>>;
+    expenses : Map.Map<Principal, Map.Map<Nat, OldExpenseEntry>>;
+    histories : Map.Map<Principal, Map.Map<Nat, OldHistoryEntry>>;
+    todos : Map.Map<Principal, Map.Map<Nat, OldTodoItem>>;
+    notes : Map.Map<Principal, Map.Map<Nat, OldNote>>;
+    attendanceEntries : Map.Map<Principal, Map.Map<Text, OldAttendanceDayEntry>>;
     nextExpenseId : Nat;
     nextHistoryId : Nat;
     nextReminderId : Nat;
+    nextTodoId : Nat;
+    nextNoteId : Nat;
+  };
+
+  type NewActor = {
+    budgets : Map.Map<Principal, OldBudget>;
+    reminders : Map.Map<Principal, Map.Map<Nat, OldReminder>>;
+    expenses : Map.Map<Principal, Map.Map<Nat, OldExpenseEntry>>;
+    histories : Map.Map<Principal, Map.Map<Nat, OldHistoryEntry>>;
+    todos : Map.Map<Principal, Map.Map<Nat, OldTodoItem>>;
+    notes : Map.Map<Principal, Map.Map<Nat, OldNote>>;
+    attendanceEntries : Map.Map<Principal, Map.Map<Text, NewAttendanceDayEntry>>;
+    nextExpenseId : Nat;
+    nextHistoryId : Nat;
+    nextReminderId : Nat;
+    nextTodoId : Nat;
+    nextNoteId : Nat;
   };
 
   public func run(old : OldActor) : NewActor {
     let newAttendanceEntries = old.attendanceEntries.map<Principal, Map.Map<Text, OldAttendanceDayEntry>, Map.Map<Text, NewAttendanceDayEntry>>(
-      func(_principal, entries) {
-        entries.map<Text, OldAttendanceDayEntry, NewAttendanceDayEntry>(
-          func(_date, entry) {
-            switch (entry.status) {
-              case (#present) {
-                { entry with status = #present : NewAttendanceStatus };
-              };
-              case (#leave) {
-                { entry with status = #leave : NewAttendanceStatus };
-              };
-              case (#halfDay) {
-                { entry with status = #halfDay : NewAttendanceStatus };
-              };
-              case (#festival) {
-                { entry with status = #festival : NewAttendanceStatus };
-              };
-              case (#weeklyOff) {
-                { entry with status = #weeklyOff : NewAttendanceStatus };
-              };
+      func(_p, oldMap) {
+        oldMap.map<Text, OldAttendanceDayEntry, NewAttendanceDayEntry>(
+          func(_key, oldEntry) {
+            {
+              oldEntry with
+              note = "";
             };
           }
         );
       }
     );
-    {
-      old with
-      attendanceEntries = newAttendanceEntries;
-      globalHolidays = Map.empty<Text, HolidayEntry>();
-    };
+    { old with attendanceEntries = newAttendanceEntries };
   };
 };

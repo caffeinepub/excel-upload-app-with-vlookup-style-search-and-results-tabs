@@ -1,81 +1,81 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T08:01:06.389Z",
+  "generatedAt": "2026-02-07T09:06:22.160Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 6,
-    "implemented": 3,
+    "total": 4,
+    "implemented": 4,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add backend support for reading and editing attendance entries by arbitrary date (past and upcoming), not limited to the current day, so the frontend can fetch a specific date’s entry and update it.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/hooks/useApproval.ts",
+          "frontend/src/components/auth/ApprovalGate.tsx",
+          "frontend/src/components/auth/PasswordAuthDialog.tsx",
+          "frontend/src/hooks/usePasswordAuth.ts",
+          "frontend/src/pages/AdminUsersTab.tsx",
+          "frontend/src/hooks/useAdminUsers.ts",
+          "frontend/src/components/layout/AppHeader.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/DesktopSidebarNav.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/hooks/useApproval.ts",
+          "frontend/src/components/auth/ApprovalGate.tsx",
+          "frontend/src/pages/AdminUsersTab.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/components/layout/DesktopSidebarNav.tsx"
+        ]
       },
       {
         "id": "REQ-2",
-        "summary": "Add backend support for global holidays that apply to all users, supporting at minimum two types: festival and company leave, and allow authorized users to create, update, list, and delete those holidays by date.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+          "frontend/src/hooks/useAttendance.ts",
+          "frontend/src/pages/AttendanceTab.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/attendance/AttendanceDateEditor.tsx"
+        ]
       },
       {
         "id": "REQ-3",
-        "summary": "Update backend attendance summary logic so that festival and company leave days are counted correctly in summaries over a date range, including when those days come from global holidays.",
-        "status": "unknown",
-        "plannedFiles": [],
-        "matchedFiles": []
+        "summary": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
+        "status": "implemented",
+        "plannedFiles": [
+          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+          "frontend/src/pages/AttendanceTab.tsx"
+        ],
+        "matchedFiles": [
+          "frontend/src/components/attendance/AttendanceDateEditor.tsx"
+        ]
       },
       {
         "id": "REQ-4",
-        "summary": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
+        "summary": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
-          "frontend/src/pages/AttendanceTab.tsx",
-          "frontend/src/hooks/useAttendance.ts"
+          "frontend/src/hooks/useCalendarEvents.ts",
+          "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
+          "frontend/src/hooks/useProductivityQueries.ts",
+          "frontend/src/hooks/useProductivityMutations.ts",
+          "frontend/src/pages/CalendarTab.tsx",
+          "frontend/src/App.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
-          "frontend/src/pages/AttendanceTab.tsx",
-          "frontend/src/hooks/useAttendance.ts"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-          "frontend/src/hooks/useAttendance.ts",
-          "frontend/src/pages/AttendanceTab.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-          "frontend/src/hooks/useAttendance.ts",
-          "frontend/src/pages/AttendanceTab.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useHolidays.ts",
-          "frontend/src/components/attendance/HolidayManager.tsx",
-          "frontend/src/pages/AttendanceTab.tsx",
-          "frontend/src/components/attendance/AttendanceMonthCalendar.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useHolidays.ts",
-          "frontend/src/components/attendance/HolidayManager.tsx",
-          "frontend/src/pages/AttendanceTab.tsx",
-          "frontend/src/components/attendance/AttendanceMonthCalendar.tsx"
+          "frontend/src/hooks/useCalendarEvents.ts",
+          "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
+          "frontend/src/hooks/useProductivityMutations.ts",
+          "frontend/src/pages/CalendarTab.tsx",
+          "frontend/src/App.tsx"
         ]
       }
     ]
@@ -83,20 +83,30 @@
   "changedFiles": [
     "backend/main.mo",
     "backend/migration.mo",
+    "backend/user-approval/approval.mo",
     "build-request.json",
+    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
+    "frontend/src/App.tsx",
     "frontend/src/backend.d.ts",
     "frontend/src/backend.ts",
     "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-    "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
-    "frontend/src/components/attendance/HolidayManager.tsx",
+    "frontend/src/components/auth/ApprovalGate.tsx",
+    "frontend/src/components/auth/UserProfileSetup.tsx",
+    "frontend/src/components/layout/DesktopSidebarNav.tsx",
     "frontend/src/declarations/backend.did.d.ts",
     "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useAttendance.ts",
-    "frontend/src/hooks/useHolidays.ts",
-    "frontend/src/pages/AttendanceTab.tsx",
+    "frontend/src/hooks/useApproval.ts",
+    "frontend/src/hooks/useApprovalMutations.ts",
+    "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
+    "frontend/src/hooks/useCalendarEvents.ts",
+    "frontend/src/hooks/useProductivityMutations.ts",
+    "frontend/src/hooks/useUserProfile.ts",
+    "frontend/src/pages/AdminUsersTab.tsx",
+    "frontend/src/pages/CalendarTab.tsx",
+    "frontend/src/pages/TodoTab.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

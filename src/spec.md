@@ -1,14 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Enable month-based attendance viewing and date-wise editing (past and upcoming), plus centralized global festival/company leave management that reflects across all users and attendance summaries.
+**Goal:** Add admin-approved username/password user management, fix attendance hours recalculation and summaries, add work brief notes to attendance, and make the Calendar feature functional with attendance-to-calendar integration.
 
 **Planned changes:**
-- Backend: Add APIs to fetch, upsert, and range-list attendance entries for any provided date(s) with existing permission checks.
-- Backend: Add persistent global holidays (festival/company leave) with admin-protected upsert/delete and range listing by date.
-- Backend: Update attendance summary calculations to count festival and company leave correctly across a date range, including global-holiday-only dates.
-- Frontend: Add a calendar-style month view on the Attendance page with month navigation and visual indicators for today, saved entries, and global holidays.
-- Frontend: Add a per-date attendance editor (status + optional time inputs) with validation and clear English error messages; refresh relevant cached attendance data after saving.
-- Frontend: Add an authorized-only UI to create/edit/delete global holidays (date, name, type) and show them automatically on the attendance calendar for all users.
+- Add username/password registration and login, with admin approval required before accessing user features; provide admin user CRUD (list/edit/delete) plus approve/reject.
+- Enforce approval checks in backend authorization for user-only features and surface pending/rejected status in the UI.
+- Fix attendance working-time calculation so edits (including past dates) correctly recompute per-day workingTime and summary totalWorkingTime sums the full selected range.
+- Add validation and clear English errors for invalid time ranges (e.g., check-out before check-in) and update the attendance summary UI after edits without a full reload.
+- Add a persisted “work brief note” field to attendance entries and make it editable/viewable in the attendance day editor UI.
+- Wire the existing Calendar UI to real backend event queries/mutations (list/create/delete).
+- Integrate attendance with calendar events so attendance entries appear as calendar events without duplication and respecting authorization rules.
 
-**User-visible outcome:** Users can browse an attendance month calendar, select any date (previous or upcoming) to view/edit attendance, and see festival/company leave days marked; authorized users can manage global holiday dates that automatically apply for everyone and are counted in summaries.
+**User-visible outcome:** Users can register and log in with a username/password and can only use the app after admin approval; admins can manage users. Attendance edits correctly update daily and total hours, users can add a work brief note per day, and the Calendar tab can create/list/delete events while also showing attendance entries as calendar events.

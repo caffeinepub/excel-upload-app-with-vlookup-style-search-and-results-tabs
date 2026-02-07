@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
 import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
+import { encodeNoteText } from '../lib/notes/noteEncoding';
 
 export function useCreateReminder() {
   const { actor, isFetching } = useActor();
@@ -103,76 +104,122 @@ export function useDeleteCalendarEvent() {
 }
 
 export function useCreateToDoItem() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ description }: { description: string }) => {
-      // Backend no longer supports to-do items
-      throw new Error('To-do items feature is not available');
+    mutationFn: async ({ text }: { text: string }) => {
+      if (!identity) {
+        throw new Error('Please log in to create to-do items');
+      }
+
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+
+      return actor.addTodo(text);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todoItems'] });
     },
-  });
-}
-
-export function useDeleteToDoItem() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: bigint) => {
-      // Backend no longer supports to-do items
-      throw new Error('To-do items feature is not available');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todoItems'] });
+    onError: (error) => {
+      console.error('Create to-do error:', error);
     },
   });
 }
 
 export function useToggleToDoItem() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ id, completed }: { id: bigint; completed: boolean }) => {
-      // Backend no longer supports to-do items
-      throw new Error('To-do items feature is not available');
+    mutationFn: async (id: bigint) => {
+      if (!identity) {
+        throw new Error('Please log in to toggle to-do items');
+      }
+
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+
+      return actor.toggleTodo(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todoItems'] });
+    },
+    onError: (error) => {
+      console.error('Toggle to-do error:', error);
     },
   });
 }
 
 export function useCreateNote() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ title, content }: { title: string; content: string }) => {
-      // Backend no longer supports notes
-      throw new Error('Notes feature is not available');
+      if (!identity) {
+        throw new Error('Please log in to create notes');
+      }
+
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+
+      const encodedText = encodeNoteText(title, content);
+      return actor.addNote(encodedText);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error) => {
+      console.error('Create note error:', error);
     },
   });
 }
 
 export function useDeleteNote() {
-  const { actor } = useActor();
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      // Backend no longer supports notes
-      throw new Error('Notes feature is not available');
+      if (!identity) {
+        throw new Error('Please log in to delete notes');
+      }
+
+      if (!actor) {
+        throw new Error('Backend connection not ready. Please wait a moment and try again.');
+      }
+
+      if (isFetching) {
+        throw new Error('Backend is initializing. Please wait a moment and try again.');
+      }
+
+      return actor.deleteNote(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
+    },
+    onError: (error) => {
+      console.error('Delete note error:', error);
     },
   });
 }

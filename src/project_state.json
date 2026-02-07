@@ -1,37 +1,40 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Attendance module planned: calendar-style month view to view/edit attendance by date (past and upcoming) plus global festival/company leave days.",
-  "architectural_notes": [
-    "Attendance UI includes a month (calendar) view with per-date attendance editing.",
-    "Holidays/leaves are global (festival + company leave) and should automatically reflect in the attendance calendar for all users."
-  ],
-  "known_issues": [
-    "Automated build/AI execution failed repeatedly when attempting to start building the attendance calendar feature."
-  ],
-  "isFixRequest": false,
+  "summary": "Attendance tracking app with total working time calculation, calendar event integration, work brief notes, and admin-approved user management (username/password).",
+  "architectural_notes": [],
+  "known_issues": [],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-implement-an-attendance-calendar-style-month-view-in-the-attendance-page-where-users-can-browse-months-previous-and-upcoming-select-a-date-and-view-edit-attendance-for-that-selected-date",
-      "title": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
+      "id": "feature-implement-username-password-user-management-with-admin-approval-required-before-a-user-can-use-the-app-including-admin-crud-view-edit-delete-for-users",
+      "title": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-fix-and-ensure-total-working-time-is-correctly-calculated-and-updated-when-attendance-check-in-check-out-times-are-set-edited-for-past-dates-and-ensure-attendance-summaries-correctly-sum-totalworkingtime-over-the-selected-range",
+      "title": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-a-work-brief-note-text-field-to-each-attendance-entry-persisted-in-the-backend-and-editable-in-the-attendance-day-editor-ui",
+      "title": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-make-the-existing-calendar-feature-functional-by-wiring-calendar-event-queries-mutations-to-the-backend-and-integrate-attendance-with-calendar-events-so-attendance-entries-appear-as-calendar-events",
+      "title": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
       "reqIds": [
         "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-date-editor-ui-for-attendance-entries-that-allows-changing-status-present-leave-half-day-etc-and-managing-times-where-applicable-with-validation-and-clear-user-facing-error-messages-in-english",
-      "title": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-global-festival-company-leave-management-ui-so-authorized-users-can-set-edit-and-delete-holiday-dates-and-ensure-those-holidays-appear-automatically-across-the-attendance-month-calendar-for-all-users",
-      "title": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
-      "reqIds": [
-        "REQ-6"
       ],
       "version": 1
     }
@@ -39,42 +42,30 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Add attendance calendar-style month view with selectable dates to view/edit attendance (including past and upcoming dates).",
+      "summary": "Update total working time by calculating/recalculating hours from attendance check-in/check-out times, including past date/time edits.",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": "AR-2",
-      "summary": "Add global festival/company leave day management that appears automatically across the attendance calendar for all users.",
+      "summary": "Make the existing calendar feature work with attendance (attendance entries appear as calendar events).",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
       "id": "AR-3",
-      "summary": "Add backend support for reading and editing attendance entries by arbitrary date (past and upcoming), not limited to the current day, so the frontend can fetch a specific date’s entry and update it.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "status": "pending"
+      "summary": "Add a 'work brief note' text field to each attendance entry.",
+      "reqIds": [],
+      "status": "in_progress"
     },
     {
       "id": "AR-4",
-      "summary": "Add backend support for global holidays that apply to all users, supporting at minimum two types: festival and company leave, and allow authorized users to create, update, list, and delete those holidays by date.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Update backend attendance summary logic so that festival and company leave days are counted correctly in summaries over a date range, including when those days come from global holidays.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "status": "pending"
+      "summary": "Add user management: username/password login, admin approval required before access, and admin CRUD (view/edit/delete) for users.",
+      "reqIds": [],
+      "status": "in_progress"
     }
   ],
-  "projectName": "Attendance month calendar with date-wise editing and global festival/company leave management",
+  "projectName": "User management with admin approval, attendance hours recalculation, work brief notes, and calendar integration",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

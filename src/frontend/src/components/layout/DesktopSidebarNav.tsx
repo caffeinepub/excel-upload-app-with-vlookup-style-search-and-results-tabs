@@ -1,6 +1,7 @@
-import { Home, Upload, Search, FileText, GitCompare, History, Wallet, Bell, Calendar, CheckSquare, FileEdit, UserCheck } from 'lucide-react';
+import { Home, Upload, Search, FileText, GitCompare, History, Wallet, Bell, Calendar, CheckSquare, FileEdit, UserCheck, Users } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Separator } from '@/components/ui/separator';
+import { useIsCallerAdmin } from '../../hooks/useApproval';
 
 interface DesktopSidebarNavProps {
   activeTab: string;
@@ -8,6 +9,8 @@ interface DesktopSidebarNavProps {
 }
 
 export function DesktopSidebarNav({ activeTab, onTabChange }: DesktopSidebarNavProps) {
+  const { data: isAdmin } = useIsCallerAdmin();
+
   const mainItems = [
     { id: 'deskboard', icon: Home, label: 'Deskboard' },
     { id: 'upload', icon: Upload, label: 'Upload' },
@@ -25,6 +28,10 @@ export function DesktopSidebarNav({ activeTab, onTabChange }: DesktopSidebarNavP
     { id: 'todo', icon: CheckSquare, label: 'To-Do' },
     { id: 'notes', icon: FileEdit, label: 'Notes' },
   ];
+
+  const adminItems = isAdmin
+    ? [{ id: 'admin-users', icon: Users, label: 'User Management' }]
+    : [];
 
   return (
     <TooltipProvider delayDuration={300}>
@@ -91,6 +98,42 @@ export function DesktopSidebarNav({ activeTab, onTabChange }: DesktopSidebarNavP
               </Tooltip>
             );
           })}
+
+          {adminItems.length > 0 && (
+            <>
+              <Separator className="my-2" />
+              <div className="text-xs text-muted-foreground text-center mb-1 px-1">
+                Admin
+              </div>
+              {adminItems.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <Tooltip key={item.id}>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onTabChange(item.id)}
+                        className={`
+                          w-full h-12 flex items-center justify-center rounded-xl
+                          transition-all duration-200
+                          ${
+                            isActive
+                              ? 'bg-primary text-primary-foreground shadow-md'
+                              : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                          }
+                        `}
+                      >
+                        <Icon className="w-5 h-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p>{item.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                );
+              })}
+            </>
+          )}
         </nav>
       </div>
     </TooltipProvider>

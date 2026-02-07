@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useGetNotes } from '../hooks/useProductivityQueries';
 import { useCreateNote, useDeleteNote } from '../hooks/useProductivityMutations';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { StickyNote, Trash2, AlertCircle, Plus } from 'lucide-react';
+import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
 
 export function NotesTab() {
   const { identity } = useInternetIdentity();
@@ -22,26 +23,34 @@ export function NotesTab() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
     if (!title.trim()) return;
+    setError(null);
 
     try {
       await createMutation.mutateAsync({ title, content });
       setDialogOpen(false);
       setTitle('');
       setContent('');
-    } catch (error) {
-      console.error('Failed to create note:', error);
+    } catch (err) {
+      const message = getUserFriendlyError(err);
+      setError(message);
+      console.error('Failed to create note:', err);
     }
   };
 
   const handleDelete = async (id: bigint) => {
     if (!confirm('Delete this note?')) return;
+    setError(null);
+
     try {
       await deleteMutation.mutateAsync(id);
-    } catch (error) {
-      console.error('Failed to delete note:', error);
+    } catch (err) {
+      const message = getUserFriendlyError(err);
+      setError(message);
+      console.error('Failed to delete note:', err);
     }
   };
 
@@ -57,6 +66,9 @@ export function NotesTab() {
       </div>
     );
   }
+
+  // Sort notes by lastUpdated (most recent first)
+  const sortedNotes = [...notes].sort((a, b) => Number(b.lastUpdated - a.lastUpdated));
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -81,23 +93,29 @@ export function NotesTab() {
               <DialogDescription>Create a new note</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
+              {error && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{error}</AlertDescription>
+                </Alert>
+              )}
               <div>
-                <Label htmlFor="note-title">Title</Label>
+                <Label htmlFor="title">Title</Label>
                 <Input
-                  id="note-title"
+                  id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Meeting notes"
                 />
               </div>
               <div>
-                <Label htmlFor="note-content">Content</Label>
+                <Label htmlFor="content">Content</Label>
                 <Textarea
-                  id="note-content"
+                  id="content"
                   value={content}
                   onChange={(e) => setContent(e.target.value)}
                   placeholder="Write your note here..."
-                  rows={8}
+                  rows={6}
                 />
               </div>
             </div>
@@ -110,42 +128,51 @@ export function NotesTab() {
         </Dialog>
       </div>
 
+      {error && !dialogOpen && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>{error}</AlertDescription>
+        </Alert>
+      )}
+
       {isLoading ? (
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">Loading notes...</p>
           </CardContent>
         </Card>
-      ) : notes.length === 0 ? (
+      ) : sortedNotes.length === 0 ? (
         <Card>
           <CardContent className="py-8">
             <p className="text-center text-muted-foreground">No notes yet. Create your first note above.</p>
           </CardContent>
         </Card>
       ) : (
-        <div className="grid md:grid-cols-2 gap-4">
-          {notes
-            .sort((a, b) => Number(b.lastUpdated - a.lastUpdated))
-            .map((note) => (
-              <Card key={Number(note.id)} className="flex flex-col">
-                <CardHeader>
-                  <div className="flex items-start justify-between">
-                    <CardTitle className="text-lg">{note.title}</CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => handleDelete(note.id)}
-                      disabled={deleteMutation.isPending}
-                    >
-                      <Trash2 className="w-4 h-4 text-destructive" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="flex-1">
-                  <p className="text-sm text-muted-foreground whitespace-pre-wrap">{note.content || 'No content'}</p>
-                </CardContent>
-              </Card>
-            ))}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {sortedNotes.map((note) => (
+            <Card key={Number(note.id)} className="flex flex-col">
+              <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
+                <CardTitle className="text-lg line-clamp-1">{note.title || 'Untitled'}</CardTitle>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => handleDelete(note.id)}
+                  disabled={deleteMutation.isPending}
+                  className="h-8 w-8 -mt-1 -mr-2"
+                >
+                  <Trash2 className="w-4 h-4 text-destructive" />
+                </Button>
+              </CardHeader>
+              <CardContent className="flex-1">
+                <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
+                  {note.content || 'No content'}
+                </p>
+                <p className="text-xs text-muted-foreground mt-3">
+                  {new Date(Number(note.lastUpdated) / 1_000_000).toLocaleDateString()}
+                </p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       )}
     </div>

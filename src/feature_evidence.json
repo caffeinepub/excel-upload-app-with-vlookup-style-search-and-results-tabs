@@ -2,12 +2,14 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-implement-an-attendance-calendar-style-month-view-in-the-attendance-page-where-users-can-browse-months-previous-and-upcoming-select-a-date-and-view-edit-attendance-for-that-selected-date",
-      "featureTitle": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
+      "featureId": "feature-implement-username-password-user-management-with-admin-approval-required-before-a-user-can-use-the-app-including-admin-crud-view-edit-delete-for-users",
+      "featureTitle": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
       "files": [
-        "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
-        "frontend/src/hooks/useAttendance.ts",
-        "frontend/src/pages/AttendanceTab.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/auth/ApprovalGate.tsx",
+        "frontend/src/components/layout/DesktopSidebarNav.tsx",
+        "frontend/src/hooks/useApproval.ts",
+        "frontend/src/pages/AdminUsersTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -15,53 +17,75 @@
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
         "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
+        "authorization@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-1"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-fix-and-ensure-total-working-time-is-correctly-calculated-and-updated-when-attendance-check-in-check-out-times-are-set-edited-for-past-dates-and-ensure-attendance-summaries-correctly-sum-totalworkingtime-over-the-selected-range",
+      "featureTitle": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+      "files": [
+        "frontend/src/components/attendance/AttendanceDateEditor.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-2"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-add-a-work-brief-note-text-field-to-each-attendance-entry-persisted-in-the-backend-and-editable-in-the-attendance-day-editor-ui",
+      "featureTitle": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
+      "files": [
+        "frontend/src/components/attendance/AttendanceDateEditor.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "user-approval@3.0.0"
+      ],
+      "testIds": [
+        "REQ-3"
+      ],
+      "confidence": "high"
+    },
+    {
+      "featureId": "feature-make-the-existing-calendar-feature-functional-by-wiring-calendar-event-queries-mutations-to-the-backend-and-integrate-attendance-with-calendar-events-so-attendance-entries-appear-as-calendar-events",
+      "featureTitle": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
+      "files": [
+        "frontend/src/App.tsx",
+        "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
+        "frontend/src/hooks/useCalendarEvents.ts",
+        "frontend/src/hooks/useProductivityMutations.ts",
+        "frontend/src/pages/CalendarTab.tsx"
+      ],
+      "components": [
+        "core-infrastructure@1.0.2",
+        "shadcn-ui@1.0.0",
+        "build-template-react@1.0.0",
+        "initial-app@1.0.0",
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0",
+        "user-approval@3.0.0"
       ],
       "testIds": [
         "REQ-4"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-date-editor-ui-for-attendance-entries-that-allows-changing-status-present-leave-half-day-etc-and-managing-times-where-applicable-with-validation-and-clear-user-facing-error-messages-in-english",
-      "featureTitle": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
-      "files": [
-        "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-        "frontend/src/hooks/useAttendance.ts",
-        "frontend/src/pages/AttendanceTab.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-5"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-a-global-festival-company-leave-management-ui-so-authorized-users-can-set-edit-and-delete-holiday-dates-and-ensure-those-holidays-appear-automatically-across-the-attendance-month-calendar-for-all-users",
-      "featureTitle": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
-      "files": [
-        "frontend/src/components/attendance/AttendanceMonthCalendar.tsx",
-        "frontend/src/components/attendance/HolidayManager.tsx",
-        "frontend/src/hooks/useHolidays.ts",
-        "frontend/src/pages/AttendanceTab.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0"
-      ],
-      "testIds": [
-        "REQ-6"
       ],
       "confidence": "high"
     }

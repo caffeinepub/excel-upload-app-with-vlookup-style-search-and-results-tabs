@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AlertCircle, Save } from 'lucide-react';
@@ -36,6 +37,7 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
   const [status, setStatus] = useState<AttendanceStatus>(entry?.status || AttendanceStatus.present);
   const [checkInTime, setCheckInTime] = useState('');
   const [checkOutTime, setCheckOutTime] = useState('');
+  const [note, setNote] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   // Format date for display
@@ -50,6 +52,7 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
   useEffect(() => {
     if (entry) {
       setStatus(entry.status);
+      setNote(entry.note || '');
       
       // Convert timestamps to time strings
       if (entry.checkIn) {
@@ -69,6 +72,7 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
       setStatus(AttendanceStatus.present);
       setCheckInTime('');
       setCheckOutTime('');
+      setNote('');
     }
     setError(null);
   }, [entry, date]);
@@ -110,7 +114,9 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
 
         // Calculate working time in seconds
         const durationMs = Number(checkOut - checkIn) / 1_000_000;
-        workingTime = BigInt(Math.floor(durationMs / 1000));
+        if (durationMs > 0) {
+          workingTime = BigInt(Math.floor(durationMs / 1000));
+        }
       }
     }
 
@@ -118,6 +124,7 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
       status,
       checkIn,
       checkOut,
+      note: note.trim(),
       workingTime,
     };
 
@@ -186,6 +193,18 @@ export function AttendanceDateEditor({ date, entry, onSave, isSaving }: Attendan
             </div>
           </>
         )}
+
+        {/* Work Brief Note */}
+        <div className="space-y-2">
+          <Label htmlFor="work-note">Work Brief Note</Label>
+          <Textarea
+            id="work-note"
+            value={note}
+            onChange={(e) => setNote(e.target.value)}
+            placeholder="Brief description of work done (optional)"
+            rows={3}
+          />
+        </div>
 
         {/* Helper text for non-working statuses */}
         {isNonWorkingStatus && (

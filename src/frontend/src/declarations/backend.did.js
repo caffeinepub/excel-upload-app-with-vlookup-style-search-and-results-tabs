@@ -16,6 +16,18 @@ export const HistoryType = IDL.Variant({
   'upload' : IDL.Null,
   'updateChecking' : IDL.Null,
 });
+export const Time = IDL.Int;
+export const Note = IDL.Record({
+  'id' : IDL.Nat,
+  'text' : IDL.Text,
+  'lastUpdated' : Time,
+});
+export const TodoItem = IDL.Record({
+  'id' : IDL.Nat,
+  'text' : IDL.Text,
+  'completed' : IDL.Bool,
+  'timestamp' : Time,
+});
 export const UserRole = IDL.Variant({
   'admin' : IDL.Null,
   'user' : IDL.Null,
@@ -33,17 +45,17 @@ export const HolidayType = IDL.Variant({
   'festival' : IDL.Null,
   'companyLeave' : IDL.Null,
 });
-export const Time = IDL.Int;
 export const AttendanceDayEntry = IDL.Record({
   'status' : AttendanceStatus,
   'checkIn' : IDL.Opt(Time),
+  'note' : IDL.Text,
   'checkOut' : IDL.Opt(Time),
   'workingTime' : IDL.Nat,
 });
 export const ExpenseEntry = IDL.Record({
   'id' : IDL.Nat,
   'date' : IDL.Text,
-  'time' : IDL.Int,
+  'time' : Time,
   'description' : IDL.Text,
   'category' : IDL.Text,
   'amount' : IDL.Nat,
@@ -89,6 +101,15 @@ export const Reminder = IDL.Record({
   'time' : IDL.Text,
   'message' : IDL.Text,
 });
+export const ApprovalStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
+export const UserApprovalInfo = IDL.Record({
+  'status' : ApprovalStatus,
+  'principal' : IDL.Principal,
+});
 
 export const idlService = IDL.Service({
   '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -98,15 +119,19 @@ export const idlService = IDL.Service({
       [],
     ),
   'addHistory' : IDL.Func([HistoryType, IDL.Text], [IDL.Nat], []),
+  'addNote' : IDL.Func([IDL.Text], [Note], []),
   'addReminder' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Nat], []),
+  'addTodo' : IDL.Func([IDL.Text], [TodoItem], []),
   'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
   'checkIn' : IDL.Func([IDL.Text, AttendanceStatus], [], []),
   'checkOut' : IDL.Func([IDL.Text], [], []),
   'clearAllData' : IDL.Func([], [], []),
   'clearHistory' : IDL.Func([], [], []),
   'createHoliday' : IDL.Func([IDL.Text, HolidayType], [], []),
+  'deleteAttendanceEntry' : IDL.Func([IDL.Text], [], []),
   'deleteExpense' : IDL.Func([IDL.Nat], [], []),
   'deleteHoliday' : IDL.Func([IDL.Text], [], []),
+  'deleteNote' : IDL.Func([IDL.Nat], [], []),
   'deleteReminder' : IDL.Func([IDL.Nat], [], []),
   'editAttendanceEntry' : IDL.Func([IDL.Text, AttendanceDayEntry], [], []),
   'editExpense' : IDL.Func(
@@ -116,6 +141,11 @@ export const idlService = IDL.Service({
     ),
   'filterByDate' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseEntry)], ['query']),
   'filterByType' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseEntry)], ['query']),
+  'getAllAttendanceEntries' : IDL.Func(
+      [],
+      [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))],
+      ['query'],
+    ),
   'getAllHolidays' : IDL.Func([], [IDL.Vec(HolidayEntry)], ['query']),
   'getAttendanceConfig' : IDL.Func([], [IDL.Opt(AttendanceConfig)], ['query']),
   'getAttendanceEntry' : IDL.Func(
@@ -139,7 +169,9 @@ export const idlService = IDL.Service({
     ),
   'getHistory' : IDL.Func([], [IDL.Vec(HistoryEntry)], ['query']),
   'getHoliday' : IDL.Func([IDL.Text], [IDL.Opt(HolidayEntry)], ['query']),
+  'getNotes' : IDL.Func([], [IDL.Vec(Note)], ['query']),
   'getRemindersForCaller' : IDL.Func([], [IDL.Vec(Reminder)], ['query']),
+  'getTodos' : IDL.Func([], [IDL.Vec(TodoItem)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
       [IDL.Opt(UserProfile)],
@@ -148,9 +180,14 @@ export const idlService = IDL.Service({
   'getVersion' : IDL.Func([], [IDL.Text], ['query']),
   'getWorkingTime' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+  'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
+  'requestApproval' : IDL.Func([], [], []),
   'saveBudget' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
   'setAttendanceConfig' : IDL.Func([AttendanceConfig], [], []),
+  'toggleTodo' : IDL.Func([IDL.Nat], [], []),
   'updateHoliday' : IDL.Func([IDL.Text, HolidayType], [], []),
 });
 
@@ -164,6 +201,18 @@ export const idlFactory = ({ IDL }) => {
     'results' : IDL.Null,
     'upload' : IDL.Null,
     'updateChecking' : IDL.Null,
+  });
+  const Time = IDL.Int;
+  const Note = IDL.Record({
+    'id' : IDL.Nat,
+    'text' : IDL.Text,
+    'lastUpdated' : Time,
+  });
+  const TodoItem = IDL.Record({
+    'id' : IDL.Nat,
+    'text' : IDL.Text,
+    'completed' : IDL.Bool,
+    'timestamp' : Time,
   });
   const UserRole = IDL.Variant({
     'admin' : IDL.Null,
@@ -182,17 +231,17 @@ export const idlFactory = ({ IDL }) => {
     'festival' : IDL.Null,
     'companyLeave' : IDL.Null,
   });
-  const Time = IDL.Int;
   const AttendanceDayEntry = IDL.Record({
     'status' : AttendanceStatus,
     'checkIn' : IDL.Opt(Time),
+    'note' : IDL.Text,
     'checkOut' : IDL.Opt(Time),
     'workingTime' : IDL.Nat,
   });
   const ExpenseEntry = IDL.Record({
     'id' : IDL.Nat,
     'date' : IDL.Text,
-    'time' : IDL.Int,
+    'time' : Time,
     'description' : IDL.Text,
     'category' : IDL.Text,
     'amount' : IDL.Nat,
@@ -238,6 +287,15 @@ export const idlFactory = ({ IDL }) => {
     'time' : IDL.Text,
     'message' : IDL.Text,
   });
+  const ApprovalStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const UserApprovalInfo = IDL.Record({
+    'status' : ApprovalStatus,
+    'principal' : IDL.Principal,
+  });
   
   return IDL.Service({
     '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
@@ -247,15 +305,19 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'addHistory' : IDL.Func([HistoryType, IDL.Text], [IDL.Nat], []),
+    'addNote' : IDL.Func([IDL.Text], [Note], []),
     'addReminder' : IDL.Func([IDL.Text, IDL.Text, IDL.Text], [IDL.Nat], []),
+    'addTodo' : IDL.Func([IDL.Text], [TodoItem], []),
     'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
     'checkIn' : IDL.Func([IDL.Text, AttendanceStatus], [], []),
     'checkOut' : IDL.Func([IDL.Text], [], []),
     'clearAllData' : IDL.Func([], [], []),
     'clearHistory' : IDL.Func([], [], []),
     'createHoliday' : IDL.Func([IDL.Text, HolidayType], [], []),
+    'deleteAttendanceEntry' : IDL.Func([IDL.Text], [], []),
     'deleteExpense' : IDL.Func([IDL.Nat], [], []),
     'deleteHoliday' : IDL.Func([IDL.Text], [], []),
+    'deleteNote' : IDL.Func([IDL.Nat], [], []),
     'deleteReminder' : IDL.Func([IDL.Nat], [], []),
     'editAttendanceEntry' : IDL.Func([IDL.Text, AttendanceDayEntry], [], []),
     'editExpense' : IDL.Func(
@@ -265,6 +327,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'filterByDate' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseEntry)], ['query']),
     'filterByType' : IDL.Func([IDL.Text], [IDL.Vec(ExpenseEntry)], ['query']),
+    'getAllAttendanceEntries' : IDL.Func(
+        [],
+        [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))],
+        ['query'],
+      ),
     'getAllHolidays' : IDL.Func([], [IDL.Vec(HolidayEntry)], ['query']),
     'getAttendanceConfig' : IDL.Func(
         [],
@@ -292,7 +359,9 @@ export const idlFactory = ({ IDL }) => {
       ),
     'getHistory' : IDL.Func([], [IDL.Vec(HistoryEntry)], ['query']),
     'getHoliday' : IDL.Func([IDL.Text], [IDL.Opt(HolidayEntry)], ['query']),
+    'getNotes' : IDL.Func([], [IDL.Vec(Note)], ['query']),
     'getRemindersForCaller' : IDL.Func([], [IDL.Vec(Reminder)], ['query']),
+    'getTodos' : IDL.Func([], [IDL.Vec(TodoItem)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
         [IDL.Opt(UserProfile)],
@@ -301,9 +370,14 @@ export const idlFactory = ({ IDL }) => {
     'getVersion' : IDL.Func([], [IDL.Text], ['query']),
     'getWorkingTime' : IDL.Func([IDL.Text], [IDL.Nat], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+    'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
+    'requestApproval' : IDL.Func([], [], []),
     'saveBudget' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Nat, IDL.Text], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
     'setAttendanceConfig' : IDL.Func([AttendanceConfig], [], []),
+    'toggleTodo' : IDL.Func([IDL.Nat], [], []),
     'updateHoliday' : IDL.Func([IDL.Text, HolidayType], [], []),
   });
 };

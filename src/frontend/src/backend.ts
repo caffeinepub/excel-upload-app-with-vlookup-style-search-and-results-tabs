@@ -89,9 +89,13 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface HolidayEntry {
-    holidayType: HolidayType;
-    date: string;
+export interface UserProfile {
+    name: string;
+}
+export interface Note {
+    id: bigint;
+    text: string;
+    lastUpdated: Time;
 }
 export type Time = bigint;
 export interface HistoryEntry {
@@ -112,9 +116,14 @@ export interface AttendanceSummary {
     totalWorkingTime: bigint;
     leaveDays: bigint;
 }
+export interface UserApprovalInfo {
+    status: ApprovalStatus;
+    principal: Principal;
+}
 export interface AttendanceDayEntry {
     status: AttendanceStatus;
     checkIn?: Time;
+    note: string;
     checkOut?: Time;
     workingTime: bigint;
 }
@@ -125,27 +134,39 @@ export interface Reminder {
     time: string;
     message: string;
 }
+export interface TodoItem {
+    id: bigint;
+    text: string;
+    completed: boolean;
+    timestamp: Time;
+}
+export interface ExpenseEntry {
+    id: bigint;
+    date: string;
+    time: Time;
+    description: string;
+    category: string;
+    amount: bigint;
+}
 export interface AttendanceConfig {
     leavePolicy: bigint;
     weeklyOffDays: Array<bigint>;
     regularWorkingTime: bigint;
 }
-export interface ExpenseEntry {
-    id: bigint;
+export interface HolidayEntry {
+    holidayType: HolidayType;
     date: string;
-    time: bigint;
-    description: string;
-    category: string;
-    amount: bigint;
-}
-export interface UserProfile {
-    name: string;
 }
 export interface Budget {
     monthlyLimit: bigint;
     lastUpdated: string;
     dayLimit: bigint;
     savingsGoal: bigint;
+}
+export enum ApprovalStatus {
+    pending = "pending",
+    approved = "approved",
+    rejected = "rejected"
 }
 export enum AttendanceStatus {
     halfDay = "halfDay",
@@ -176,20 +197,25 @@ export interface backendInterface {
     _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
     addExpense(amount: bigint, category: string, description: string, date: string): Promise<bigint>;
     addHistory(entryType: HistoryType, details: string): Promise<bigint>;
+    addNote(text: string): Promise<Note>;
     addReminder(message: string, date: string, time: string): Promise<bigint>;
+    addTodo(text: string): Promise<TodoItem>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     checkIn(date: string, status: AttendanceStatus): Promise<void>;
     checkOut(date: string): Promise<void>;
     clearAllData(): Promise<void>;
     clearHistory(): Promise<void>;
     createHoliday(date: string, holidayType: HolidayType): Promise<void>;
+    deleteAttendanceEntry(date: string): Promise<void>;
     deleteExpense(id: bigint): Promise<void>;
     deleteHoliday(date: string): Promise<void>;
+    deleteNote(id: bigint): Promise<void>;
     deleteReminder(id: bigint): Promise<void>;
     editAttendanceEntry(date: string, updatedEntry: AttendanceDayEntry): Promise<void>;
     editExpense(id: bigint, amount: bigint, category: string, description: string, date: string): Promise<void>;
     filterByDate(date: string): Promise<Array<ExpenseEntry>>;
     filterByType(type: string): Promise<Array<ExpenseEntry>>;
+    getAllAttendanceEntries(): Promise<Array<[string, AttendanceDayEntry]>>;
     getAllHolidays(): Promise<Array<HolidayEntry>>;
     getAttendanceConfig(): Promise<AttendanceConfig | null>;
     getAttendanceEntry(date: string): Promise<AttendanceDayEntry | null>;
@@ -201,17 +227,24 @@ export interface backendInterface {
     getFilteredHistory(historyType: HistoryType): Promise<Array<HistoryEntry>>;
     getHistory(): Promise<Array<HistoryEntry>>;
     getHoliday(date: string): Promise<HolidayEntry | null>;
+    getNotes(): Promise<Array<Note>>;
     getRemindersForCaller(): Promise<Array<Reminder>>;
+    getTodos(): Promise<Array<TodoItem>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getVersion(): Promise<string>;
     getWorkingTime(date: string): Promise<bigint>;
     isCallerAdmin(): Promise<boolean>;
+    isCallerApproved(): Promise<boolean>;
+    listApprovals(): Promise<Array<UserApprovalInfo>>;
+    requestApproval(): Promise<void>;
     saveBudget(monthlyLimit: bigint, dayLimit: bigint, savingsGoal: bigint, lastUpdated: string): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
     setAttendanceConfig(config: AttendanceConfig): Promise<void>;
+    toggleTodo(id: bigint): Promise<void>;
     updateHoliday(date: string, holidayType: HolidayType): Promise<void>;
 }
-import type { AttendanceConfig as _AttendanceConfig, AttendanceDayEntry as _AttendanceDayEntry, AttendanceStatus as _AttendanceStatus, AttendanceSummary as _AttendanceSummary, Budget as _Budget, HistoryEntry as _HistoryEntry, HistoryType as _HistoryType, HolidayEntry as _HolidayEntry, HolidayType as _HolidayType, Time as _Time, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
+import type { ApprovalStatus as _ApprovalStatus, AttendanceConfig as _AttendanceConfig, AttendanceDayEntry as _AttendanceDayEntry, AttendanceStatus as _AttendanceStatus, AttendanceSummary as _AttendanceSummary, Budget as _Budget, HistoryEntry as _HistoryEntry, HistoryType as _HistoryType, HolidayEntry as _HolidayEntry, HolidayType as _HolidayType, Time as _Time, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
     async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
@@ -256,6 +289,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async addNote(arg0: string): Promise<Note> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addNote(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addNote(arg0);
+            return result;
+        }
+    }
     async addReminder(arg0: string, arg1: string, arg2: string): Promise<bigint> {
         if (this.processError) {
             try {
@@ -267,6 +314,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.addReminder(arg0, arg1, arg2);
+            return result;
+        }
+    }
+    async addTodo(arg0: string): Promise<TodoItem> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.addTodo(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.addTodo(arg0);
             return result;
         }
     }
@@ -354,6 +415,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async deleteAttendanceEntry(arg0: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteAttendanceEntry(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteAttendanceEntry(arg0);
+            return result;
+        }
+    }
     async deleteExpense(arg0: bigint): Promise<void> {
         if (this.processError) {
             try {
@@ -379,6 +454,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteHoliday(arg0);
+            return result;
+        }
+    }
+    async deleteNote(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.deleteNote(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.deleteNote(arg0);
             return result;
         }
     }
@@ -452,60 +541,74 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async getAllHolidays(): Promise<Array<HolidayEntry>> {
+    async getAllAttendanceEntries(): Promise<Array<[string, AttendanceDayEntry]>> {
         if (this.processError) {
             try {
-                const result = await this.actor.getAllHolidays();
+                const result = await this.actor.getAllAttendanceEntries();
                 return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.getAllHolidays();
+            const result = await this.actor.getAllAttendanceEntries();
             return from_candid_vec_n11(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getAllHolidays(): Promise<Array<HolidayEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllHolidays();
+                return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllHolidays();
+            return from_candid_vec_n18(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAttendanceConfig(): Promise<AttendanceConfig | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAttendanceConfig();
-                return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAttendanceConfig();
-            return from_candid_opt_n16(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n23(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAttendanceEntry(arg0: string): Promise<AttendanceDayEntry | null> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAttendanceEntry(arg0);
-                return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
+                return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAttendanceEntry(arg0);
-            return from_candid_opt_n17(this._uploadFile, this._downloadFile, result);
+            return from_candid_opt_n24(this._uploadFile, this._downloadFile, result);
         }
     }
     async getAttendanceSummary(arg0: [string, string]): Promise<AttendanceSummary> {
         if (this.processError) {
             try {
                 const result = await this.actor.getAttendanceSummary(arg0);
-                return from_candid_AttendanceSummary_n23(this._uploadFile, this._downloadFile, result);
+                return from_candid_AttendanceSummary_n25(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
             const result = await this.actor.getAttendanceSummary(arg0);
-            return from_candid_AttendanceSummary_n23(this._uploadFile, this._downloadFile, result);
+            return from_candid_AttendanceSummary_n25(this._uploadFile, this._downloadFile, result);
         }
     }
     async getBudget(): Promise<Budget | null> {
@@ -606,6 +709,20 @@ export class Backend implements backendInterface {
             return from_candid_opt_n36(this._uploadFile, this._downloadFile, result);
         }
     }
+    async getNotes(): Promise<Array<Note>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getNotes();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getNotes();
+            return result;
+        }
+    }
     async getRemindersForCaller(): Promise<Array<Reminder>> {
         if (this.processError) {
             try {
@@ -617,6 +734,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getRemindersForCaller();
+            return result;
+        }
+    }
+    async getTodos(): Promise<Array<TodoItem>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getTodos();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getTodos();
             return result;
         }
     }
@@ -676,6 +807,48 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async isCallerApproved(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerApproved();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isCallerApproved();
+            return result;
+        }
+    }
+    async listApprovals(): Promise<Array<UserApprovalInfo>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.listApprovals();
+                return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.listApprovals();
+            return from_candid_vec_n37(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async requestApproval(): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.requestApproval();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.requestApproval();
+            return result;
+        }
+    }
     async saveBudget(arg0: bigint, arg1: bigint, arg2: bigint, arg3: string): Promise<void> {
         if (this.processError) {
             try {
@@ -704,6 +877,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async setApproval(arg0: Principal, arg1: ApprovalStatus): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.setApproval(arg0, to_candid_ApprovalStatus_n42(this._uploadFile, this._downloadFile, arg1));
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.setApproval(arg0, to_candid_ApprovalStatus_n42(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
     async setAttendanceConfig(arg0: AttendanceConfig): Promise<void> {
         if (this.processError) {
             try {
@@ -715,6 +902,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.setAttendanceConfig(arg0);
+            return result;
+        }
+    }
+    async toggleTodo(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.toggleTodo(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.toggleTodo(arg0);
             return result;
         }
     }
@@ -733,14 +934,17 @@ export class Backend implements backendInterface {
         }
     }
 }
-function from_candid_AttendanceDayEntry_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceDayEntry): AttendanceDayEntry {
-    return from_candid_record_n19(_uploadFile, _downloadFile, value);
+function from_candid_ApprovalStatus_n40(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _ApprovalStatus): ApprovalStatus {
+    return from_candid_variant_n41(_uploadFile, _downloadFile, value);
 }
-function from_candid_AttendanceStatus_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceStatus): AttendanceStatus {
-    return from_candid_variant_n21(_uploadFile, _downloadFile, value);
+function from_candid_AttendanceDayEntry_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceDayEntry): AttendanceDayEntry {
+    return from_candid_record_n14(_uploadFile, _downloadFile, value);
 }
-function from_candid_AttendanceSummary_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceSummary): AttendanceSummary {
-    return from_candid_record_n24(_uploadFile, _downloadFile, value);
+function from_candid_AttendanceStatus_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceStatus): AttendanceStatus {
+    return from_candid_variant_n16(_uploadFile, _downloadFile, value);
+}
+function from_candid_AttendanceSummary_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AttendanceSummary): AttendanceSummary {
+    return from_candid_record_n26(_uploadFile, _downloadFile, value);
 }
 function from_candid_HistoryEntry_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HistoryEntry): HistoryEntry {
     return from_candid_record_n33(_uploadFile, _downloadFile, value);
@@ -748,23 +952,26 @@ function from_candid_HistoryEntry_n32(_uploadFile: (file: ExternalBlob) => Promi
 function from_candid_HistoryType_n34(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HistoryType): HistoryType {
     return from_candid_variant_n35(_uploadFile, _downloadFile, value);
 }
-function from_candid_HolidayEntry_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HolidayEntry): HolidayEntry {
-    return from_candid_record_n13(_uploadFile, _downloadFile, value);
+function from_candid_HolidayEntry_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HolidayEntry): HolidayEntry {
+    return from_candid_record_n20(_uploadFile, _downloadFile, value);
 }
-function from_candid_HolidayType_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HolidayType): HolidayType {
-    return from_candid_variant_n15(_uploadFile, _downloadFile, value);
+function from_candid_HolidayType_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _HolidayType): HolidayType {
+    return from_candid_variant_n22(_uploadFile, _downloadFile, value);
+}
+function from_candid_UserApprovalInfo_n38(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserApprovalInfo): UserApprovalInfo {
+    return from_candid_record_n39(_uploadFile, _downloadFile, value);
 }
 function from_candid_UserRole_n29(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
     return from_candid_variant_n30(_uploadFile, _downloadFile, value);
 }
-function from_candid_opt_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AttendanceConfig]): AttendanceConfig | null {
+function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Time]): Time | null {
     return value.length === 0 ? null : value[0];
 }
-function from_candid_opt_n17(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AttendanceDayEntry]): AttendanceDayEntry | null {
-    return value.length === 0 ? null : from_candid_AttendanceDayEntry_n18(_uploadFile, _downloadFile, value[0]);
-}
-function from_candid_opt_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Time]): Time | null {
+function from_candid_opt_n23(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AttendanceConfig]): AttendanceConfig | null {
     return value.length === 0 ? null : value[0];
+}
+function from_candid_opt_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_AttendanceDayEntry]): AttendanceDayEntry | null {
+    return value.length === 0 ? null : from_candid_AttendanceDayEntry_n13(_uploadFile, _downloadFile, value[0]);
 }
 function from_candid_opt_n27(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Budget]): Budget | null {
     return value.length === 0 ? null : value[0];
@@ -773,9 +980,30 @@ function from_candid_opt_n28(_uploadFile: (file: ExternalBlob) => Promise<Uint8A
     return value.length === 0 ? null : value[0];
 }
 function from_candid_opt_n36(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_HolidayEntry]): HolidayEntry | null {
-    return value.length === 0 ? null : from_candid_HolidayEntry_n12(_uploadFile, _downloadFile, value[0]);
+    return value.length === 0 ? null : from_candid_HolidayEntry_n19(_uploadFile, _downloadFile, value[0]);
 }
-function from_candid_record_n13(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n14(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    status: _AttendanceStatus;
+    checkIn: [] | [_Time];
+    note: string;
+    checkOut: [] | [_Time];
+    workingTime: bigint;
+}): {
+    status: AttendanceStatus;
+    checkIn?: Time;
+    note: string;
+    checkOut?: Time;
+    workingTime: bigint;
+} {
+    return {
+        status: from_candid_AttendanceStatus_n15(_uploadFile, _downloadFile, value.status),
+        checkIn: record_opt_to_undefined(from_candid_opt_n17(_uploadFile, _downloadFile, value.checkIn)),
+        note: value.note,
+        checkOut: record_opt_to_undefined(from_candid_opt_n17(_uploadFile, _downloadFile, value.checkOut)),
+        workingTime: value.workingTime
+    };
+}
+function from_candid_record_n20(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     holidayType: _HolidayType;
     date: string;
 }): {
@@ -783,29 +1011,11 @@ function from_candid_record_n13(_uploadFile: (file: ExternalBlob) => Promise<Uin
     date: string;
 } {
     return {
-        holidayType: from_candid_HolidayType_n14(_uploadFile, _downloadFile, value.holidayType),
+        holidayType: from_candid_HolidayType_n21(_uploadFile, _downloadFile, value.holidayType),
         date: value.date
     };
 }
-function from_candid_record_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    status: _AttendanceStatus;
-    checkIn: [] | [_Time];
-    checkOut: [] | [_Time];
-    workingTime: bigint;
-}): {
-    status: AttendanceStatus;
-    checkIn?: Time;
-    checkOut?: Time;
-    workingTime: bigint;
-} {
-    return {
-        status: from_candid_AttendanceStatus_n20(_uploadFile, _downloadFile, value.status),
-        checkIn: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.checkIn)),
-        checkOut: record_opt_to_undefined(from_candid_opt_n22(_uploadFile, _downloadFile, value.checkOut)),
-        workingTime: value.workingTime
-    };
-}
-function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_record_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     halfDays: bigint;
     weeklyOffDays: bigint;
     breakdown: Array<[string, _AttendanceDayEntry]>;
@@ -829,7 +1039,7 @@ function from_candid_record_n24(_uploadFile: (file: ExternalBlob) => Promise<Uin
     return {
         halfDays: value.halfDays,
         weeklyOffDays: value.weeklyOffDays,
-        breakdown: from_candid_vec_n25(_uploadFile, _downloadFile, value.breakdown),
+        breakdown: from_candid_vec_n11(_uploadFile, _downloadFile, value.breakdown),
         presentDays: value.presentDays,
         totalDays: value.totalDays,
         companyLeaveDays: value.companyLeaveDays,
@@ -859,20 +1069,25 @@ function from_candid_record_n33(_uploadFile: (file: ExternalBlob) => Promise<Uin
         details: value.details
     };
 }
-function from_candid_tuple_n26(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, _AttendanceDayEntry]): [string, AttendanceDayEntry] {
+function from_candid_record_n39(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    status: _ApprovalStatus;
+    principal: Principal;
+}): {
+    status: ApprovalStatus;
+    principal: Principal;
+} {
+    return {
+        status: from_candid_ApprovalStatus_n40(_uploadFile, _downloadFile, value.status),
+        principal: value.principal
+    };
+}
+function from_candid_tuple_n12(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [string, _AttendanceDayEntry]): [string, AttendanceDayEntry] {
     return [
         value[0],
-        from_candid_AttendanceDayEntry_n18(_uploadFile, _downloadFile, value[1])
+        from_candid_AttendanceDayEntry_n13(_uploadFile, _downloadFile, value[1])
     ];
 }
-function from_candid_variant_n15(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
-    festival: null;
-} | {
-    companyLeave: null;
-}): HolidayType {
-    return "festival" in value ? HolidayType.festival : "companyLeave" in value ? HolidayType.companyLeave : value;
-}
-function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+function from_candid_variant_n16(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     halfDay: null;
 } | {
     present: null;
@@ -886,6 +1101,13 @@ function from_candid_variant_n21(_uploadFile: (file: ExternalBlob) => Promise<Ui
     leave: null;
 }): AttendanceStatus {
     return "halfDay" in value ? AttendanceStatus.halfDay : "present" in value ? AttendanceStatus.present : "festival" in value ? AttendanceStatus.festival : "weeklyOff" in value ? AttendanceStatus.weeklyOff : "companyLeave" in value ? AttendanceStatus.companyLeave : "leave" in value ? AttendanceStatus.leave : value;
+}
+function from_candid_variant_n22(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    festival: null;
+} | {
+    companyLeave: null;
+}): HolidayType {
+    return "festival" in value ? HolidayType.festival : "companyLeave" in value ? HolidayType.companyLeave : value;
 }
 function from_candid_variant_n30(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     admin: null;
@@ -911,14 +1133,29 @@ function from_candid_variant_n35(_uploadFile: (file: ExternalBlob) => Promise<Ui
 }): HistoryType {
     return "expenseChange" in value ? HistoryType.expenseChange : "budgetChange" in value ? HistoryType.budgetChange : "search" in value ? HistoryType.search : "results" in value ? HistoryType.results : "upload" in value ? HistoryType.upload : "updateChecking" in value ? HistoryType.updateChecking : value;
 }
-function from_candid_vec_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_HolidayEntry>): Array<HolidayEntry> {
-    return value.map((x)=>from_candid_HolidayEntry_n12(_uploadFile, _downloadFile, x));
+function from_candid_variant_n41(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    pending: null;
+} | {
+    approved: null;
+} | {
+    rejected: null;
+}): ApprovalStatus {
+    return "pending" in value ? ApprovalStatus.pending : "approved" in value ? ApprovalStatus.approved : "rejected" in value ? ApprovalStatus.rejected : value;
 }
-function from_candid_vec_n25(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, _AttendanceDayEntry]>): Array<[string, AttendanceDayEntry]> {
-    return value.map((x)=>from_candid_tuple_n26(_uploadFile, _downloadFile, x));
+function from_candid_vec_n11(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<[string, _AttendanceDayEntry]>): Array<[string, AttendanceDayEntry]> {
+    return value.map((x)=>from_candid_tuple_n12(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n18(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_HolidayEntry>): Array<HolidayEntry> {
+    return value.map((x)=>from_candid_HolidayEntry_n19(_uploadFile, _downloadFile, x));
 }
 function from_candid_vec_n31(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_HistoryEntry>): Array<HistoryEntry> {
     return value.map((x)=>from_candid_HistoryEntry_n32(_uploadFile, _downloadFile, x));
+}
+function from_candid_vec_n37(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<_UserApprovalInfo>): Array<UserApprovalInfo> {
+    return value.map((x)=>from_candid_UserApprovalInfo_n38(_uploadFile, _downloadFile, x));
+}
+function to_candid_ApprovalStatus_n42(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApprovalStatus): _ApprovalStatus {
+    return to_candid_variant_n43(_uploadFile, _downloadFile, value);
 }
 function to_candid_AttendanceDayEntry_n9(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: AttendanceDayEntry): _AttendanceDayEntry {
     return to_candid_record_n10(_uploadFile, _downloadFile, value);
@@ -938,17 +1175,20 @@ function to_candid_UserRole_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint
 function to_candid_record_n10(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
     status: AttendanceStatus;
     checkIn?: Time;
+    note: string;
     checkOut?: Time;
     workingTime: bigint;
 }): {
     status: _AttendanceStatus;
     checkIn: [] | [_Time];
+    note: string;
     checkOut: [] | [_Time];
     workingTime: bigint;
 } {
     return {
         status: to_candid_AttendanceStatus_n5(_uploadFile, _downloadFile, value.status),
         checkIn: value.checkIn ? candid_some(value.checkIn) : candid_none(),
+        note: value.note,
         checkOut: value.checkOut ? candid_some(value.checkOut) : candid_none(),
         workingTime: value.workingTime
     };
@@ -993,6 +1233,21 @@ function to_candid_variant_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         user: null
     } : value == UserRole.guest ? {
         guest: null
+    } : value;
+}
+function to_candid_variant_n43(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: ApprovalStatus): {
+    pending: null;
+} | {
+    approved: null;
+} | {
+    rejected: null;
+} {
+    return value == ApprovalStatus.pending ? {
+        pending: null
+    } : value == ApprovalStatus.approved ? {
+        approved: null
+    } : value == ApprovalStatus.rejected ? {
+        rejected: null
     } : value;
 }
 function to_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: AttendanceStatus): {

@@ -35,7 +35,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
   // Quick add form states
   const [reminderTitle, setReminderTitle] = useState('');
   const [reminderTime, setReminderTime] = useState('');
-  const [todoDesc, setTodoDesc] = useState('');
+  const [todoText, setTodoText] = useState('');
   const [noteTitle, setNoteTitle] = useState('');
   const [noteContent, setNoteContent] = useState('');
 
@@ -74,12 +74,12 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
   };
 
   const handleCreateTodo = async () => {
-    if (!todoDesc.trim()) return;
+    if (!todoText.trim()) return;
     
     try {
-      await createTodoMutation.mutateAsync({ description: todoDesc });
+      await createTodoMutation.mutateAsync({ text: todoText });
       setTodoDialogOpen(false);
-      setTodoDesc('');
+      setTodoText('');
     } catch (error) {
       console.error('Failed to create todo:', error);
     }
@@ -345,11 +345,11 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="quick-todo-desc">Description</Label>
+                        <Label htmlFor="quick-todo-text">Description</Label>
                         <Textarea
-                          id="quick-todo-desc"
-                          value={todoDesc}
-                          onChange={(e) => setTodoDesc(e.target.value)}
+                          id="quick-todo-text"
+                          value={todoText}
+                          onChange={(e) => setTodoText(e.target.value)}
                           placeholder="Complete project report"
                           rows={3}
                         />
@@ -358,7 +358,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                     <DialogFooter>
                       <Button
                         onClick={handleCreateTodo}
-                        disabled={createTodoMutation.isPending || !todoDesc.trim()}
+                        disabled={createTodoMutation.isPending || !todoText.trim()}
                       >
                         {createTodoMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
@@ -375,7 +375,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                   <div className="space-y-2">
                     {openTodos.map((todo) => (
                       <div key={Number(todo.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p className="font-medium">{todo.description}</p>
+                        <p className="font-medium">{todo.text}</p>
                       </div>
                     ))}
                   </div>
@@ -443,9 +443,10 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                   <p className="text-sm text-muted-foreground">No notes yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {notes.slice(0, 5).map((note) => (
+                    {notes.slice(0, 3).map((note) => (
                       <div key={Number(note.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p className="font-medium">{note.title}</p>
+                        <p className="font-medium line-clamp-1">{note.title || 'Untitled'}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-2">{note.content}</p>
                       </div>
                     ))}
                   </div>
@@ -455,19 +456,19 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
           </div>
         )}
 
-        {/* Regular Expense Quick Action - Desktop Only */}
+        {/* Budget & Expenses Quick Action - Desktop Only */}
         {isAuthenticated && (
           <div className="hidden lg:block">
-            <Card className="mac-card expense-card">
+            <Card className="mac-card">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2">
-                  <Wallet className="w-5 h-5" />
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Wallet className="w-4 h-4" />
                   Budget & Expenses
                 </CardTitle>
-                <CardDescription>Manage your budget and track expenses</CardDescription>
+                <CardDescription className="text-xs">Manage your finances</CardDescription>
               </CardHeader>
               <CardContent>
-                <Button onClick={() => onNavigate('regular-expense')} className="w-full expense-button">
+                <Button onClick={() => onNavigate('regular-expense')} variant="outline" className="w-full">
                   Open Budget & Expenses
                 </Button>
               </CardContent>
@@ -479,7 +480,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Log in to access productivity features like reminders, calendar, to-dos, and notes.
+              Log in to access reminders, calendar, to-dos, notes, and budget features.
             </AlertDescription>
           </Alert>
         )}

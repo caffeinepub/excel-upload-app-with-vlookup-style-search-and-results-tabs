@@ -1,156 +1,108 @@
 {
   "kind": "build_request",
-  "title": "Attendance month calendar with date-wise editing and global festival/company leave management",
+  "title": "User management with admin approval, attendance hours recalculation, work brief notes, and calendar integration",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Add backend support for reading and editing attendance entries by arbitrary date (past and upcoming), not limited to the current day, so the frontend can fetch a specific date’s entry and update it.",
-      "target": "backend",
+      "text": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-3",
-          "msg-5"
+          "msg-7",
+          "msg-8"
         ],
         "quotes": [
-          "IN ATENDENCE ALSO ADD MONTH LIST IN WHICH WE CAN EDIT DATA DATE WISE PREVIOUS AND UPCOMING",
-          "YES"
+          "ADD USER MANAGEMENT. I WILL APROVE AFTER THAT SOMEONE USE THIS APP.",
+          "1.YES 2.username/password system. 3.YES"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes a query method to fetch a single AttendanceDayEntry (or null) for a provided YYYY-MM-DD date for the authenticated caller.",
-        "Backend exposes a shared method to upsert (create/update) an AttendanceDayEntry for a provided YYYY-MM-DD date for the authenticated caller, including status and optional check-in/check-out times.",
-        "Backend exposes a query method to list attendance entries for the authenticated caller within an inclusive date range (start YYYY-MM-DD, end YYYY-MM-DD).",
-        "All new methods enforce the same AccessControl permission checks used by existing attendance methods."
+        "Backend exposes user-management APIs to (a) register with username/password, (b) login with username/password, (c) allow an admin to approve/reject users, (d) allow an admin to list users, update user fields (at minimum username and approval/role), and delete users.",
+        "Backend enforces that non-approved users cannot access user-only features (existing calls that currently require #user permission must also require the user to be approved).",
+        "Frontend provides screens/components for: (a) registration, (b) login, (c) showing approval status if the user is pending/rejected, and (d) an admin-only user management panel for approve/reject, edit, and delete.",
+        "All user-facing text for auth and admin screens is in English.",
+        "Existing Internet Identity login remains functional and is not modified in immutable hook paths; new username/password flows are implemented without editing files under frontend/src/hooks/useInternetIdentity.ts(x) or other immutable paths."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Add backend support for global holidays that apply to all users, supporting at minimum two types: festival and company leave, and allow authorized users to create, update, list, and delete those holidays by date.",
-      "target": "backend",
+      "text": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-3",
+          "msg-4",
           "msg-5"
         ],
         "quotes": [
-          "ALSO SET FESTIVAL AND COMPANY LEAVE",
-          "YES."
+          "DO CALCULATE HOURS WHICH ARE SET IN PAST DATE  AND TIME SETED IN ATTENDANCE",
+          "1. IN TOTAL WORKING TIME UPDATE."
         ]
       },
       "acceptanceCriteria": [
-        "Backend defines a persistent collection of global holidays keyed by date (YYYY-MM-DD) with fields sufficient to represent: date, name/label, and type (festival vs company leave).",
-        "Backend exposes a query method to list global holidays within an inclusive date range.",
-        "Backend exposes shared methods to upsert a global holiday and delete a global holiday by date.",
-        "Global holiday mutation methods are permission-protected (admin-only or an equivalent privileged role using the existing AccessControl system)."
+        "When an attendance entry is edited for any date (including past dates), the stored workingTime reflects the duration between checkIn and checkOut (and is 0 when either is missing or when the status is a non-working day).",
+        "Attendance summary totalWorkingTime equals the sum of workingTime across all entries in the requested range (and does not overwrite/return only a single day’s workingTime).",
+        "Frontend attendance summary UI updates after editing an entry (including past entries) without requiring a full page reload.",
+        "Invalid time ranges (check-out before check-in) are rejected with a clear English error message."
       ]
     },
     {
       "id": "REQ-3",
-      "text": "Update backend attendance summary logic so that festival and company leave days are counted correctly in summaries over a date range, including when those days come from global holidays.",
-      "target": "backend",
+      "text": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-3",
+          "msg-4",
           "msg-5"
         ],
         "quotes": [
-          "ALSO SET FESTIVAL AND COMPANY LEAVE",
-          "YES."
+          "ALSO ADD WORK BREEF NOTE IN ATTENDANCE.",
+          "3.YES"
         ]
       },
       "acceptanceCriteria": [
-        "AttendanceSummary includes correct counts for festival days and company leave days for the requested range.",
-        "Days that are global holidays are reflected in summary counts even if the user has no explicit AttendanceDayEntry stored for that date.",
-        "Existing summary behavior for present/leave/half-day/weekly-off remains correct for stored user entries."
+        "Backend AttendanceDayEntry (or an associated attendance record) stores a brief note field for each date.",
+        "Frontend AttendanceDateEditor displays an input (textarea or text input) for the work brief note when editing a date and saves it with the entry.",
+        "The note is loaded and shown when reopening an existing attendance entry for a date.",
+        "Work brief notes are included in any attendance breakdown data returned by the backend (so they can be used by UI/export features as needed)."
       ]
     },
     {
       "id": "REQ-4",
-      "text": "Implement an attendance calendar-style month view in the Attendance page where users can browse months (previous and upcoming), select a date, and view/edit attendance for that selected date.",
-      "target": "frontend",
+      "text": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
+      "target": "both",
       "source": {
         "messageIds": [
-          "msg-3",
+          "msg-4",
           "msg-5"
         ],
         "quotes": [
-          "ADD MONTH LIST IN WHICH WE CAN EDIT DATA DATE WISE PREVIOUS AND UPCOMING",
-          "calendar‑style month view where users can select any date to view or edit attendance"
+          "AND START Calendar Events WORKING.",
+          "2. WE HAVE CALANDER FUTURE SO DO WORKING."
         ]
       },
       "acceptanceCriteria": [
-        "AttendanceTab provides a month view calendar UI with month navigation controls (at least previous/next month, and a clear month label).",
-        "Selecting a date shows the stored attendance for that date (or an empty state if none) and allows editing for both past and upcoming dates.",
-        "Edits persist via new backend methods and the UI refreshes to reflect the saved state without requiring a full page reload.",
-        "The month view visually distinguishes: today, days with saved attendance entries, and days that are global holidays (festival/company leave)."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Add a date editor UI for attendance entries that allows changing status (present/leave/half-day/etc.) and managing times where applicable, with validation and clear user-facing error messages in English.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3",
-          "msg-5"
-        ],
-        "quotes": [
-          "EDIT DATA DATE WISE",
-          "YES"
-        ]
-      },
-      "acceptanceCriteria": [
-        "For a selected date, the UI provides controls to update attendance status (including new statuses required to represent company leave distinctly from festival).",
-        "If the user sets a status that implies no working hours (e.g., leave/festival/company leave), the UI makes it clear how working time will be treated (e.g., 0) and prevents inconsistent time inputs.",
-        "Errors from backend mutations are shown as readable English messages (e.g., via existing toast/alert patterns).",
-        "After saving, React Query caches for attendance data relevant to the calendar (selected date entry and month range view) are invalidated/refetched."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Add a global festival/company leave management UI so authorized users can set, edit, and delete holiday dates, and ensure those holidays appear automatically across the attendance month calendar for all users.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-3",
-          "msg-5"
-        ],
-        "quotes": [
-          "ALSO SET FESTIVAL AND COMPANY LEAVE",
-          "YES."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Attendance UI includes a section (e.g., within Attendance settings) to manage global holidays: add/edit holiday name, date (YYYY-MM-DD via date picker), and type (Festival vs Company Leave).",
-        "Holiday list supports viewing holidays for the currently viewed month and deleting an existing holiday date.",
-        "If the current user is not authorized to manage holidays, the management controls are hidden or disabled with a clear English explanation.",
-        "Calendar month view reflects global holidays (festival/company leave) without requiring users to manually create attendance entries for those dates."
+        "Frontend Calendar tab lists events from the backend (useGetCalendarEvents returns real data; create/delete mutations call real backend methods).",
+        "Creating a calendar event in the Calendar tab persists it and it appears in the events list after creation.",
+        "Deleting a calendar event removes it and it disappears from the list after deletion.",
+        "Attendance entries appear as calendar events according to a consistent mapping (at minimum: date and working status/time reflected in event title/description), and the mapping does not create duplicate events for the same attendance date on repeated refreshes.",
+        "Calendar/attendance integration respects authorization rules (only approved users can manage their own calendar events; admins can manage per the app’s existing authorization conventions)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor in backend/main.mo; do not introduce additional backend services.",
-    "Do not edit files under frontend/src/hooks/useInternetIdentity.ts or frontend/src/hooks/useActor.ts (immutable paths). Compose new hooks/components instead.",
-    "Use English for all user-facing UI text."
+    "Backend must remain a single Motoko actor with logic in backend/main.mo; only add backend/migration.mo changes if required by stable state upgrades.",
+    "Do not edit files in frontend immutablePaths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
+    "No external databases or third-party authentication providers; implement username/password and approval using canister state only.",
+    "Use English for any user-facing text."
   ],
   "nonGoals": [
-    "Do not add third-party calendar integrations (Google Calendar, Outlook, etc.).",
-    "Do not add real-time syncing or WebSocket-based updates.",
-    "Do not introduce external databases or off-chain storage."
+    "Adding third-party OAuth/social logins (e.g., Google/GitHub/Facebook/Auth0).",
+    "Adding real-time features like WebSockets/push notifications.",
+    "Integrating external calendar providers (Google Calendar, Outlook, etc.)."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }
