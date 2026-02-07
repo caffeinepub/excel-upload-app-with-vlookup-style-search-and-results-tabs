@@ -1,78 +1,75 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-06T13:09:25.548Z",
-  "summary": "Diff updates the Upload tab empty-state to use a new PATENTED round logo path and adds a combined flip+continuous-rotation Tailwind animation with reduced-motion support. However, the required static asset file was not added (no added files), and there are unrelated/contra-request changes (notably AppHeader branding/layout and other behavior changes). Evidence is insufficient to confirm the requested PDF/in-app text-overlap fixes.",
+  "generatedAt": "2026-02-07T05:07:23.605Z",
+  "summary": "Implemented a new Regular Expense tab with hooks and PDF report utilities, added History and Regular Expense items to the desktop sidebar, and added backend APIs for budgets/expenses. However, the diff also removes/neutralizes other existing backend-dependent features (reminders/calendar/todo/notes/history persistence) that were not requested, and some requested UI behaviors are not evidenced in the truncated diff (Deskboard button; explicit logged-out blocking message).",
   "missing_requirements": [
     {
-      "id": "REQ-60",
-      "requirement": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (transparent cutout) under frontend/public/assets/generated with the exact filename patented-round-red-cutout.dim_1200x1200.png, used only for Upload tab empty-state animation.",
-      "reason": "The diff summary shows no added files, so the required new static asset file is not present/confirmed.",
+      "id": "REQ-3",
+      "requirement": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
+      "reason": "DeskboardTab.tsx is truncated and does not show any added desktop-only button or navigation action to the new \"regular-expense\" tab; only the icon import (Wallet) is visible, which is insufficient to confirm the button exists and is hidden on <lg.",
       "evidence": [
-        "File diff summary: \"Added: 0\" and \"ADDED FILES: - none\"",
-        "frontend/src/pages/UploadTab.tsx references /assets/generated/patented-round-red-cutout.dim_1200x1200.png but no corresponding file addition is shown"
+        "frontend/src/pages/DeskboardTab.tsx (truncated)"
       ]
     },
     {
-      "id": "REQ-63",
-      "requirement": "Fix PDF export layout so no text overlaps anywhere (header, footer, table cells) and multi-page exports remain readable with consistent margins/spacing.",
-      "reason": "exportPdf.ts is truncated and does not provide enough visible evidence of header/footer text wrapping/truncation and table cell overflow handling across pages; cannot verify the no-overlap acceptance criteria from the provided diff summary.",
+      "id": "REQ-4",
+      "requirement": "If the user is not logged in, the Regular Expense page shows an English message indicating login is required to manage expenses, and prevents submitting changes.",
+      "reason": "RegularExpenseTab.tsx shows `isAuthenticated` checks that early-return in handlers, but the truncated content does not show a logged-out message/guard UI for the page itself.",
       "evidence": [
-        "frontend/src/lib/export/exportPdf.ts (truncated)"
+        "frontend/src/pages/RegularExpenseTab.tsx (truncated)"
       ]
     },
     {
-      "id": "REQ-64",
-      "requirement": "Fix in-app UI formatting issues that can cause text overlap (non-PDF), adjusting spacing/wrapping/alignment responsively, keeping user-facing text in English.",
-      "reason": "While some layout changes appear in AppHeader and summaries mention wrapping, the provided diffs are truncated and do not clearly demonstrate targeted fixes for overlap issues across the app/responsive widths; cannot confirm acceptance criteria from evidence shown.",
+      "id": "REQ-5",
+      "requirement": "Add backend persistence for per-user budgets and expense entries.",
+      "reason": "backend/main.mo defines budgets/expenses maps and nextExpenseId as non-stable `let/var` values in the snippet; there is no evidence they are stored in stable variables or otherwise persisted across upgrades. A migration file is added, but it initializes everything empty, which does not demonstrate persistence of new data.",
       "evidence": [
-        "frontend/src/components/layout/AppHeader.tsx",
-        "frontend/src/pages/ResultsTab.tsx (truncated)",
-        "frontend/src/pages/HistoryTab.tsx (truncated)",
-        "frontend-file-summaries.txt (truncated)"
+        "backend/main.mo",
+        "backend/migration.mo"
       ]
     }
   ],
   "hallucinated_features": [
     {
-      "description": "Changed App header logo sizing/layout (responsive flex-col/flex-row, logo class h-12 sm:h-16) and related header UI structure.",
-      "reason": "BuildRequest explicitly constrained that the new PATENTED logo/animation applies only to Upload tab empty state and that header branding should not be changed; these header changes are outside scope.",
+      "description": "Disabling/removing backend support for reminders, calendar events, to-do items, notes, and history persistence (replacing hooks/mutations with no-ops or errors).",
+      "reason": "The BuildRequest only asked to add Regular Expense tracking, PDF reports, and ensure sidebar History access. The diff introduces broad unrelated behavior changes indicating these features are \"no longer supported\" and returns empty data / throws errors.",
       "evidence": [
-        "frontend/src/components/layout/AppHeader.tsx (logo className=\"h-12 sm:h-16 ...\", header layout changes)",
-        "BuildRequest constraint: \"do not replace the app header logo\" / REQ-61 AC: \"No changes are made to the app header logo sizing/branding\""
+        "frontend/src/hooks/useProductivityMutations.ts",
+        "frontend/src/hooks/useProductivityQueries.ts",
+        "frontend/src/hooks/useQueries.ts (mentioned in frontend-file-summaries.txt)"
       ]
     },
     {
-      "description": "Added/changed Replace Excel workflow inside AppHeader including hidden file input, concurrent replace prevention, dynamic import of parseWorkbook, and additional workbook validation/errors.",
-      "reason": "Not requested by REQ-60..64; BuildRequest non-goals include not changing unrelated behaviors/workflows beyond overlap fixes and Upload empty-state logo/animation.",
+      "description": "Migration that appears to drop all previous user data by returning empty maps and resetting IDs.",
+      "reason": "The migration’s `run` function ignores the old state contents and returns a new actor state with empty `budgets`, `expenses`, and `userProfiles`, and `nextExpenseId = 0`. The BuildRequest did not request wiping prior data.",
       "evidence": [
-        "frontend/src/components/layout/AppHeader.tsx (handleReplaceWorkbook, hidden file input, dynamic import '../../lib/excel/parseWorkbook', validation/error messages)"
+        "backend/migration.mo"
       ]
     },
     {
-      "description": "Added debug console logging in ResultsTab.",
-      "reason": "Not requested; unrelated to specified requirements.",
+      "description": "Backend actor refactored to only include profiles/budgets/expenses (implied removal of prior reminder/calendar/todo/note/history APIs).",
+      "reason": "BuildRequest constraint was to keep backend as a single Motoko actor and add expense APIs; it did not request removing other existing APIs. The shown main.mo snippet defines only expense-related types and profile methods plus authorization mixin, suggesting a breaking change beyond scope.",
       "evidence": [
-        "frontend/src/pages/ResultsTab.tsx (useEffect console.log statements)"
-      ]
-    },
-    {
-      "description": "Introduced/changed inline row editing UX messaging via alert(\"Row updated successfully...\").",
-      "reason": "Not requested as part of this build (requirements focus on Upload empty-state logo/animation and overlap fixes).",
-      "evidence": [
-        "frontend/src/pages/ResultsTab.tsx (alert('Row updated successfully...'))"
+        "backend/main.mo"
       ]
     }
   ],
-  "confidence": 0.74,
+  "confidence": 0.63,
   "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "frontend-file-summaries.txt",
-    "frontend/src/components/layout/AppHeader.tsx",
-    "frontend/src/lib/export/exportPdf.ts",
-    "frontend/src/pages/HistoryTab.tsx",
-    "frontend/src/pages/ResultsTab.tsx",
-    "frontend/src/pages/UploadTab.tsx",
-    "frontend/tailwind.config.js",
+    "frontend/src/App.tsx",
+    "frontend/src/components/layout/DesktopSidebarNav.tsx",
+    "frontend/src/hooks/useInAppReminderNotifications.ts",
+    "frontend/src/hooks/useProductivityMutations.ts",
+    "frontend/src/hooks/useProductivityQueries.ts",
+    "frontend/src/hooks/useRegularExpense.ts",
+    "frontend/src/lib/expenses/expenseReport.ts",
+    "frontend/src/pages/DeskboardTab.tsx",
+    "frontend/src/pages/RegularExpenseTab.tsx",
+    "frontend/src/pages/RemindersTab.tsx",
     "project_state.json"
   ]
 }

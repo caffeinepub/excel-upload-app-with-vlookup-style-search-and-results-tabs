@@ -10,6 +10,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { exportToExcel } from '../lib/export/exportXlsx';
 import { exportToPdf } from '../lib/export/exportPdf';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HorizontalTableScroll } from '../components/table/HorizontalTableScroll';
 import { UpdateCheckingResultsSearchBar } from '../components/updateChecking/UpdateCheckingResultsSearchBar';
 import { filterComparisonRows, MatchType } from '../lib/compare/filterComparisonRows';
 import type { MultiSearchResult } from '../state/appState';
@@ -314,8 +315,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                   New Items (present in new file but not in old file)
                 </Label>
                 <ScrollArea className="h-[500px] rounded-md border">
-                  <div className="p-4 overflow-x-auto">
-                    <table className="w-full border-collapse min-w-max">
+                  <HorizontalTableScroll className="p-4">
+                    <table className="w-full border-collapse">
                       <thead className="sticky top-0 bg-background z-10">
                         <tr className="border-b">
                           <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
@@ -339,13 +340,13 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                               key={idx}
                               className="border-b hover:bg-muted/50 transition-colors"
                             >
-                              <td className="p-2 text-sm font-medium break-words max-w-xs">
+                              <td className="p-2 text-sm font-medium whitespace-nowrap">
                                 {row.keyValue === null || row.keyValue === undefined
                                   ? '-'
                                   : String(row.keyValue)}
                               </td>
                               {trailingCells.map((cell, cellIdx) => (
-                                <td key={cellIdx} className="p-2 text-sm break-words max-w-xs">
+                                <td key={cellIdx} className="p-2 text-sm whitespace-nowrap">
                                   {cell === null || cell === undefined ? '-' : String(cell)}
                                 </td>
                               ))}
@@ -354,7 +355,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                         })}
                       </tbody>
                     </table>
-                  </div>
+                  </HorizontalTableScroll>
                 </ScrollArea>
               </div>
             ) : (
@@ -455,8 +456,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               
               <ScrollArea className="h-[500px] rounded-md border">
-                <div className="p-4 overflow-x-auto">
-                  <table className="w-full border-collapse min-w-max">
+                <HorizontalTableScroll className="p-4">
+                  <table className="w-full border-collapse">
                     <thead className="sticky top-0 bg-background z-10">
                       <tr className="border-b">
                         <th className="text-left p-2 text-sm font-semibold text-muted-foreground w-24 whitespace-nowrap">
@@ -483,15 +484,15 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                         if (!result.found || !result.fullRow) {
                           return (
                             <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                              <td className="p-2 text-sm">-</td>
-                              <td className="p-2 text-sm font-medium break-words max-w-xs">{result.lookupValue}</td>
-                              <td className="p-2 text-sm">
+                              <td className="p-2 text-sm whitespace-nowrap">-</td>
+                              <td className="p-2 text-sm font-medium whitespace-nowrap">{result.lookupValue}</td>
+                              <td className="p-2 text-sm whitespace-nowrap">
                                 <Badge variant="secondary">
                                   <XCircle className="w-3 h-3 mr-1" />
                                   Not Found
                                 </Badge>
                               </td>
-                              <td colSpan={workbook.sheetData?.headers.length || 1} className="p-2 text-sm text-muted-foreground break-words">
+                              <td colSpan={workbook.sheetData?.headers.length || 1} className="p-2 text-sm text-muted-foreground whitespace-nowrap">
                                 {result.message}
                               </td>
                             </tr>
@@ -503,7 +504,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
 
                         return (
                           <tr key={idx} className="border-b hover:bg-muted/50 transition-colors">
-                            <td className="p-2 text-sm">
+                            <td className="p-2 text-sm whitespace-nowrap">
                               {!isEditing && (
                                 <Button
                                   onClick={() => handleStartEdit(result.rowIndex!, result.fullRow!)}
@@ -514,8 +515,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                                 </Button>
                               )}
                             </td>
-                            <td className="p-2 text-sm font-medium break-words max-w-xs">{result.lookupValue}</td>
-                            <td className="p-2 text-sm">
+                            <td className="p-2 text-sm font-medium whitespace-nowrap">{result.lookupValue}</td>
+                            <td className="p-2 text-sm whitespace-nowrap">
                               <Badge variant="default">
                                 <CheckCircle2 className="w-3 h-3 mr-1" />
                                 Found
@@ -530,7 +531,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                                     className="h-8 text-sm min-w-[100px]"
                                   />
                                 ) : (
-                                  <span className="break-words">{cell === null || cell === undefined ? '-' : String(cell)}</span>
+                                  <span className="whitespace-nowrap">{cell === null || cell === undefined ? '-' : String(cell)}</span>
                                 )}
                               </td>
                             ))}
@@ -539,7 +540,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                       })}
                     </tbody>
                   </table>
-                </div>
+                </HorizontalTableScroll>
               </ScrollArea>
             </div>
 

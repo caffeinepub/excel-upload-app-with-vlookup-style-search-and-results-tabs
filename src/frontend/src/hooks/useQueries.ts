@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import type { DataHistoryEntry } from '../backend';
 
 export interface HistoryEntry {
   id?: bigint;
@@ -10,7 +9,8 @@ export interface HistoryEntry {
 }
 
 /**
- * Query to list all history entries from the backend
+ * Query to list all history entries - now returns empty array since backend no longer supports history
+ * History is managed locally in app state
  */
 export function useListHistory() {
   const { actor, isFetching } = useActor();
@@ -18,22 +18,9 @@ export function useListHistory() {
   return useQuery<HistoryEntry[]>({
     queryKey: ['history'],
     queryFn: async () => {
-      if (!actor) return [];
-      
-      try {
-        const entries = await actor.listEntries();
-        
-        // Convert backend entries to frontend format
-        return entries.map(([id, entry]) => ({
-          id,
-          type: determineTypeFromEntry(entry),
-          timestamp: Number(entry.filterCount), // Using filterCount as timestamp
-          data: convertBackendEntryToFrontendData(entry),
-        }));
-      } catch (error) {
-        console.error('Failed to load history from backend:', error);
-        return [];
-      }
+      // Backend no longer supports history, return empty array
+      // History is now managed locally in app state
+      return [];
     },
     enabled: !!actor && !isFetching,
     staleTime: 30000, // 30 seconds
@@ -42,7 +29,8 @@ export function useListHistory() {
 }
 
 /**
- * Mutation to add a history entry to the backend
+ * Mutation to add a history entry - now a no-op since backend no longer supports history
+ * History is managed locally in app state
  */
 export function useAddHistoryEntry() {
   const { actor } = useActor();
@@ -50,43 +38,23 @@ export function useAddHistoryEntry() {
 
   return useMutation({
     mutationFn: async (entry: HistoryEntry) => {
-      if (!actor) {
-        throw new Error('Backend actor not available');
-      }
-
-      const backendEntry = convertFrontendEntryToBackend(entry);
-      
-      const [id, savedEntry] = await actor.addHistoryEntry(
-        backendEntry.determinant,
-        backendEntry.diagnosticTestResult,
-        backendEntry.dtSensitivityScore,
-        backendEntry.filterCount,
-        backendEntry.filterLabels,
-        backendEntry.indicatorsUsed,
-        backendEntry.itemReviewed,
-        backendEntry.maintenanceAction,
-        backendEntry.manipulatedVariables,
-        backendEntry.mpvShortList,
-        backendEntry.scoreSummary,
-        backendEntry.trueCheck,
-        backendEntry.varControlStatus,
-        backendEntry.varDefSummary
-      );
-
-      return { id, savedEntry };
+      // Backend no longer supports history
+      // History is now managed locally in app state
+      return { id: BigInt(0), savedEntry: entry };
     },
     onSuccess: () => {
       // Invalidate and refetch history
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
     onError: (error) => {
-      console.error('Failed to add history entry to backend:', error);
+      console.error('Failed to add history entry:', error);
     },
   });
 }
 
 /**
- * Mutation to clear all history from the backend
+ * Mutation to clear all history - now a no-op since backend no longer supports history
+ * History is managed locally in app state
  */
 export function useClearHistory() {
   const { actor } = useActor();
@@ -94,70 +62,16 @@ export function useClearHistory() {
 
   return useMutation({
     mutationFn: async () => {
-      if (!actor) {
-        throw new Error('Backend actor not available');
-      }
-      await actor.clearHistory();
+      // Backend no longer supports history
+      // History is now managed locally in app state
+      return;
     },
     onSuccess: () => {
       // Invalidate and refetch history
       queryClient.invalidateQueries({ queryKey: ['history'] });
     },
     onError: (error) => {
-      console.error('Failed to clear history from backend:', error);
+      console.error('Failed to clear history:', error);
     },
   });
-}
-
-// Helper functions to convert between frontend and backend formats
-
-function determineTypeFromEntry(entry: DataHistoryEntry): 'vlookup' | 'filter' | 'update-checking' {
-  // Use determinant field to store type
-  if (entry.determinant === 'vlookup') return 'vlookup';
-  if (entry.determinant === 'filter') return 'filter';
-  if (entry.determinant === 'update-checking') return 'update-checking';
-  return 'vlookup'; // default
-}
-
-function convertBackendEntryToFrontendData(entry: DataHistoryEntry): any {
-  try {
-    // Data is stored as JSON string in itemReviewed field
-    return JSON.parse(entry.itemReviewed);
-  } catch {
-    return {};
-  }
-}
-
-function convertFrontendEntryToBackend(entry: HistoryEntry): {
-  determinant: string;
-  diagnosticTestResult: string;
-  dtSensitivityScore: bigint;
-  filterCount: bigint;
-  filterLabels: string[];
-  indicatorsUsed: string;
-  itemReviewed: string;
-  maintenanceAction: string;
-  manipulatedVariables: string;
-  mpvShortList: string;
-  scoreSummary: string;
-  trueCheck: boolean;
-  varControlStatus: string;
-  varDefSummary: string;
-} {
-  return {
-    determinant: entry.type,
-    diagnosticTestResult: '',
-    dtSensitivityScore: BigInt(0),
-    filterCount: BigInt(entry.timestamp),
-    filterLabels: [],
-    indicatorsUsed: '',
-    itemReviewed: JSON.stringify(entry.data),
-    maintenanceAction: '',
-    manipulatedVariables: '',
-    mpvShortList: '',
-    scoreSummary: '',
-    trueCheck: false,
-    varControlStatus: '',
-    varDefSummary: '',
-  };
 }

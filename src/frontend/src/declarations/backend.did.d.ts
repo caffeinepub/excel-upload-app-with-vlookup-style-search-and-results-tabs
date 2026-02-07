@@ -10,72 +10,34 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
-export interface DataHistoryEntry {
-  'dtSensitivityScore' : bigint,
-  'determinant' : string,
-  'maintenanceAction' : string,
-  'mpvShortList' : string,
-  'trueCheck' : boolean,
-  'filterLabels' : Array<string>,
-  'scoreSummary' : string,
-  'indicatorsUsed' : string,
-  'itemReviewed' : string,
-  'varControlStatus' : string,
-  'manipulatedVariables' : string,
-  'varDefSummary' : string,
-  'diagnosticTestResult' : string,
-  'filterCount' : bigint,
+export interface Budget {
+  'monthlyLimit' : bigint,
+  'lastUpdated' : string,
+  'savingsGoal' : bigint,
 }
+export interface ExpenseEntry {
+  'id' : bigint,
+  'date' : string,
+  'type' : string,
+  'description' : string,
+  'amount' : bigint,
+}
+export interface UserProfile { 'name' : string }
+export type UserRole = { 'admin' : null } |
+  { 'user' : null } |
+  { 'guest' : null };
 export interface _SERVICE {
-  'addHistoryEntry' : ActorMethod<
-    [
-      string,
-      string,
-      bigint,
-      bigint,
-      [] | [Array<string>],
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      boolean,
-      string,
-      string,
-    ],
-    [bigint, DataHistoryEntry]
-  >,
-  'clearHistory' : ActorMethod<[], undefined>,
-  'clearWithFilterCount' : ActorMethod<[bigint], undefined>,
-  'clearWithFilterLabel' : ActorMethod<[string], undefined>,
-  'convertAndAddHistoryEntry' : ActorMethod<
-    [
-      string,
-      string,
-      bigint,
-      bigint,
-      Array<string>,
-      string,
-      string,
-      string,
-      string,
-      string,
-      string,
-      boolean,
-      string,
-      string,
-    ],
-    [bigint, DataHistoryEntry]
-  >,
-  'count' : ActorMethod<[], bigint>,
-  'existsWithFilterCount' : ActorMethod<[bigint], boolean>,
-  'findByFilterLabel' : ActorMethod<
-    [string],
-    Array<[bigint, DataHistoryEntry]>
-  >,
-  'getEntry' : ActorMethod<[bigint], [] | [DataHistoryEntry]>,
-  'listEntries' : ActorMethod<[], Array<[bigint, DataHistoryEntry]>>,
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addExpense' : ActorMethod<[string, string, bigint, string], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'getBudget' : ActorMethod<[], [] | [Budget]>,
+  'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
+  'getCallerUserRole' : ActorMethod<[], UserRole>,
+  'getExpensesForCaller' : ActorMethod<[], Array<ExpenseEntry>>,
+  'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
+  'isCallerAdmin' : ActorMethod<[], boolean>,
+  'saveBudget' : ActorMethod<[bigint, bigint, string], undefined>,
+  'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

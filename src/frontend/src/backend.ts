@@ -89,195 +89,232 @@ export class ExternalBlob {
         return this;
     }
 }
-export interface DataHistoryEntry {
-    dtSensitivityScore: bigint;
-    determinant: string;
-    maintenanceAction: string;
-    mpvShortList: string;
-    trueCheck: boolean;
-    filterLabels: Array<string>;
-    scoreSummary: string;
-    indicatorsUsed: string;
-    itemReviewed: string;
-    varControlStatus: string;
-    manipulatedVariables: string;
-    varDefSummary: string;
-    diagnosticTestResult: string;
-    filterCount: bigint;
+export interface ExpenseEntry {
+    id: bigint;
+    date: string;
+    type: string;
+    description: string;
+    amount: bigint;
+}
+export interface UserProfile {
+    name: string;
+}
+export interface Budget {
+    monthlyLimit: bigint;
+    lastUpdated: string;
+    savingsGoal: bigint;
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
 }
 export interface backendInterface {
-    addHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsOpt: Array<string> | null, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
-    clearHistory(): Promise<void>;
-    clearWithFilterCount(filterCount: bigint): Promise<void>;
-    clearWithFilterLabel(filterLabel: string): Promise<void>;
-    convertAndAddHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsArray: Array<string>, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
-    count(): Promise<bigint>;
-    existsWithFilterCount(filterCount: bigint): Promise<boolean>;
-    findByFilterLabel(filterLabel: string): Promise<Array<[bigint, DataHistoryEntry]>>;
-    getEntry(id: bigint): Promise<DataHistoryEntry | null>;
-    listEntries(): Promise<Array<[bigint, DataHistoryEntry]>>;
+    _initializeAccessControlWithSecret(userSecret: string): Promise<void>;
+    addExpense(date: string, type: string, amount: bigint, description: string): Promise<void>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    getBudget(): Promise<Budget | null>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
+    getExpensesForCaller(): Promise<Array<ExpenseEntry>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    isCallerAdmin(): Promise<boolean>;
+    saveBudget(monthlyLimit: bigint, savingsGoal: bigint, lastUpdated: string): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }
-import type { DataHistoryEntry as _DataHistoryEntry } from "./declarations/backend.did.d.ts";
+import type { Budget as _Budget, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
     constructor(private actor: ActorSubclass<_SERVICE>, private _uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, private _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, private processError?: (error: unknown) => never){}
-    async addHistoryEntry(arg0: string, arg1: string, arg2: bigint, arg3: bigint, arg4: Array<string> | null, arg5: string, arg6: string, arg7: string, arg8: string, arg9: string, arg10: string, arg11: boolean, arg12: string, arg13: string): Promise<[bigint, DataHistoryEntry]> {
+    async _initializeAccessControlWithSecret(arg0: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.addHistoryEntry(arg0, arg1, arg2, arg3, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg4), arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
-                return [
-                    result[0],
-                    result[1]
-                ];
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.addHistoryEntry(arg0, arg1, arg2, arg3, to_candid_opt_n1(this._uploadFile, this._downloadFile, arg4), arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
-            return [
-                result[0],
-                result[1]
-            ];
-        }
-    }
-    async clearHistory(): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.clearHistory();
+                const result = await this.actor._initializeAccessControlWithSecret(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.clearHistory();
+            const result = await this.actor._initializeAccessControlWithSecret(arg0);
             return result;
         }
     }
-    async clearWithFilterCount(arg0: bigint): Promise<void> {
+    async addExpense(arg0: string, arg1: string, arg2: bigint, arg3: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.clearWithFilterCount(arg0);
+                const result = await this.actor.addExpense(arg0, arg1, arg2, arg3);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.clearWithFilterCount(arg0);
+            const result = await this.actor.addExpense(arg0, arg1, arg2, arg3);
             return result;
         }
     }
-    async clearWithFilterLabel(arg0: string): Promise<void> {
+    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.clearWithFilterLabel(arg0);
+                const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.clearWithFilterLabel(arg0);
+            const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
             return result;
         }
     }
-    async convertAndAddHistoryEntry(arg0: string, arg1: string, arg2: bigint, arg3: bigint, arg4: Array<string>, arg5: string, arg6: string, arg7: string, arg8: string, arg9: string, arg10: string, arg11: boolean, arg12: string, arg13: string): Promise<[bigint, DataHistoryEntry]> {
+    async getBudget(): Promise<Budget | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.convertAndAddHistoryEntry(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
-                return [
-                    result[0],
-                    result[1]
-                ];
+                const result = await this.actor.getBudget();
+                return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.convertAndAddHistoryEntry(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12, arg13);
-            return [
-                result[0],
-                result[1]
-            ];
+            const result = await this.actor.getBudget();
+            return from_candid_opt_n3(this._uploadFile, this._downloadFile, result);
         }
     }
-    async count(): Promise<bigint> {
+    async getCallerUserProfile(): Promise<UserProfile | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.count();
+                const result = await this.actor.getCallerUserProfile();
+                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserProfile();
+            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getCallerUserRole(): Promise<UserRole> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getCallerUserRole();
+                return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getCallerUserRole();
+            return from_candid_UserRole_n5(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getExpensesForCaller(): Promise<Array<ExpenseEntry>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getExpensesForCaller();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.count();
+            const result = await this.actor.getExpensesForCaller();
             return result;
         }
     }
-    async existsWithFilterCount(arg0: bigint): Promise<boolean> {
+    async getUserProfile(arg0: Principal): Promise<UserProfile | null> {
         if (this.processError) {
             try {
-                const result = await this.actor.existsWithFilterCount(arg0);
+                const result = await this.actor.getUserProfile(arg0);
+                return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getUserProfile(arg0);
+            return from_candid_opt_n4(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async isCallerAdmin(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isCallerAdmin();
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.existsWithFilterCount(arg0);
+            const result = await this.actor.isCallerAdmin();
             return result;
         }
     }
-    async findByFilterLabel(arg0: string): Promise<Array<[bigint, DataHistoryEntry]>> {
+    async saveBudget(arg0: bigint, arg1: bigint, arg2: string): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.findByFilterLabel(arg0);
+                const result = await this.actor.saveBudget(arg0, arg1, arg2);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.findByFilterLabel(arg0);
+            const result = await this.actor.saveBudget(arg0, arg1, arg2);
             return result;
         }
     }
-    async getEntry(arg0: bigint): Promise<DataHistoryEntry | null> {
+    async saveCallerUserProfile(arg0: UserProfile): Promise<void> {
         if (this.processError) {
             try {
-                const result = await this.actor.getEntry(arg0);
-                return from_candid_opt_n2(this._uploadFile, this._downloadFile, result);
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.getEntry(arg0);
-            return from_candid_opt_n2(this._uploadFile, this._downloadFile, result);
-        }
-    }
-    async listEntries(): Promise<Array<[bigint, DataHistoryEntry]>> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.listEntries();
+                const result = await this.actor.saveCallerUserProfile(arg0);
                 return result;
             } catch (e) {
                 this.processError(e);
                 throw new Error("unreachable");
             }
         } else {
-            const result = await this.actor.listEntries();
+            const result = await this.actor.saveCallerUserProfile(arg0);
             return result;
         }
     }
 }
-function from_candid_opt_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_DataHistoryEntry]): DataHistoryEntry | null {
+function from_candid_UserRole_n5(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _UserRole): UserRole {
+    return from_candid_variant_n6(_uploadFile, _downloadFile, value);
+}
+function from_candid_opt_n3(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_Budget]): Budget | null {
     return value.length === 0 ? null : value[0];
 }
-function to_candid_opt_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: Array<string> | null): [] | [Array<string>] {
-    return value === null ? candid_none() : candid_some(value);
+function from_candid_opt_n4(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: [] | [_UserProfile]): UserProfile | null {
+    return value.length === 0 ? null : value[0];
+}
+function from_candid_variant_n6(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+}): UserRole {
+    return "admin" in value ? UserRole.admin : "user" in value ? UserRole.user : "guest" in value ? UserRole.guest : value;
+}
+function to_candid_UserRole_n1(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): _UserRole {
+    return to_candid_variant_n2(_uploadFile, _downloadFile, value);
+}
+function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {
+    admin: null;
+} | {
+    user: null;
+} | {
+    guest: null;
+} {
+    return value == UserRole.admin ? {
+        admin: null
+    } : value == UserRole.user ? {
+        user: null
+    } : value == UserRole.guest ? {
+        guest: null
+    } : value;
 }
 export interface CreateActorOptions {
     agent?: Agent;

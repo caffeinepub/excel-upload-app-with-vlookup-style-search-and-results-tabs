@@ -7,31 +7,35 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface DataHistoryEntry {
-    dtSensitivityScore: bigint;
-    determinant: string;
-    maintenanceAction: string;
-    mpvShortList: string;
-    trueCheck: boolean;
-    filterLabels: Array<string>;
-    scoreSummary: string;
-    indicatorsUsed: string;
-    itemReviewed: string;
-    varControlStatus: string;
-    manipulatedVariables: string;
-    varDefSummary: string;
-    diagnosticTestResult: string;
-    filterCount: bigint;
+export interface ExpenseEntry {
+    id: bigint;
+    date: string;
+    type: string;
+    description: string;
+    amount: bigint;
+}
+export interface UserProfile {
+    name: string;
+}
+export interface Budget {
+    monthlyLimit: bigint;
+    lastUpdated: string;
+    savingsGoal: bigint;
+}
+export enum UserRole {
+    admin = "admin",
+    user = "user",
+    guest = "guest"
 }
 export interface backendInterface {
-    addHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsOpt: Array<string> | null, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
-    clearHistory(): Promise<void>;
-    clearWithFilterCount(filterCount: bigint): Promise<void>;
-    clearWithFilterLabel(filterLabel: string): Promise<void>;
-    convertAndAddHistoryEntry(determinant: string, diagnosticTestResult: string, dtSensitivityScore: bigint, filterCount: bigint, filterLabelsArray: Array<string>, indicatorsUsed: string, itemReviewed: string, maintenanceAction: string, manipulatedVariables: string, mpvShortList: string, scoreSummary: string, trueCheck: boolean, varControlStatus: string, varDefSummary: string): Promise<[bigint, DataHistoryEntry]>;
-    count(): Promise<bigint>;
-    existsWithFilterCount(filterCount: bigint): Promise<boolean>;
-    findByFilterLabel(filterLabel: string): Promise<Array<[bigint, DataHistoryEntry]>>;
-    getEntry(id: bigint): Promise<DataHistoryEntry | null>;
-    listEntries(): Promise<Array<[bigint, DataHistoryEntry]>>;
+    addExpense(date: string, type: string, amount: bigint, description: string): Promise<void>;
+    assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    getBudget(): Promise<Budget | null>;
+    getCallerUserProfile(): Promise<UserProfile | null>;
+    getCallerUserRole(): Promise<UserRole>;
+    getExpensesForCaller(): Promise<Array<ExpenseEntry>>;
+    getUserProfile(user: Principal): Promise<UserProfile | null>;
+    isCallerAdmin(): Promise<boolean>;
+    saveBudget(monthlyLimit: bigint, savingsGoal: bigint, lastUpdated: string): Promise<void>;
+    saveCallerUserProfile(profile: UserProfile): Promise<void>;
 }

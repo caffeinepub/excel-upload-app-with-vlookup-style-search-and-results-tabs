@@ -1,89 +1,108 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-06T13:09:25.554Z",
+  "generatedAt": "2026-02-07T05:07:23.609Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 5,
+    "total": 6,
     "implemented": 5,
     "items": [
       {
-        "id": "REQ-60",
-        "summary": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
+        "id": "REQ-1",
+        "summary": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
+          "frontend/src/components/layout/DesktopSidebarNav.tsx"
         ],
         "matchedFiles": [
-          "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
+          "frontend/src/components/layout/DesktopSidebarNav.tsx"
         ]
       },
       {
-        "id": "REQ-61",
-        "summary": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
+        "id": "REQ-2",
+        "summary": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/pages/UploadTab.tsx"
+          "frontend/src/components/layout/DesktopSidebarNav.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/UploadTab.tsx"
+          "frontend/src/components/layout/DesktopSidebarNav.tsx",
+          "frontend/src/App.tsx",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ]
       },
       {
-        "id": "REQ-62",
-        "summary": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
+        "id": "REQ-3",
+        "summary": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/index.css",
-          "frontend/src/pages/UploadTab.tsx"
+          "frontend/src/pages/DeskboardTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/pages/UploadTab.tsx"
+          "frontend/src/pages/DeskboardTab.tsx"
         ]
       },
       {
-        "id": "REQ-63",
-        "summary": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
+        "id": "REQ-4",
+        "summary": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/lib/export/exportPdf.ts"
+          "frontend/src/hooks/useRegularExpense.ts",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/lib/export/exportPdf.ts"
+          "frontend/src/hooks/useRegularExpense.ts",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ]
       },
       {
-        "id": "REQ-64",
-        "summary": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
+        "id": "REQ-5",
+        "summary": "Add backend persistence for per-user budgets and expense entries, including APIs to save/read the budget, create expense entries, and list expense entries for the caller (authorized users only).",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
+      },
+      {
+        "id": "REQ-6",
+        "summary": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/layout/AppHeader.tsx",
-          "frontend/src/pages/ResultsTab.tsx",
-          "frontend/src/pages/HistoryTab.tsx"
+          "frontend/src/lib/expenses/expenseReport.ts",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/layout/AppHeader.tsx",
-          "frontend/src/pages/ResultsTab.tsx",
-          "frontend/src/pages/HistoryTab.tsx"
+          "frontend/src/lib/expenses/expenseReport.ts",
+          "frontend/src/pages/RegularExpenseTab.tsx"
         ]
       }
     ]
   },
   "changedFiles": [
+    "backend/main.mo",
+    "backend/migration.mo",
     "build-request.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png",
-    "frontend/src/components/layout/AppHeader.tsx",
-    "frontend/src/lib/export/exportPdf.ts",
-    "frontend/src/pages/HistoryTab.tsx",
-    "frontend/src/pages/ResultsTab.tsx",
-    "frontend/src/pages/UploadTab.tsx",
-    "frontend/tailwind.config.js",
+    "frontend/src/App.tsx",
+    "frontend/src/backend.d.ts",
+    "frontend/src/backend.ts",
+    "frontend/src/components/layout/DesktopSidebarNav.tsx",
+    "frontend/src/declarations/backend.did.d.ts",
+    "frontend/src/declarations/backend.did.js",
+    "frontend/src/hooks/useInAppReminderNotifications.ts",
+    "frontend/src/hooks/useProductivityMutations.ts",
+    "frontend/src/hooks/useProductivityQueries.ts",
+    "frontend/src/hooks/useRegularExpense.ts",
+    "frontend/src/lib/expenses/expenseReport.ts",
+    "frontend/src/pages/DeskboardTab.tsx",
+    "frontend/src/pages/RegularExpenseTab.tsx",
+    "frontend/src/pages/RemindersTab.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

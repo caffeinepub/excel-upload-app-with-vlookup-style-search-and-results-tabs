@@ -1,542 +1,53 @@
 {
   "schemaVersion": "1.0.0",
-  "projectStateVersion": 55,
-  "summary": "Build an app named \"Crystal Atlas\" that lets users upload Excel sheets, perform VLOOKUP-style searches (including multi-value search entries), view results in a results tab, edit matching row data directly in the Results table (updating the in-memory workbook), and export branded outputs (PDF/Excel), where Excel exports produce a new .xlsx with all edits applied. Update Checking supports old vs new workbook comparison. PDF exports use a professional header/footer layout and a light background watermark that is a tiled/patterned tablet-logo image (background removed, ~30% opacity) instead of the text \"30 INTENCITY TABLET\".",
+  "projectStateVersion": 3,
+  "summary": "Expense tracking app UI with sidebar navigation, including History and Regular Expense features with budgeting, expense logging, and downloadable PDF reports.",
   "architectural_notes": [
-    "Visual design direction changed to a blue ocean theme (overrides prior non-blue theme constraint).",
-    "Add export pipeline for Results (PDF + XLSX) with consistent Crystal Atlas branding (title/logo) applied in generated files.",
-    "Support dual-workbook compare workflow (old vs new) to compute and display changes/new rows in Results.",
-    "Add export pipeline support for Update Checking (diff/compare) results in both PDF and XLSX with Crystal Atlas branding.",
-    "Introduce per-feature history tracking/storage and dedicated History pages per feature (VLOOKUP, Filter, Update Checking).",
-    "Update Checking: ensure Select components never receive an empty-string value; use undefined/null for cleared selection and only render Select.Item entries with non-empty value props to prevent Radix/Shadcn Select crashes.",
-    "Update Checking comparison rule: treat \"Patent No.\" as the sole key; Results should include only NEW rows where key exists in New but not in Old (skip change detection for matching keys).",
-    "Update Checking key selection clarification: use the column whose header is exactly \"Patent No.\" as the key (do not hardcode physical Column G), and show only rows present in New but not in Old based on that key.",
-    "Update Checking enhancement: support selecting any key column by its header/title to drive comparisons (not limited to \"Patent No.\").",
-    "Update Checking enhancement: add a comparison-mode toggle to switch between row-difference output and column/cell-difference output for matching keys."
+    "'History' entry is part of the sidebar navigation.",
+    "'Regular Expense' entry/button should be visible on desktop and accessible from the sidebar.",
+    "Expense logging fields: date, expense type, amount; support budget setting.",
+    "Report download flow: user selects weekly/monthly/yearly range before generating PDF."
   ],
-  "known_issues": [
-    "\"Run VLOOKUP\" button is not working (lookup action does not run / produce results).",
-    "Uploading/replacing with a new Excel file immediately results in a white screen (no visible browser console errors).",
-    "Normal single-file upload also results in a white screen (not limited to Update Checking).",
-    "Update Checking: selecting the New Excel file (pressing Enter) causes an instant white screen with no delay, before any sheet list appears (crash during initial file read/parse).",
-    "Update Checking: selecting the New Excel file triggers a runtime crash: \"A <Select.Item /> must have a value prop that is not an empty string\" (likely a Select dropdown rendered with empty-string value immediately after file selection).",
-    "VLOOKUP searches can trigger the global unexpected error screen with \"Minified React error #185\" (user reports error appearing during VLOOKUP).",
-    "All options/features (VLOOKUP, Filter Data, Update Checking) are not producing any results (Results not found/empty across the app).",
-    "Update Checking: unmatched/new-only items are still not showing in Results (comparison output empty/incorrect).",
-    "PDF exports currently have overlapping text / improper formatting; needs layout fixes to ensure no overlap."
-  ],
-  "isFixRequest": true,
-  "imageRequirements": "## Required Images\n- Round red circular logo with the word \"PATENTED\" centered, transparent background cutout (patented-round-red-cutout.dim_1200x1200.png)",
+  "known_issues": [],
+  "isFixRequest": false,
   "existing_features": [
     {
-      "id": "feature-create-a-tabbed-ui-with-three-primary-sections-1-upload-excel-2-search-formula-vlookup-and-3-results-the-results-tab-must-display-the-output-of-the-most-recent-vlookup-search-in-a-clear-table-and-allow-users-to-re-run-searches-without-reloading-the-page",
-      "title": "Create a tabbed UI with three primary sections: (1) Upload Excel, (2) Search/Formula (VLOOKUP), and (3) Results. The Results tab must display the output of the most recent VLOOKUP search in a clear table and allow users to re-run searches without reloading the page.",
+      "id": "feature-ensure-the-desktop-sidebar-navigation-includes-a-visible-clickable-history-option-that-navigates-to-the-existing-history-page-tab",
+      "title": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-implement-excel-file-upload-in-the-upload-tab-and-parse-the-workbook-client-side-to-extract-sheet-names-and-a-preview-of-the-selected-sheet-s-rows-columns-for-user-verification",
-      "title": "Implement Excel file upload in the Upload tab and parse the workbook client-side to extract sheet names and a preview of the selected sheet’s rows/columns for user verification.",
+      "id": "feature-add-a-new-regular-expense-entry-to-the-desktop-sidebar-navigation-desktop-only-sidebar-that-navigates-to-a-new-regular-expense-tab-page",
+      "title": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
       "reqIds": [
         "REQ-2"
       ],
       "version": 1
     },
     {
-      "id": "feature-add-a-search-formula-page-that-performs-an-excel-like-vlookup-operation-against-the-uploaded-sheet-data-the-page-must-let-the-user-choose-lookup-value-lookup-column-key-column-return-column-and-match-type-exact-vs-approximate-running-the-lookup-must-populate-the-results-tab-with-the-output",
-      "title": "Add a Search/Formula page that performs an Excel-like VLOOKUP operation against the uploaded sheet data. The page must let the user choose: lookup value, lookup column (key column), return column, and match type (Exact vs Approximate). Running the lookup must populate the Results tab with the output.",
+      "id": "feature-add-a-desktop-only-regular-expense-button-on-the-deskboard-page-that-navigates-to-the-regular-expense-tab-page",
+      "title": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
       "reqIds": [
         "REQ-3"
       ],
       "version": 1
     },
     {
-      "id": "feature-maintain-application-state-so-that-the-uploaded-workbook-selected-sheet-and-last-search-parameters-persist-across-tab-switches-during-the-session-provide-a-clear-reset-control-to-remove-the-uploaded-workbook-and-clear-results",
-      "title": "Maintain application state so that the uploaded workbook, selected sheet, and last search parameters persist across tab switches during the session. Provide a clear/reset control to remove the uploaded workbook and clear results.",
+      "id": "feature-implement-the-regular-expense-page-ui-that-lets-an-authenticated-user-internet-identity-set-a-budget-and-log-expenses-with-date-expense-type-amount-and-a-daily-update-workflow",
+      "title": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
       "reqIds": [
         "REQ-4"
       ],
       "version": 1
     },
     {
-      "id": "feature-apply-a-cohesive-attractive-visual-theme-colors-typography-spacing-and-component-styling-consistently-across-all-pages-tabs-use-a-distinct-style-appropriate-for-a-productivity-utility-app-do-not-use-a-blue-purple-default-theme",
-      "title": "Apply a cohesive, attractive visual theme (colors, typography, spacing, and component styling) consistently across all pages/tabs. Use a distinct style appropriate for a productivity/utility app (do not use a blue/purple default theme).",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-generated-static-images-to-improve-the-ui-polish-app-icon-and-a-simple-hero-empty-state-illustration-and-render-them-from-frontend-public-assets-generated-in-the-ui-where-appropriate",
-      "title": "Add generated static images to improve the UI polish (app icon and a simple hero/empty-state illustration), and render them from frontend/public/assets/generated in the UI where appropriate.",
+      "id": "feature-add-pdf-download-for-expense-reports-where-the-user-can-choose-report-type-weekly-monthly-yearly-and-the-generated-pdf-content-format-reflects-the-selected-range",
+      "title": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
       "reqIds": [
         "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-crystal-atlas-branding-across-the-ui-using-the-user-provided-logo-image-including-a-show-the-logo-in-the-app-header-next-to-the-crystal-atlas-title-b-ensure-the-browser-tab-title-and-favicon-reflect-crystal-atlas-branding-and-c-use-only-english-for-any-visible-text",
-      "title": "Add Crystal Atlas branding across the UI using the user-provided logo image, including: (a) show the logo in the app header next to the \"Crystal Atlas\" title, (b) ensure the browser tab title and favicon reflect Crystal Atlas branding, and (c) use only English for any visible text.",
-      "reqIds": [
-        "REQ-7"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-allow-the-user-to-replace-update-the-currently-loaded-excel-workbook-without-requiring-a-full-app-reload-including-a-clear-control-e-g-replace-excel-or-upload-new-file-accessible-when-a-workbook-is-already-loaded",
-      "title": "Allow the user to replace/update the currently loaded Excel workbook without requiring a full app reload, including a clear control (e.g., \"Replace Excel\" or \"Upload New File\") accessible when a workbook is already loaded.",
-      "reqIds": [
-        "REQ-8"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-export-download-for-the-current-search-output-so-the-user-can-download-results-in-both-excel-xlsx-and-pdf-formats-including-a-branded-header-on-the-export-that-contains-the-crystal-atlas-title-and-the-provided-logo",
-      "title": "Add export/download for the current search output so the user can download results in both Excel (.xlsx) and PDF formats, including a branded header on the export that contains the Crystal Atlas title and the provided logo.",
-      "reqIds": [
-        "REQ-9"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-export-download-for-the-filter-data-results-from-the-search-tab-filter-mode-in-both-excel-xlsx-and-pdf-formats-including-the-crystal-atlas-title-and-logo-in-the-exported-document-header-area",
-      "title": "Add export/download for the Filter Data results (from the Search tab filter mode) in both Excel (.xlsx) and PDF formats, including the Crystal Atlas title and logo in the exported document header area.",
-      "reqIds": [
-        "REQ-10"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-an-update-checking-mode-that-lets-the-user-upload-an-old-excel-and-a-new-excel-side-by-side-then-produces-a-results-view-showing-new-and-updated-data-found-in-the-new-excel-compared-to-the-old-excel",
-      "title": "Implement an \"Update Checking\" mode that lets the user upload an \"Old Excel\" and a \"New Excel\" side-by-side, then produces a Results view showing new and updated data found in the New Excel compared to the Old Excel.",
-      "reqIds": [
-        "REQ-11"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-verify-and-fix-the-run-vlookup-action-so-that-running-a-search-reliably-produces-results-for-the-currently-loaded-workbook-and-chosen-parameters",
-      "title": "Verify and fix the \"Run VLOOKUP\" action so that running a search reliably produces Results for the currently loaded workbook and chosen parameters.",
-      "reqIds": [
-        "REQ-12"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-excel-replace-upload-flow-so-the-app-never-shows-a-blank-white-screen-immediately-after-selecting-a-new-xlsx-file-and-instead-transitions-to-a-valid-state-loaded-workbook-ui-or-a-visible-error-message",
-      "title": "Fix the Excel replace/upload flow so the app never shows a blank white screen immediately after selecting a new .xlsx file, and instead transitions to a valid state (loaded workbook UI or a visible error message).",
-      "reqIds": [
-        "REQ-13"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-replacing-a-workbook-fully-resets-dependent-in-memory-state-that-can-reference-the-previous-workbook-vlookup-search-parameters-last-search-result-filter-state-so-subsequent-renders-cannot-use-stale-values-after-a-new-file-is-selected",
-      "title": "Ensure replacing a workbook fully resets dependent in-memory state that can reference the previous workbook (VLOOKUP search parameters, last search result, filter state), so subsequent renders cannot use stale values after a new file is selected.",
-      "reqIds": [
-        "REQ-14"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-harden-workbook-parsing-and-selection-logic-during-upload-replace-validate-that-at-least-one-sheet-exists-safely-handle-missing-undefined-first-sheet-selection-and-prevent-ui-component-crashes-when-sheet-names-or-selected-sheet-are-not-valid",
-      "title": "Harden workbook parsing and selection logic during upload/replace: validate that at least one sheet exists, safely handle missing/undefined first-sheet selection, and prevent UI component crashes when sheet names or selected sheet are not valid.",
-      "reqIds": [
-        "REQ-15"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-make-the-upload-inputs-reliably-re-trigger-parsing-when-a-user-selects-the-same-filename-twice-in-a-row-by-resetting-the-file-input-value-after-handling-a-selection-both-for-the-initial-upload-input-and-the-hidden-replace-input",
-      "title": "Make the upload inputs reliably re-trigger parsing when a user selects the same filename twice in a row by resetting the file input value after handling a selection (both for the initial upload input and the hidden replace input).",
-      "reqIds": [
-        "REQ-16"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-the-update-checking-flow-so-selecting-a-new-excel-file-never-causes-a-white-screen-or-ui-crash-and-the-tab-always-remains-usable-showing-either-the-loaded-workbook-ui-or-a-visible-error-message",
-      "title": "Fix the Update Checking flow so selecting a New Excel file never causes a white screen or UI crash, and the tab always remains usable (showing either the loaded workbook UI or a visible error message).",
-      "reqIds": [
-        "REQ-17"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-when-either-the-old-excel-file-new-excel-file-old-sheet-selection-or-new-sheet-selection-changes-in-update-checking-automatically-clear-any-dependent-comparison-inputs-that-may-no-longer-be-valid-at-minimum-reset-update-checking-keycolumn-to-an-empty-value-and-clear-comparisonresult",
-      "title": "When either the Old Excel file, New Excel file, Old sheet selection, or New sheet selection changes in Update Checking, automatically clear any dependent comparison inputs that may no longer be valid (at minimum: reset Update Checking keyColumn to an empty value and clear comparisonResult).",
-      "reqIds": [
-        "REQ-18"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-harden-the-update-checking-key-column-select-rendering-so-it-cannot-crash-when-the-currently-stored-keycolumn-is-not-present-in-the-computed-list-of-common-columns-e-g-due-to-a-newly-uploaded-file-with-different-headers",
-      "title": "Harden the Update Checking key-column Select rendering so it cannot crash when the currently stored keyColumn is not present in the computed list of common columns (e.g., due to a newly uploaded file with different headers).",
-      "reqIds": [
-        "REQ-19"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-identify-and-fix-the-root-cause-s-of-the-full-page-white-screen-that-can-occur-after-uploading-or-replacing-an-xlsx-file-initial-upload-upload-tab-replace-flow-header-replace-excel-flow-and-update-checking-old-new-uploads-the-application-must-remain-usable-after-file-selection-showing-either-the-loaded-workbook-ui-or-a-visible-error-message",
-      "title": "Identify and fix the root cause(s) of the full-page white screen that can occur after uploading or replacing an .xlsx file (initial upload, Upload tab replace flow, header Replace Excel flow, and Update Checking Old/New uploads). The application must remain usable after file selection, showing either the loaded workbook UI or a visible error message.",
-      "reqIds": [
-        "REQ-20"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-top-level-ui-safeguard-so-that-unexpected-render-time-errors-cannot-present-as-a-blank-white-screen-the-safeguard-must-render-a-clear-recovery-ui-in-english-that-allows-the-user-to-reset-the-app-state-and-continue-using-the-application",
-      "title": "Add a top-level UI safeguard so that unexpected render-time errors cannot present as a blank/white screen. The safeguard must render a clear recovery UI in English that allows the user to reset the app state and continue using the application.",
-      "reqIds": [
-        "REQ-21"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-harden-all-upload-replace-state-transitions-so-that-ui-components-cannot-receive-invalid-selection-values-after-a-new-file-is-parsed-e-g-selected-sheet-not-present-in-the-sheet-list-missing-sheet-data-for-the-selected-sheet-ensure-the-ui-gracefully-handles-these-cases-without-crashing-and-surfaces-an-english-error-message-when-user-action-cannot-be-completed",
-      "title": "Harden all upload/replace state transitions so that UI components cannot receive invalid selection values after a new file is parsed (e.g., selected sheet not present in the sheet list, missing sheet data for the selected sheet). Ensure the UI gracefully handles these cases without crashing, and surfaces an English error message when user action cannot be completed.",
-      "reqIds": [
-        "REQ-22"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-prevent-the-application-from-showing-a-blank-white-screen-when-the-user-selects-a-new-excel-file-in-update-checking-mode-the-update-checking-tab-must-remain-usable-after-file-selection-and-must-show-either-the-loaded-workbook-ui-sheet-selector-filename-or-a-visible-english-error-message",
-      "title": "Prevent the application from showing a blank/white screen when the user selects a New Excel file in Update Checking mode; the Update Checking tab must remain usable after file selection and must show either the loaded workbook UI (sheet selector + filename) or a visible English error message.",
-      "reqIds": [
-        "REQ-23"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-global-runtime-error-capture-for-non-render-errors-e-g-unhandled-promise-rejections-and-window-errors-so-that-unexpected-failures-during-file-parsing-or-event-handlers-cannot-present-as-a-blank-white-screen-instead-render-the-existing-recovery-ui-with-a-reset-action-in-english",
-      "title": "Add a global runtime error capture for non-render errors (e.g., unhandled promise rejections and window errors) so that unexpected failures during file parsing or event handlers cannot present as a blank/white screen; instead, render the existing recovery UI with a reset action in English.",
-      "reqIds": [
-        "REQ-24"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-harden-update-checking-file-selection-and-parsing-flow-to-avoid-invalid-intermediate-state-updates-when-starting-a-new-excel-parse-immediately-clear-the-current-new-workbook-state-and-dependent-comparison-state-before-parsing-and-only-set-the-new-workbook-state-after-parse-succeeds-if-parse-fails-keep-new-workbook-state-cleared-and-show-an-english-error",
-      "title": "Harden Update Checking file selection and parsing flow to avoid invalid intermediate state updates: when starting a New Excel parse, immediately clear the current New workbook state (and dependent comparison state) before parsing, and only set the new workbook state after parse succeeds; if parse fails, keep New workbook state cleared and show an English error.",
-      "reqIds": [
-        "REQ-25"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-prevent-the-update-checking-tab-from-crashing-with-the-runtime-error-a-select-item-must-have-a-value-prop-that-is-not-an-empty-string-when-the-user-uploads-a-new-excel-file-especially-when-old-excel-is-already-loaded-ensure-no-selectitem-in-update-checking-is-ever-rendered-with-an-empty-string-value-including-the-key-column-dropdown-and-any-sheet-dropdowns",
-      "title": "Prevent the Update Checking tab from crashing with the runtime error \"A <Select.Item /> must have a value prop that is not an empty string\" when the user uploads a New Excel file (especially when Old Excel is already loaded). Ensure no SelectItem in Update Checking is ever rendered with an empty-string value, including the Key Column dropdown and any sheet dropdowns.",
-      "reqIds": [
-        "REQ-26"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-update-checking-comparison-logic-to-use-the-selected-key-column-intended-to-be-patent-no-to-identify-and-return-only-rows-that-exist-in-the-new-excel-sheet-but-do-not-exist-in-the-old-excel-sheet-do-not-perform-change-detection-for-keys-that-exist-in-both-files",
-      "title": "Update the Update Checking comparison logic to use the selected key column (intended to be \"Patent No.\") to identify and return ONLY rows that exist in the New Excel sheet but do NOT exist in the Old Excel sheet; do not perform change-detection for keys that exist in both files.",
-      "reqIds": [
-        "REQ-27"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-results-tab-ui-for-update-checking-to-display-only-the-new-rows-list-and-summary-based-on-the-new-only-comparison-output-and-ensure-update-checking-exports-excel-pdf-include-only-those-new-rows",
-      "title": "Update the Results tab UI for Update Checking to display only the \"New\" rows list and summary based on the New-only comparison output, and ensure Update Checking exports (Excel/PDF) include only those New rows.",
-      "reqIds": [
-        "REQ-28"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-improve-the-update-checking-ux-to-make-patent-no-the-default-key-column-when-it-exists-as-a-common-column-between-old-and-new-sheets-exact-match-while-still-allowing-the-user-to-change-the-key-column-manually-if-needed",
-      "title": "Improve the Update Checking UX to make \"Patent No.\" the default key column when it exists as a common column between Old and New sheets (exact match), while still allowing the user to change the key column manually if needed.",
-      "reqIds": [
-        "REQ-29"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-update-checking-comparison-flow-to-use-the-column-whose-header-is-exactly-patent-no-as-the-key-for-identifying-new-patent-numbers-rows-present-in-the-new-sheet-but-not-in-the-old-sheet-and-ensure-no-logic-assumes-a-fixed-physical-column-position-e-g-column-g-if-patent-no-is-not-available-as-a-common-column-between-the-selected-old-new-sheets-keep-the-ui-usable-and-show-an-english-error-prompting-the-user-to-select-a-valid-key-column",
-      "title": "Update the Update Checking comparison flow to use the column whose header is exactly \"Patent No.\" as the key for identifying new patent numbers (rows present in the New sheet but not in the Old sheet), and ensure no logic assumes a fixed physical column position (e.g., Column G). If \"Patent No.\" is not available as a common column between the selected Old/New sheets, keep the UI usable and show an English error prompting the user to select a valid key column.",
-      "reqIds": [
-        "REQ-30"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-an-update-checking-results-search-ui-that-lets-the-user-enter-a-keyword-row-name-and-filter-the-update-checking-results-after-the-comparison-has-been-generated",
-      "title": "Add an Update Checking results search UI that lets the user enter a keyword/row name and filter the Update Checking results after the comparison has been generated.",
-      "reqIds": [
-        "REQ-31"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-update-checking-post-comparison-filtering-so-the-keyword-search-matches-across-any-column-in-the-displayed-comparison-rows-and-supports-both-exact-match-and-partial-contains-match",
-      "title": "Implement Update Checking post-comparison filtering so the keyword search matches across any column in the displayed comparison rows and supports both exact match and partial/contains match.",
-      "reqIds": [
-        "REQ-32"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-update-checking-exports-excel-and-pdf-respect-the-currently-filtered-result-set-when-a-keyword-filter-is-applied",
-      "title": "Ensure Update Checking exports (Excel and PDF) respect the currently filtered result set when a keyword filter is applied.",
-      "reqIds": [
-        "REQ-33"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-a-real-top-level-react-error-boundary-component-in-frontend-src-components-errors-apperrorboundary-tsx-that-prevents-any-runtime-render-error-from-presenting-as-a-blank-white-screen-and-instead-shows-a-recovery-ui-in-english-with-a-one-click-action-to-reset-the-application-state-and-continue-using-the-app",
-      "title": "Implement a real top-level React error boundary component in frontend/src/components/errors/AppErrorBoundary.tsx that prevents any runtime/render error from presenting as a blank/white screen and instead shows a recovery UI in English with a one-click action to reset the application state and continue using the app.",
-      "reqIds": [
-        "REQ-34"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-wrap-the-main-application-ui-with-the-error-boundary-so-that-the-entire-tabbed-experience-upload-search-vlookup-results-update-checking-history-is-protected-by-the-recovery-ui-instead-of-allowing-a-blank-white-screen",
-      "title": "Wrap the main application UI with the error boundary so that the entire tabbed experience (Upload, Search/VLOOKUP, Results, Update Checking, History) is protected by the recovery UI instead of allowing a blank/white screen.",
-      "reqIds": [
-        "REQ-35"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-global-runtime-error-capture-for-non-render-errors-window-error-and-unhandledrejection-so-that-unexpected-failures-during-file-parsing-or-event-handlers-also-surface-the-same-recovery-ui-with-reset-rather-than-leaving-the-app-unusable",
-      "title": "Add global runtime error capture for non-render errors (window 'error' and 'unhandledrejection') so that unexpected failures during file parsing or event handlers also surface the same recovery UI (with reset) rather than leaving the app unusable.",
-      "reqIds": [
-        "REQ-36"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-perform-an-end-to-end-audit-and-fix-any-remaining-state-flow-issues-so-that-all-three-user-workflows-reliably-produce-visible-results-when-the-input-data-should-match-1-vlookup-search-produces-a-populated-results-view-2-filter-data-shows-matching-rows-and-clearly-shows-a-no-matches-state-when-none-and-3-update-checking-produces-a-comparison-result-and-displays-it-in-results",
-      "title": "Perform an end-to-end audit and fix any remaining state-flow issues so that all three user workflows reliably produce visible results when the input data should match: (1) VLOOKUP Search produces a populated Results view, (2) Filter Data shows matching rows (and clearly shows a 'no matches' state when none), and (3) Update Checking produces a comparison result and displays it in Results.",
-      "reqIds": [
-        "REQ-37"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-app-header-branding-to-remove-the-visible-text-title-crystal-atlas-while-keeping-the-logo-and-increase-the-logo-size-with-a-clean-well-aligned-layout",
-      "title": "Update the app header branding to remove the visible text title \"Crystal Atlas\" while keeping the logo, and increase the logo size with a clean, well-aligned layout.",
-      "reqIds": [
-        "REQ-38"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-pdf-export-generation-so-the-pdf-header-contains-only-the-crystal-atlas-logo-and-does-not-include-any-crystal-atlas-title-text",
-      "title": "Update PDF export generation so the PDF header contains only the Crystal Atlas logo and does not include any \"Crystal Atlas\" title text.",
-      "reqIds": [
-        "REQ-39"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-rebuild-and-verify-the-end-to-end-application-behavior-so-all-existing-workflows-reliably-produce-visible-results-after-user-actions-upload-replace-excel-vlookup-search-filter-data-and-update-checking-without-blank-screens-and-with-clear-english-error-states-when-inputs-are-invalid",
-      "title": "Rebuild and verify the end-to-end application behavior so all existing workflows reliably produce visible results after user actions (Upload/Replace Excel, VLOOKUP search, Filter Data, and Update Checking), without blank screens and with clear English error states when inputs are invalid.",
-      "reqIds": [
-        "REQ-40"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-a-real-motoko-backend-single-actor-in-backend-main-mo-to-support-the-rebuilt-app-by-persisting-and-retrieving-the-app-s-history-entries-vlookup-filter-data-and-update-checking-so-history-can-survive-a-page-refresh-including-an-english-safe-api-for-listing-history-adding-an-entry-and-clearing-history",
-      "title": "Implement a real Motoko backend (single actor in backend/main.mo) to support the rebuilt app by persisting and retrieving the app’s History entries (VLOOKUP, Filter Data, and Update Checking) so history can survive a page refresh, including an English-safe API for listing history, adding an entry, and clearing history.",
-      "reqIds": [
-        "REQ-41"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-upgrade-pdf-export-formatting-to-a-more-professional-print-ready-layout-while-preserving-crystal-atlas-branding-rules-logo-only-header-no-visible-crystal-atlas-title-text-in-the-pdf-header-apply-improved-typography-spacing-table-styling-and-multi-page-behavior-for-exports-from-results-and-history",
-      "title": "Upgrade PDF export formatting to a more professional, print-ready layout while preserving Crystal Atlas branding rules (logo-only header; no visible 'Crystal Atlas' title text in the PDF header). Apply improved typography, spacing, table styling, and multi-page behavior for exports from Results and History.",
-      "reqIds": [
-        "REQ-42"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-update-checking-comparison-logic-so-that-in-row-unmatched-mode-it-compares-full-row-data-treat-each-row-as-a-complete-data-item-and-returns-rows-from-the-new-sheet-whose-full-row-content-does-not-exist-in-the-old-sheet-while-still-allowing-the-user-to-select-a-key-column-to-label-each-returned-row",
-      "title": "Update the Update Checking comparison logic so that in row/unmatched mode it compares full-row data (treat each row as a complete data item) and returns rows from the New sheet whose full-row content does not exist in the Old sheet, while still allowing the user to select a key column to label each returned row.",
-      "reqIds": [
-        "REQ-43"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-in-the-full-row-comparison-normalize-row-data-for-reliable-equality-checks-by-aligning-old-rows-to-the-new-sheet-s-header-set-by-header-name-before-comparing-so-that-missing-old-columns-are-treated-as-empty-null-values-and-do-not-crash-the-comparison",
-      "title": "In the full-row comparison, normalize row data for reliable equality checks by aligning Old rows to the New sheet’s header set (by header name) before comparing, so that missing Old columns are treated as empty/null values and do not crash the comparison.",
-      "reqIds": [
-        "REQ-44"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-the-update-checking-ui-continues-to-function-end-to-end-with-the-updated-full-row-comparison-logic-running-comparison-populates-results-with-the-unmatched-rows-and-exports-excel-pdf-include-only-the-unmatched-rows-currently-shown",
-      "title": "Ensure the Update Checking UI continues to function end-to-end with the updated full-row comparison logic: running comparison populates Results with the unmatched rows and exports (Excel/PDF) include only the unmatched rows currently shown.",
-      "reqIds": [
-        "REQ-45"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-change-update-checking-comparison-behavior-so-that-it-identifies-new-items-strictly-by-the-selected-key-column-value-existing-in-the-new-sheet-but-not-existing-in-the-old-sheet-e-g-old-has-400-patent-no-new-has-406-patent-no-results-should-contain-the-6-new-patent-no-items-the-comparison-must-not-treat-a-row-as-new-merely-because-other-column-values-differ-when-the-key-exists-in-both-files",
-      "title": "Change Update Checking comparison behavior so that it identifies \"new\" items strictly by the selected key column value existing in the New sheet but not existing in the Old sheet (e.g., Old has 400 Patent No., New has 406 Patent No. => results should contain the 6 new Patent No. items). The comparison must not treat a row as \"new\" merely because other column values differ when the key exists in both files.",
-      "reqIds": [
-        "REQ-46"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-update-checking-results-display-the-full-row-s-column-values-for-each-newly-identified-key-new-patent-no-item-using-the-new-sheet-row-data-and-keep-the-key-visible-as-a-leading-column-label-in-the-results-table",
-      "title": "Ensure Update Checking results display the full row’s column values for each newly identified key (new Patent No. item), using the New sheet row data, and keep the key visible as a leading column/label in the Results table.",
-      "reqIds": [
-        "REQ-47"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-update-checking-ui-copy-and-actions-to-reflect-the-new-only-by-key-behavior-not-full-row-mismatch-including-button-text-and-results-descriptions-while-keeping-all-user-facing-text-in-english",
-      "title": "Update Update Checking UI copy and actions to reflect the new-only-by-key behavior (not full-row mismatch), including button text and Results descriptions, while keeping all user-facing text in English.",
-      "reqIds": [
-        "REQ-48"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-pdf-export-generation-to-use-a-professional-page-layout-with-a-a-header-that-shows-only-the-existing-crystal-atlas-logo-on-the-left-and-the-provided-company-contact-details-as-a-right-aligned-multi-line-block-on-the-right-b-a-footer-that-shows-the-remaining-provided-company-information-in-a-properly-formatted-multi-line-block-on-every-page-and-c-no-visible-crystal-atlas-title-text-in-the-pdf-header",
-      "title": "Update PDF export generation to use a professional page layout with: (a) a header that shows only the existing Crystal Atlas logo on the left and the provided company contact details as a right-aligned multi-line block on the right, (b) a footer that shows the remaining provided company information in a properly formatted multi-line block on every page, and (c) no visible \"Crystal Atlas\" title text in the PDF header.",
-      "reqIds": [
-        "REQ-49"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-light-diagonal-background-watermark-text-30-intencity-tablet-to-every-exported-pdf-page-without-reducing-table-readability-watermark-must-appear-behind-the-table-content",
-      "title": "Add a light, diagonal background watermark text \"30 INTENCITY TABLET\" to every exported PDF page without reducing table readability (watermark must appear behind the table content).",
-      "reqIds": [
-        "REQ-50"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-ensure-all-company-information-strings-used-in-the-pdf-header-footer-match-the-user-provided-text-exactly-and-are-rendered-in-english-no-additional-wording-added",
-      "title": "Ensure all company information strings used in the PDF header/footer match the user-provided text exactly and are rendered in English (no additional wording added).",
-      "reqIds": [
-        "REQ-51"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-vlookup-search-ui-to-support-entering-multiple-lookup-values-in-a-single-search-input-words-and-or-numbers-and-run-the-lookup-for-all-provided-values-in-one-action-producing-a-combined-results-set",
-      "title": "Update the VLOOKUP Search UI to support entering multiple lookup values in a single search input (words and/or numbers) and run the lookup for all provided values in one action, producing a combined results set.",
-      "reqIds": [
-        "REQ-52"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-enable-inline-editing-of-vlookup-results-rows-so-users-can-change-any-column-values-directly-in-the-results-table-and-persist-those-edits-into-the-in-memory-representation-of-the-currently-loaded-excel-sheet",
-      "title": "Enable inline editing of VLOOKUP Results rows so users can change any column values directly in the Results table, and persist those edits into the in-memory representation of the currently loaded Excel sheet.",
-      "reqIds": [
-        "REQ-53"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-excel-xlsx-export-so-that-it-downloads-a-new-excel-file-with-all-inline-edits-applied-to-the-workbook-data-not-only-the-result-rows",
-      "title": "Update Excel (.xlsx) export so that it downloads a new Excel file with all inline edits applied to the workbook data (not only the result rows).",
-      "reqIds": [
-        "REQ-54"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-replace-the-current-pdf-watermark-text-with-a-tiled-patterned-tablet-logo-image-watermark-derived-from-the-user-uploaded-image-by-removing-its-background-and-rendering-the-logo-very-lightly-30-opacity-behind-the-table-content-on-every-exported-pdf-page",
-      "title": "Replace the current PDF watermark text with a tiled/patterned tablet-logo image watermark derived from the user-uploaded image by removing its background and rendering the logo very lightly (~30% opacity) behind the table content on every exported PDF page.",
-      "reqIds": [
-        "REQ-55"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-store-the-processed-tablet-logo-watermark-image-s-as-static-frontend-assets-and-load-them-in-pdf-generation-without-using-the-backend-as-an-image-proxy",
-      "title": "Store the processed tablet-logo watermark image(s) as static frontend assets and load them in PDF generation without using the backend as an image proxy.",
-      "reqIds": [
-        "REQ-56"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-create-a-background-removed-transparent-cutout-version-of-the-user-uploaded-image-ptntd-jpg-and-add-it-as-a-static-frontend-asset-under-frontend-public-assets-generated-for-use-in-the-upload-tab",
-      "title": "Create a background-removed (transparent) cutout version of the user-uploaded image PTNTD.jpg and add it as a static frontend asset under frontend/public/assets/generated for use in the Upload tab.",
-      "reqIds": [
-        "REQ-57"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-upload-tab-empty-state-ui-when-no-workbook-is-loaded-to-replace-the-current-document-hero-image-currently-assets-generated-excel-upload-hero-dim-1600x900-png-with-the-new-ptntd-cutout-asset-without-changing-any-other-app-logos-branding-used-elsewhere-header-logo-and-export-watermarks-must-remain-unchanged",
-      "title": "Update the Upload tab empty state UI (when no workbook is loaded) to replace the current document/hero image (currently /assets/generated/excel-upload-hero.dim_1600x900.png) with the new PTNTD cutout asset, without changing any other app logos/branding used elsewhere (header logo and export watermarks must remain unchanged).",
-      "reqIds": [
-        "REQ-58"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-continuous-on-screen-only-left-right-horizontal-flip-animation-to-the-ptntd-cutout-image-shown-on-the-upload-tab-empty-state-the-animation-must-loop-smoothly-at-a-slow-speed-interpreting-the-requested-5-km-hour-as-a-gentle-slow-cycle-and-must-not-affect-any-export-generation",
-      "title": "Add a continuous on-screen-only left↔right horizontal flip animation to the PTNTD cutout image shown on the Upload tab empty state. The animation must loop smoothly at a slow speed (interpreting the requested '5 km/hour' as a gentle, slow cycle) and must not affect any export generation.",
-      "reqIds": [
-        "REQ-59"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-the-user-s-latest-round-red-patented-logo-as-a-new-static-generated-image-asset-background-removed-transparent-under-frontend-public-assets-generated-to-be-used-only-for-the-upload-tab-empty-state-animation",
-      "title": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
-      "reqIds": [
-        "REQ-60"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-update-the-upload-tab-empty-state-ui-when-no-workbook-is-loaded-to-use-the-new-round-red-patented-logo-asset-render-it-centered-and-make-it-slightly-smaller-than-the-current-image-size",
-      "title": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
-      "reqIds": [
-        "REQ-61"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-change-the-upload-tab-empty-state-logo-animation-so-it-continuously-rotates-in-a-single-direction-no-direction-reversal-while-preserving-the-existing-flip-effect-as-requested-the-rotation-must-be-smooth-slow-loop-forever-and-must-be-on-screen-only-must-not-impact-any-export-generation",
-      "title": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
-      "reqIds": [
-        "REQ-62"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-pdf-export-layout-so-no-text-overlaps-anywhere-including-header-contact-lines-footer-lines-and-table-cell-content-ensure-multi-page-exports-remain-readable-with-consistent-margins-and-spacing",
-      "title": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
-      "reqIds": [
-        "REQ-63"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-fix-in-app-ui-formatting-issues-that-can-cause-text-overlap-in-the-visible-application-non-pdf-adjusting-spacing-wrapping-alignment-as-needed-while-keeping-all-user-facing-text-in-english",
-      "title": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
-      "reqIds": [
-        "REQ-64"
       ],
       "version": 1
     }
@@ -544,169 +55,32 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Upload Excel sheet into the app for processing",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Show a Results tab/page after upload to display lookup outputs",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Provide a Search/Formula page that performs VLOOKUP-style lookup and returns results",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Rename the app to \"Crystal Atlas\" (update title/branding)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-5",
-      "summary": "Update the UI theme to a \"blue ocean\" design",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-6",
-      "summary": "Implement a feature/UX similar to the referenced YouTube Short (match behavior and presentation shown in the video)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-7",
-      "summary": "Support identifying/matching data across two tables (multi-table lookup/join) and provide a corresponding search flow/stream",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-8",
-      "summary": "Allow users to download/export search or filtered results in both PDF and Excel formats, including Crystal Atlas title and logo in the export",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-9",
-      "summary": "Add Crystal Atlas branding in-app: display the Crystal Atlas text and include the provided logo (app header/icon area)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-10",
-      "summary": "Add an \"update checking\" mode: upload an old Excel on one side and a new Excel on the other, then show new/updated data in Results (diff/compare output)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-11",
-      "summary": "Add download/export options (Excel/PDF) for Update Checking results view",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-12",
-      "summary": "Add separate History pages/logs for each major option/feature (e.g., VLOOKUP, Filter, Update Checking)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-13",
-      "summary": "Update Checking: compare Old vs New using \"Patent No.\" as the key and show only rows present in New but not in Old (no change-detection for existing keys)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-14",
-      "summary": "Update Checking: allow using a user-selected key column by header/title (not only \"Patent No.\") to compute differences",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-15",
-      "summary": "Update Checking: add a mode option to choose Row Difference (new rows) vs Column/Cell Difference checking for matching keys",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-16",
-      "summary": "Update Checking Column/Cell Difference mode: show cell-level old vs new value changes (and/or highlight changed columns) for matching keys",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-17",
-      "summary": "Update Checking: add a keyword/row-name search that filters the New-only results (post-comparison), searches across any column, and supports both exact and partial/contains matching",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-18",
-      "summary": "Full app rebuild to restore working behavior across all features (VLOOKUP, Filter Data, Update Checking) so Results populate correctly",
+      "summary": "Add 'History' option to the sidebar navigation.",
       "reqIds": [],
       "status": "in_progress"
     },
     {
-      "id": "AR-19",
-      "summary": "Remove the \"Crystal Atlas\" text title from the app header UI and from PDF exports; keep only the logo in PDF headers, and enlarge/cleanly arrange the logo in the app header",
+      "id": "AR-2",
+      "summary": "Add 'Regular Expense' feature (desktop-visible button and also accessible from sidebar) allowing users to set a budget and log expenses with date, type, and amount.",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
-      "id": "AR-20",
-      "summary": "Upgrade PDF export formatting to look more professional (layout/typography/table styling) while maintaining Crystal Atlas branding",
+      "id": "AR-3",
+      "summary": "Enable downloadable expense reports as PDF with user-selectable time range (weekly/monthly/yearly) and formatting based on the selected range.",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     },
     {
-      "id": "AR-21",
-      "summary": "Update Checking: compare full-row data (treat each row as a complete data item) to return rows/items present in New but not in Old; ignore column/cell difference checks while still allowing key-column selection",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-23",
-      "summary": "VLOOKUP: allow entering multiple word/number lookup values in the search stream (multi-value search) and return combined matching results",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-24",
-      "summary": "Results: allow inline editing of VLOOKUP result rows/columns and update the in-memory workbook; exports should generate a new Excel file with edits applied",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-25",
-      "summary": "PDF exports: replace text watermark with a tiled/patterned tablet-logo image watermark (background removed) at ~30% opacity across all PDF exports",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-26",
-      "summary": "Upload page UI: replace the document photo/illustration near \"UPLOAD YOUR EXCEL FILE\" with the user-uploaded logo (background removed) and animate it with a continuous left↔right horizontal flip at a slow speed; on-screen only (not used in exports)",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-27",
-      "summary": "Upload page animated logo: use the latest round red \"PATENTED\" logo for the on-screen Upload empty-state animation; make it slightly smaller; change animation to a continuous one-direction rotation (no direction changes).",
-      "reqIds": [],
-      "status": "pending"
-    },
-    {
-      "id": "AR-28",
-      "summary": "Fix PDF and in-app formatting to prevent any text overlap; adjust layout/margins/spacing/alignment as needed for a clean, properly formatted result.",
-      "reqIds": [],
+      "id": "AR-8",
+      "summary": "Add backend persistence for per-user budgets and expense entries, including APIs to save/read the budget, create expense entries, and list expense entries for the caller (authorized users only).",
+      "reqIds": [
+        "REQ-5"
+      ],
       "status": "pending"
     }
   ],
-  "gameProjectType": "none",
-  "projectName": "Crystal Atlas",
+  "projectName": "Add Regular Expense tracking with budget + PDF reports and ensure sidebar access",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

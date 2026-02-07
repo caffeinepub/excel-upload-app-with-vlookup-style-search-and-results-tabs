@@ -2,92 +2,101 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-the-user-s-latest-round-red-patented-logo-as-a-new-static-generated-image-asset-background-removed-transparent-under-frontend-public-assets-generated-to-be-used-only-for-the-upload-tab-empty-state-animation",
-      "featureTitle": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
-      "files": [],
+      "featureId": "feature-ensure-the-desktop-sidebar-navigation-includes-a-visible-clickable-history-option-that-navigates-to-the-existing-history-page-tab",
+      "featureTitle": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
+      "files": [
+        "frontend/src/components/layout/DesktopSidebarNav.tsx"
+      ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-60"
+        "REQ-1"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-update-the-upload-tab-empty-state-ui-when-no-workbook-is-loaded-to-use-the-new-round-red-patented-logo-asset-render-it-centered-and-make-it-slightly-smaller-than-the-current-image-size",
-      "featureTitle": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
+      "featureId": "feature-add-a-new-regular-expense-entry-to-the-desktop-sidebar-navigation-desktop-only-sidebar-that-navigates-to-a-new-regular-expense-tab-page",
+      "featureTitle": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
       "files": [
-        "frontend/src/pages/UploadTab.tsx"
+        "frontend/src/App.tsx",
+        "frontend/src/components/layout/DesktopSidebarNav.tsx",
+        "frontend/src/pages/RegularExpenseTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-61"
+        "REQ-2"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-change-the-upload-tab-empty-state-logo-animation-so-it-continuously-rotates-in-a-single-direction-no-direction-reversal-while-preserving-the-existing-flip-effect-as-requested-the-rotation-must-be-smooth-slow-loop-forever-and-must-be-on-screen-only-must-not-impact-any-export-generation",
-      "featureTitle": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
+      "featureId": "feature-add-a-desktop-only-regular-expense-button-on-the-deskboard-page-that-navigates-to-the-regular-expense-tab-page",
+      "featureTitle": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
       "files": [
-        "frontend/src/pages/UploadTab.tsx"
+        "frontend/src/pages/DeskboardTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-62"
+        "REQ-3"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-pdf-export-layout-so-no-text-overlaps-anywhere-including-header-contact-lines-footer-lines-and-table-cell-content-ensure-multi-page-exports-remain-readable-with-consistent-margins-and-spacing",
-      "featureTitle": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
+      "featureId": "feature-implement-the-regular-expense-page-ui-that-lets-an-authenticated-user-internet-identity-set-a-budget-and-log-expenses-with-date-expense-type-amount-and-a-daily-update-workflow",
+      "featureTitle": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
       "files": [
-        "frontend/src/lib/export/exportPdf.ts"
+        "frontend/src/hooks/useRegularExpense.ts",
+        "frontend/src/pages/RegularExpenseTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-63"
+        "REQ-4"
       ],
       "confidence": "high"
     },
     {
-      "featureId": "feature-fix-in-app-ui-formatting-issues-that-can-cause-text-overlap-in-the-visible-application-non-pdf-adjusting-spacing-wrapping-alignment-as-needed-while-keeping-all-user-facing-text-in-english",
-      "featureTitle": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
+      "featureId": "feature-add-pdf-download-for-expense-reports-where-the-user-can-choose-report-type-weekly-monthly-yearly-and-the-generated-pdf-content-format-reflects-the-selected-range",
+      "featureTitle": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
       "files": [
-        "frontend/src/components/layout/AppHeader.tsx",
-        "frontend/src/pages/HistoryTab.tsx",
-        "frontend/src/pages/ResultsTab.tsx"
+        "frontend/src/lib/expenses/expenseReport.ts",
+        "frontend/src/pages/RegularExpenseTab.tsx"
       ],
       "components": [
         "core-infrastructure@1.0.2",
         "shadcn-ui@1.0.0",
         "build-template-react@1.0.0",
         "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0"
+        "github-export-icp-cli@1.0.0",
+        "authorization@4.0.0"
       ],
       "testIds": [
-        "REQ-64"
+        "REQ-6"
       ],
       "confidence": "high"
     }

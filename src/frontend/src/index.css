@@ -3,81 +3,175 @@
 @tailwind utilities;
 
 @layer base {
-    :root {
-        --radius: 0.75rem;
-        --background: 0.98 0.01 220;
-        --foreground: 0.20 0.03 230;
-        --card: 1 0 0;
-        --card-foreground: 0.20 0.03 230;
-        --popover: 1 0 0;
-        --popover-foreground: 0.20 0.03 230;
-        --primary: 0.55 0.15 220;
-        --primary-foreground: 0.98 0.01 220;
-        --secondary: 0.92 0.02 220;
-        --secondary-foreground: 0.20 0.03 230;
-        --muted: 0.94 0.02 220;
-        --muted-foreground: 0.50 0.03 230;
-        --accent: 0.60 0.18 195;
-        --accent-foreground: 0.98 0.01 220;
-        --destructive: 0.55 0.22 25;
-        --destructive-foreground: 0.98 0.01 220;
-        --border: 0.88 0.02 220;
-        --input: 0.88 0.02 220;
-        --ring: 0.55 0.15 220;
-        --chart-1: 0.60 0.18 195;
-        --chart-2: 0.55 0.15 220;
-        --chart-3: 0.65 0.20 210;
-        --chart-4: 0.50 0.16 240;
-        --chart-5: 0.58 0.14 185;
-        --sidebar: 0.98 0.01 220;
-        --sidebar-foreground: 0.20 0.03 230;
-        --sidebar-primary: 0.55 0.15 220;
-        --sidebar-primary-foreground: 0.98 0.01 220;
-        --sidebar-accent: 0.92 0.02 220;
-        --sidebar-accent-foreground: 0.20 0.03 230;
-        --sidebar-border: 0.88 0.02 220;
-        --sidebar-ring: 0.55 0.15 220;
-    }
+  :root {
+    --background: 98% 0.01 264;
+    --foreground: 20% 0.01 264;
+    --card: 100% 0 0;
+    --card-foreground: 20% 0.01 264;
+    --popover: 100% 0 0;
+    --popover-foreground: 20% 0.01 264;
+    --primary: 55% 0.18 264;
+    --primary-foreground: 98% 0.01 264;
+    --secondary: 92% 0.02 264;
+    --secondary-foreground: 20% 0.01 264;
+    --muted: 94% 0.02 264;
+    --muted-foreground: 45% 0.02 264;
+    --accent: 92% 0.02 264;
+    --accent-foreground: 20% 0.01 264;
+    --destructive: 55% 0.22 25;
+    --destructive-foreground: 98% 0.01 264;
+    --border: 88% 0.02 264;
+    --input: 88% 0.02 264;
+    --ring: 55% 0.18 264;
+    --radius: 0.75rem;
+    --chart-1: 60% 0.15 12;
+    --chart-2: 65% 0.18 142;
+    --chart-3: 55% 0.18 264;
+    --chart-4: 60% 0.20 290;
+    --chart-5: 55% 0.22 25;
+    --sidebar: 98% 0.01 264;
+    --sidebar-foreground: 20% 0.01 264;
+    --sidebar-primary: 55% 0.18 264;
+    --sidebar-primary-foreground: 98% 0.01 264;
+    --sidebar-accent: 92% 0.02 264;
+    --sidebar-accent-foreground: 20% 0.01 264;
+    --sidebar-border: 88% 0.02 264;
+    --sidebar-ring: 55% 0.18 264;
+  }
 
-    .dark {
-        --background: 0.15 0.03 230;
-        --foreground: 0.95 0.01 220;
-        --card: 0.18 0.03 230;
-        --card-foreground: 0.95 0.01 220;
-        --popover: 0.16 0.03 230;
-        --popover-foreground: 0.95 0.01 220;
-        --primary: 0.65 0.18 210;
-        --primary-foreground: 0.12 0.03 230;
-        --secondary: 0.25 0.03 230;
-        --secondary-foreground: 0.95 0.01 220;
-        --muted: 0.25 0.03 230;
-        --muted-foreground: 0.65 0.02 220;
-        --accent: 0.68 0.20 195;
-        --accent-foreground: 0.12 0.03 230;
-        --destructive: 0.60 0.24 25;
-        --destructive-foreground: 0.95 0.01 220;
-        --border: 0.28 0.03 230;
-        --input: 0.28 0.03 230;
-        --ring: 0.65 0.18 210;
-        --chart-1: 0.68 0.20 195;
-        --chart-2: 0.65 0.18 210;
-        --chart-3: 0.70 0.22 205;
-        --chart-4: 0.58 0.18 240;
-        --chart-5: 0.62 0.16 185;
-        --sidebar: 0.18 0.03 230;
-        --sidebar-foreground: 0.95 0.01 220;
-        --sidebar-primary: 0.65 0.18 210;
-        --sidebar-primary-foreground: 0.95 0.01 220;
-        --sidebar-accent: 0.25 0.03 230;
-        --sidebar-accent-foreground: 0.95 0.01 220;
-        --sidebar-border: 0.28 0.03 230;
-        --sidebar-ring: 0.65 0.18 210;
-    }
+  .dark {
+    --background: 15% 0.01 264;
+    --foreground: 98% 0.01 264;
+    --card: 18% 0.01 264;
+    --card-foreground: 98% 0.01 264;
+    --popover: 18% 0.01 264;
+    --popover-foreground: 98% 0.01 264;
+    --primary: 65% 0.18 264;
+    --primary-foreground: 15% 0.01 264;
+    --secondary: 25% 0.02 264;
+    --secondary-foreground: 98% 0.01 264;
+    --muted: 25% 0.02 264;
+    --muted-foreground: 70% 0.02 264;
+    --accent: 25% 0.02 264;
+    --accent-foreground: 98% 0.01 264;
+    --destructive: 60% 0.22 25;
+    --destructive-foreground: 98% 0.01 264;
+    --border: 25% 0.02 264;
+    --input: 25% 0.02 264;
+    --ring: 65% 0.18 264;
+    --chart-1: 70% 0.15 25;
+    --chart-2: 75% 0.18 142;
+    --chart-3: 65% 0.18 264;
+    --chart-4: 70% 0.20 290;
+    --chart-5: 60% 0.22 25;
+    --sidebar: 18% 0.01 264;
+    --sidebar-foreground: 98% 0.01 264;
+    --sidebar-primary: 65% 0.18 264;
+    --sidebar-primary-foreground: 15% 0.01 264;
+    --sidebar-accent: 25% 0.02 264;
+    --sidebar-accent-foreground: 98% 0.01 264;
+    --sidebar-border: 25% 0.02 264;
+    --sidebar-ring: 65% 0.18 264;
+  }
+}
 
-    * {
-        @apply border-border;
-    }
-    body {
-        @apply bg-background text-foreground;
-    }
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* macOS-inspired design system */
+.mac-card {
+  background-color: oklch(var(--card) / 0.8);
+  backdrop-filter: blur(12px);
+  @apply border border-border shadow-mac-soft transition-all duration-300;
+}
+
+.mac-card:hover {
+  @apply shadow-mac-hover;
+  border-color: oklch(var(--border) / 0.7);
+}
+
+.mac-button {
+  @apply transition-all duration-200 hover:scale-[1.02] active:scale-[0.98];
+}
+
+.mac-stat-card {
+  @apply transition-all duration-300 hover:shadow-md hover:-translate-y-0.5;
+  border-color: oklch(var(--border) / 0.5);
+}
+
+.mac-stat-card:hover {
+  border-color: oklch(var(--primary) / 0.3);
+}
+
+.mac-list-item {
+  @apply transition-all duration-200;
+  border-color: oklch(var(--border) / 0.5);
+}
+
+.mac-list-item:hover {
+  background-color: oklch(var(--muted) / 0.3);
+  border-color: oklch(var(--primary) / 0.2);
+}
+
+.mac-dialog {
+  background-color: oklch(var(--card) / 0.95);
+  backdrop-filter: blur(24px);
+  @apply border shadow-2xl;
+  border-color: oklch(var(--border) / 0.5);
+}
+
+/* Deskboard wallpaper background */
+.deskboard-container {
+  @apply relative min-h-[calc(100vh-12rem)];
+  background-image: url('/assets/generated/deskboard-wallpaper.dim_1920x1080.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+.deskboard-content {
+  @apply relative z-10;
+}
+
+.deskboard-container::before {
+  content: '';
+  @apply absolute inset-0;
+  background-color: oklch(var(--background) / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+/* Desktop Sidebar Navigation */
+.mac-sidebar-container {
+  background-color: oklch(var(--card) / 0.8);
+  backdrop-filter: blur(12px);
+  @apply border rounded-2xl p-3 shadow-mac-soft;
+  border-color: oklch(var(--border) / 0.5);
+}
+
+/* Search Panel Styles */
+.mac-search-panel {
+  @apply rounded-2xl overflow-hidden shadow-lg border-2;
+  border-color: oklch(var(--border) / 0.5);
+}
+
+.mac-search-iframe-container {
+  @apply w-full h-[600px] rounded-b-2xl overflow-hidden;
+  background-color: oklch(var(--background) / 0.5);
+}
+
+.mac-search-iframe {
+  @apply w-full h-full border-0;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .deskboard-container {
+    background-attachment: scroll;
+  }
 }

@@ -8,159 +8,81 @@
 
 import { IDL } from '@icp-sdk/core/candid';
 
-export const DataHistoryEntry = IDL.Record({
-  'dtSensitivityScore' : IDL.Nat,
-  'determinant' : IDL.Text,
-  'maintenanceAction' : IDL.Text,
-  'mpvShortList' : IDL.Text,
-  'trueCheck' : IDL.Bool,
-  'filterLabels' : IDL.Vec(IDL.Text),
-  'scoreSummary' : IDL.Text,
-  'indicatorsUsed' : IDL.Text,
-  'itemReviewed' : IDL.Text,
-  'varControlStatus' : IDL.Text,
-  'manipulatedVariables' : IDL.Text,
-  'varDefSummary' : IDL.Text,
-  'diagnosticTestResult' : IDL.Text,
-  'filterCount' : IDL.Nat,
+export const UserRole = IDL.Variant({
+  'admin' : IDL.Null,
+  'user' : IDL.Null,
+  'guest' : IDL.Null,
+});
+export const Budget = IDL.Record({
+  'monthlyLimit' : IDL.Nat,
+  'lastUpdated' : IDL.Text,
+  'savingsGoal' : IDL.Nat,
+});
+export const UserProfile = IDL.Record({ 'name' : IDL.Text });
+export const ExpenseEntry = IDL.Record({
+  'id' : IDL.Nat,
+  'date' : IDL.Text,
+  'type' : IDL.Text,
+  'description' : IDL.Text,
+  'amount' : IDL.Nat,
 });
 
 export const idlService = IDL.Service({
-  'addHistoryEntry' : IDL.Func(
-      [
-        IDL.Text,
-        IDL.Text,
-        IDL.Nat,
-        IDL.Nat,
-        IDL.Opt(IDL.Vec(IDL.Text)),
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Bool,
-        IDL.Text,
-        IDL.Text,
-      ],
-      [IDL.Nat, DataHistoryEntry],
-      [],
-    ),
-  'clearHistory' : IDL.Func([], [], []),
-  'clearWithFilterCount' : IDL.Func([IDL.Nat], [], []),
-  'clearWithFilterLabel' : IDL.Func([IDL.Text], [], []),
-  'convertAndAddHistoryEntry' : IDL.Func(
-      [
-        IDL.Text,
-        IDL.Text,
-        IDL.Nat,
-        IDL.Nat,
-        IDL.Vec(IDL.Text),
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Text,
-        IDL.Bool,
-        IDL.Text,
-        IDL.Text,
-      ],
-      [IDL.Nat, DataHistoryEntry],
-      [],
-    ),
-  'count' : IDL.Func([], [IDL.Nat], ['query']),
-  'existsWithFilterCount' : IDL.Func([IDL.Nat], [IDL.Bool], ['query']),
-  'findByFilterLabel' : IDL.Func(
-      [IDL.Text],
-      [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+  '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+  'addExpense' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat, IDL.Text], [], []),
+  'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+  'getBudget' : IDL.Func([], [IDL.Opt(Budget)], ['query']),
+  'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+  'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+  'getExpensesForCaller' : IDL.Func([], [IDL.Vec(ExpenseEntry)], ['query']),
+  'getUserProfile' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Opt(UserProfile)],
       ['query'],
     ),
-  'getEntry' : IDL.Func([IDL.Nat], [IDL.Opt(DataHistoryEntry)], ['query']),
-  'listEntries' : IDL.Func(
-      [],
-      [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
-      ['query'],
-    ),
+  'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+  'saveBudget' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
+  'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
 });
 
 export const idlInitArgs = [];
 
 export const idlFactory = ({ IDL }) => {
-  const DataHistoryEntry = IDL.Record({
-    'dtSensitivityScore' : IDL.Nat,
-    'determinant' : IDL.Text,
-    'maintenanceAction' : IDL.Text,
-    'mpvShortList' : IDL.Text,
-    'trueCheck' : IDL.Bool,
-    'filterLabels' : IDL.Vec(IDL.Text),
-    'scoreSummary' : IDL.Text,
-    'indicatorsUsed' : IDL.Text,
-    'itemReviewed' : IDL.Text,
-    'varControlStatus' : IDL.Text,
-    'manipulatedVariables' : IDL.Text,
-    'varDefSummary' : IDL.Text,
-    'diagnosticTestResult' : IDL.Text,
-    'filterCount' : IDL.Nat,
+  const UserRole = IDL.Variant({
+    'admin' : IDL.Null,
+    'user' : IDL.Null,
+    'guest' : IDL.Null,
+  });
+  const Budget = IDL.Record({
+    'monthlyLimit' : IDL.Nat,
+    'lastUpdated' : IDL.Text,
+    'savingsGoal' : IDL.Nat,
+  });
+  const UserProfile = IDL.Record({ 'name' : IDL.Text });
+  const ExpenseEntry = IDL.Record({
+    'id' : IDL.Nat,
+    'date' : IDL.Text,
+    'type' : IDL.Text,
+    'description' : IDL.Text,
+    'amount' : IDL.Nat,
   });
   
   return IDL.Service({
-    'addHistoryEntry' : IDL.Func(
-        [
-          IDL.Text,
-          IDL.Text,
-          IDL.Nat,
-          IDL.Nat,
-          IDL.Opt(IDL.Vec(IDL.Text)),
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Bool,
-          IDL.Text,
-          IDL.Text,
-        ],
-        [IDL.Nat, DataHistoryEntry],
-        [],
-      ),
-    'clearHistory' : IDL.Func([], [], []),
-    'clearWithFilterCount' : IDL.Func([IDL.Nat], [], []),
-    'clearWithFilterLabel' : IDL.Func([IDL.Text], [], []),
-    'convertAndAddHistoryEntry' : IDL.Func(
-        [
-          IDL.Text,
-          IDL.Text,
-          IDL.Nat,
-          IDL.Nat,
-          IDL.Vec(IDL.Text),
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Text,
-          IDL.Bool,
-          IDL.Text,
-          IDL.Text,
-        ],
-        [IDL.Nat, DataHistoryEntry],
-        [],
-      ),
-    'count' : IDL.Func([], [IDL.Nat], ['query']),
-    'existsWithFilterCount' : IDL.Func([IDL.Nat], [IDL.Bool], ['query']),
-    'findByFilterLabel' : IDL.Func(
-        [IDL.Text],
-        [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
+    '_initializeAccessControlWithSecret' : IDL.Func([IDL.Text], [], []),
+    'addExpense' : IDL.Func([IDL.Text, IDL.Text, IDL.Nat, IDL.Text], [], []),
+    'assignCallerUserRole' : IDL.Func([IDL.Principal, UserRole], [], []),
+    'getBudget' : IDL.Func([], [IDL.Opt(Budget)], ['query']),
+    'getCallerUserProfile' : IDL.Func([], [IDL.Opt(UserProfile)], ['query']),
+    'getCallerUserRole' : IDL.Func([], [UserRole], ['query']),
+    'getExpensesForCaller' : IDL.Func([], [IDL.Vec(ExpenseEntry)], ['query']),
+    'getUserProfile' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Opt(UserProfile)],
         ['query'],
       ),
-    'getEntry' : IDL.Func([IDL.Nat], [IDL.Opt(DataHistoryEntry)], ['query']),
-    'listEntries' : IDL.Func(
-        [],
-        [IDL.Vec(IDL.Tuple(IDL.Nat, DataHistoryEntry))],
-        ['query'],
-      ),
+    'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
+    'saveBudget' : IDL.Func([IDL.Nat, IDL.Nat, IDL.Text], [], []),
+    'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
   });
 };
 

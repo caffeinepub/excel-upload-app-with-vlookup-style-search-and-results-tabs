@@ -13,6 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Badge } from '../components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { HorizontalTableScroll } from '../components/table/HorizontalTableScroll';
 import { exportToExcel } from '../lib/export/exportXlsx';
 import { exportToPdf } from '../lib/export/exportPdf';
 
@@ -459,17 +460,17 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
 
                   {filteredData.length > 0 ? (
                     <ScrollArea className="h-[400px] rounded-md border">
-                      <div className="p-4">
+                      <HorizontalTableScroll className="p-4">
                         <table className="w-full border-collapse">
                           <thead className="sticky top-0 bg-background z-10">
                             <tr className="border-b">
-                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground">
+                              <th className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap">
                                 Row
                               </th>
                               {workbook.sheetData.headers.map((header, idx) => (
                                 <th
                                   key={idx}
-                                  className="text-left p-2 text-sm font-semibold text-muted-foreground"
+                                  className="text-left p-2 text-sm font-semibold text-muted-foreground whitespace-nowrap"
                                 >
                                   {header}
                                 </th>
@@ -482,7 +483,7 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                                 key={idx}
                                 className="border-b hover:bg-muted/50 transition-colors"
                               >
-                                <td className="p-2 text-sm font-medium text-muted-foreground">
+                                <td className="p-2 text-sm font-medium text-muted-foreground whitespace-nowrap">
                                   {item.rowIndex + 2}
                                 </td>
                                 {item.data.map((cell, cellIdx) => {
@@ -491,7 +492,7 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                                   return (
                                     <td
                                       key={cellIdx}
-                                      className={`p-2 text-sm ${
+                                      className={`p-2 text-sm whitespace-nowrap ${
                                         isFilterColumn
                                           ? 'font-semibold bg-primary/10'
                                           : ''
@@ -507,7 +508,7 @@ export function SearchTab({ onSearchComplete }: SearchTabProps) {
                             ))}
                           </tbody>
                         </table>
-                      </div>
+                      </HorizontalTableScroll>
                     </ScrollArea>
                   ) : (
                     <Alert>

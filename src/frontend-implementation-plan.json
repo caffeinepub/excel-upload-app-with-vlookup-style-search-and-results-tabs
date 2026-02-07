@@ -1,100 +1,105 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Upload empty-state logo update + animation + PDF/UI overlap fixes",
+  "title": "Regular Expense tracking with budget, PDF reports, and desktop navigation wiring",
   "requirements": [
     {
-      "id": "REQ-60",
-      "summary": "Add a new transparent round red PATENTED logo image asset for Upload tab empty-state animation only",
+      "id": "REQ-1",
+      "summary": "Ensure the desktop sidebar includes a visible History option that opens the existing History tab.",
       "acceptanceCriteria": [
-        "A new transparent-cutout logo file exists in frontend/public/assets/generated with the exact filename specified in the Image Requirements section.",
-        "The asset has a transparent background (no solid rectangle behind the circular logo).",
-        "No other existing branding assets (header logo, PDF header logo, PDF watermark logo) are replaced or modified as part of adding this asset."
+        "On desktop (lg and up), the sidebar shows a \"History\" item.",
+        "Clicking \"History\" opens the existing History tab content without errors."
       ],
       "file_operations": [
         {
-          "path": "frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png",
+          "path": "frontend/src/components/layout/DesktopSidebarNav.tsx",
+          "operation": "modify",
+          "description": "Confirm the desktop sidebar primary navigation includes a persistent \"History\" item wired to the existing 'history' tab id, and that its label remains exactly \"History\" for visibility and clickability."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Add a desktop-only sidebar navigation item for Regular Expense that navigates to a new Regular Expense tab/page.",
+      "acceptanceCriteria": [
+        "On desktop (lg and up), the sidebar includes a \"Regular Expense\" item.",
+        "Clicking \"Regular Expense\" navigates to a new tab/page that renders the expense tracking UI."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/layout/DesktopSidebarNav.tsx",
+          "operation": "modify",
+          "description": "Add a new primary menu item labeled \"Regular Expense\" (desktop sidebar only) wired to a new tab id (e.g., 'regular-expense') and choose an appropriate icon. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Register/render a new TabsContent section for the 'regular-expense' tab id so sidebar navigation can display the new Regular Expense page without errors."
+        },
+        {
+          "path": "frontend/src/pages/RegularExpenseTab.tsx",
           "operation": "create",
-          "description": "Add the new static generated image asset (transparent background) for use only in the Upload tab empty-state animation."
+          "description": "Create the new Regular Expense tab/page component that will host budget management, expense entry, expense list, and PDF report download UI. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-61",
-      "summary": "Update Upload tab empty-state to use the new PATENTED logo, centered and slightly smaller",
+      "id": "REQ-3",
+      "summary": "Add a desktop-only Regular Expense button on the Deskboard page that navigates to the Regular Expense tab/page.",
       "acceptanceCriteria": [
-        "When workbook is null, UploadTab renders the new logo image source (not /assets/generated/ptntd-cutout.dim_1200x1200.png).",
-        "The rendered logo appears centered and is visually smaller than the previous max-w-md presentation (e.g., reduced max width), while remaining clearly readable.",
-        "No changes are made to the app header logo sizing/branding as part of this requirement."
+        "On desktop (lg and up), the Deskboard page shows a \"Regular Expense\" button.",
+        "On mobile/tablet (< lg), the Deskboard \"Regular Expense\" button is not shown.",
+        "Clicking the button navigates to the \"Regular Expense\" tab/page."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/UploadTab.tsx",
+          "path": "frontend/src/pages/DeskboardTab.tsx",
           "operation": "modify",
-          "description": "Swap the empty-state image src to frontend/public/assets/generated/patented-round-red-cutout.dim_1200x1200.png and adjust layout sizing utilities so the centered logo renders slightly smaller than before, without touching header branding."
+          "description": "Add a \"Regular Expense\" button that is only visible on lg+ breakpoints and calls onNavigate('regular-expense') when clicked. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-62",
-      "summary": "Make Upload empty-state logo continuously rotate in one direction while preserving the flip effect, with motion-reduction support",
+      "id": "REQ-4",
+      "summary": "Implement the Regular Expense page UI for authenticated users to set a budget and log daily expenses with date, type, and amount, showing login-required messaging when unauthenticated.",
       "acceptanceCriteria": [
-        "The Upload empty-state logo has a continuous rotation animation that loops smoothly and does not use any alternating/reverse direction behavior.",
-        "The flip animation still occurs on the Upload empty-state logo (flip + rotation both visible, not mutually exclusive).",
-        "The rotation speed is slow/gentle (similar to the prior ‘slow flip’ expectation), and respects motion-reduction (animation disabled with prefers-reduced-motion).",
-        "PDF exports and Excel exports are unchanged (no animated assets or animation logic is introduced into export code paths)."
+        "The page includes a budget input (numeric) that can be saved for the logged-in user.",
+        "The page includes an expense entry form with fields: Date, Type, Amount, and an \"Add\" action.",
+        "After adding an expense, the new expense appears in a list/table on the same page.",
+        "If the user is not logged in, the page shows an English message indicating login is required to manage expenses, and prevents submitting changes."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/index.css",
-          "operation": "modify",
-          "description": "Add a CSS utility/class for the Upload empty-state logo that combines slow continuous rotation (single direction) with the existing flip effect, and disables animation under prefers-reduced-motion."
+          "path": "frontend/src/hooks/useRegularExpense.ts",
+          "operation": "create",
+          "description": "Add React Query hooks for Regular Expense data: fetch current user's budget, save/update budget, fetch current user's expenses, and add an expense; integrate with the existing useActor hook and invalidate relevant queries on success."
         },
         {
-          "path": "frontend/src/pages/UploadTab.tsx",
+          "path": "frontend/src/pages/RegularExpenseTab.tsx",
           "operation": "modify",
-          "description": "Apply the new combined flip+rotation class to the empty-state logo only (when workbook is null), ensuring the animation remains on-screen only and does not affect any export-related code paths."
+          "description": "Implement the Regular Expense UI: (1) authentication gate using the existing Internet Identity state (show English login-required message and disable save/add actions when unauthenticated), (2) budget numeric input with Save action, (3) expense form fields Date/Type/Amount (+ optional description if desired) with Add action, and (4) an on-page list of expenses that updates after adding. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-63",
-      "summary": "Fix PDF export layout to prevent any text overlap across header, footer, and table content for multi-page exports",
+      "id": "REQ-6",
+      "summary": "Add frontend PDF download for weekly/monthly/yearly expense reports with filenames and totals reflecting the selected range.",
       "acceptanceCriteria": [
-        "Exported PDFs (from Results and History) have no overlapping text in the header, footer, or table area.",
-        "Long header/footer strings and long cell values are handled without overlapping (wrap and/or truncate as needed), and content stays within page margins.",
-        "Multi-page exports preserve the same header/footer spacing and do not overlap with the table content on any page."
+        "The Regular Expense page provides a UI control to select: Weekly, Monthly, or Yearly report type.",
+        "A \"Download PDF\" action generates a PDF using the selected report type.",
+        "The PDF filename clearly indicates the selected range (weekly/monthly/yearly) and the covered dates.",
+        "The PDF table includes at minimum: Date, Type, Amount, and includes totals appropriate to the selected range (e.g., total amount for the period)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/lib/export/exportPdf.ts",
-          "operation": "modify",
-          "description": "Update PDF rendering to wrap header/footer strings within page margins and to render table cells with wrapping-aware, dynamic row heights (including page-break calculations) so no text overlaps on any page."
-        }
-      ]
-    },
-    {
-      "id": "REQ-64",
-      "summary": "Fix in-app responsive layout/text wrapping to prevent visible UI text overlap while keeping all text in English",
-      "acceptanceCriteria": [
-        "No visible text overlaps other UI elements in the main app layout at typical desktop widths and narrow/mobile widths (responsive).",
-        "Any adjustments preserve existing workflows and do not introduce new user-facing non-English text."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/layout/AppHeader.tsx",
-          "operation": "modify",
-          "description": "Adjust header layout to be more responsive (e.g., allow wrapping/stacking of logo and action buttons at narrow widths) to prevent overlap without changing the header logo asset or branding."
+          "path": "frontend/src/lib/expenses/expenseReport.ts",
+          "operation": "create",
+          "description": "Create helper utilities to (1) compute weekly/monthly/yearly date ranges, (2) filter expense entries for the selected range, (3) compute totals, and (4) build export data (headers/rows) suitable for the existing exportToPdf utility."
         },
         {
-          "path": "frontend/src/pages/ResultsTab.tsx",
+          "path": "frontend/src/pages/RegularExpenseTab.tsx",
           "operation": "modify",
-          "description": "Improve responsive table/card layouts to prevent text overlap by enabling safe wrapping/truncation in constrained areas (especially table headers/cells and top action rows) while keeping all visible text in English."
-        },
-        {
-          "path": "frontend/src/pages/HistoryTab.tsx",
-          "operation": "modify",
-          "description": "Improve responsive history card/tabs layout to prevent text overlap on smaller widths by adjusting spacing/wrapping/alignment (no workflow changes; English-only UI text)."
+          "description": "Add report type selection (Weekly/Monthly/Yearly) and a \"Download PDF\" action that uses the existing frontend PDF export utility (frontend/src/lib/export/exportPdf.ts) to generate a report matching the selection; ensure the generated filename includes the report type and covered dates, and include a totals row/section. Use shadcn-ui composed components already in the project; verify the component's usage instructions before implementing."
         }
       ]
     }

@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import { AppHeader } from './AppHeader';
+import { InAppReminderNotifier } from '../reminders/InAppReminderNotifier';
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -7,9 +8,9 @@ interface AppLayoutProps {
 
 export function AppLayout({ children }: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <AppHeader />
-      <main className="container mx-auto px-4 py-8 max-w-6xl">
+      <main className="container mx-auto px-4 py-8 max-w-7xl">
         {children}
       </main>
       <footer className="border-t mt-16 py-6">
@@ -25,6 +26,7 @@ export function AppLayout({ children }: AppLayoutProps) {
           </a>
         </div>
       </footer>
+      <InAppReminderNotifier />
     </div>
   );
 }

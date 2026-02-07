@@ -1,130 +1,137 @@
 {
   "kind": "build_request",
-  "title": "Update Upload tab animated logo to new round red PATENTED asset + fix PDF/app text overlap",
-  "priority": "normal",
+  "title": "Add Regular Expense tracking with budget + PDF reports and ensure sidebar access",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-60",
-      "text": "Add the user’s latest round red \"PATENTED\" logo as a new static generated image asset (background-removed/transparent) under frontend/public/assets/generated, to be used only for the Upload tab empty-state animation.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "BUILD AND LOGO IS I UPLOAD IN ROUND RED COLOUR ALL WRITTEN PATENTED IN MIDDILE OF LOGO FOR FLIPING AND CONTIOUNS ROTATING DONT CHANGE DIRECTION"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A new transparent-cutout logo file exists in frontend/public/assets/generated with the exact filename specified in the Image Requirements section.",
-        "The asset has a transparent background (no solid rectangle behind the circular logo).",
-        "No other existing branding assets (header logo, PDF header logo, PDF watermark logo) are replaced or modified as part of adding this asset."
-      ]
-    },
-    {
-      "id": "REQ-61",
-      "text": "Update the Upload tab empty-state UI (when no workbook is loaded) to use the new round red PATENTED logo asset, render it centered, and make it slightly smaller than the current image size.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "...LOGO...FOR FLIPING...",
-          "...LITTLE SAMALL."
-        ]
-      },
-      "acceptanceCriteria": [
-        "When workbook is null, UploadTab renders the new logo image source (not /assets/generated/ptntd-cutout.dim_1200x1200.png).",
-        "The rendered logo appears centered and is visually smaller than the previous max-w-md presentation (e.g., reduced max width), while remaining clearly readable.",
-        "No changes are made to the app header logo sizing/branding as part of this requirement."
-      ]
-    },
-    {
-      "id": "REQ-62",
-      "text": "Change the Upload tab empty-state logo animation so it continuously rotates in a single direction (no direction reversal) while preserving the existing flip effect as requested; the rotation must be smooth, slow, loop forever, and must be on-screen only (must not impact any export generation).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "...FOR FLIPING AND CONTIOUNS ROTATING DONT CHANGE DIRECTION"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The Upload empty-state logo has a continuous rotation animation that loops smoothly and does not use any alternating/reverse direction behavior.",
-        "The flip animation still occurs on the Upload empty-state logo (flip + rotation both visible, not mutually exclusive).",
-        "The rotation speed is slow/gentle (similar to the prior ‘slow flip’ expectation), and respects motion-reduction (animation disabled with prefers-reduced-motion).",
-        "PDF exports and Excel exports are unchanged (no animated assets or animation logic is introduced into export code paths)."
-      ]
-    },
-    {
-      "id": "REQ-63",
-      "text": "Fix PDF export layout so no text overlaps anywhere, including header contact lines, footer lines, and table cell content; ensure multi-page exports remain readable with consistent margins and spacing.",
+      "id": "REQ-1",
+      "text": "Ensure the desktop sidebar navigation includes a visible, clickable \"History\" option that navigates to the existing History page/tab.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-2",
-          "msg-4"
+          "msg-3"
         ],
         "quotes": [
-          "IN THE EVERY PDF DONT OVERLAP TEXT ANY WHERE PROPER FORMATING",
-          "3. DO ALL"
+          "ADD HISTORY OPTION IN BAR."
         ]
       },
       "acceptanceCriteria": [
-        "Exported PDFs (from Results and History) have no overlapping text in the header, footer, or table area.",
-        "Long header/footer strings and long cell values are handled without overlapping (wrap and/or truncate as needed), and content stays within page margins.",
-        "Multi-page exports preserve the same header/footer spacing and do not overlap with the table content on any page."
+        "On desktop (lg and up), the sidebar shows a \"History\" item.",
+        "Clicking \"History\" opens the existing History tab content without errors."
       ]
     },
     {
-      "id": "REQ-64",
-      "text": "Fix in-app UI formatting issues that can cause text overlap in the visible application (non-PDF), adjusting spacing/wrapping/alignment as needed while keeping all user-facing text in English.",
+      "id": "REQ-2",
+      "text": "Add a new \"Regular Expense\" entry to the desktop sidebar navigation (desktop-only sidebar) that navigates to a new \"Regular Expense\" tab/page.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "YES, ADD THAT BUTTON ALSO IN SIDE BAR"
+        ]
+      },
+      "acceptanceCriteria": [
+        "On desktop (lg and up), the sidebar includes a \"Regular Expense\" item.",
+        "Clicking \"Regular Expense\" navigates to a new tab/page that renders the expense tracking UI."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add a desktop-only \"Regular Expense\" button on the Deskboard page that navigates to the \"Regular Expense\" tab/page.",
       "target": "frontend",
       "source": {
         "messageIds": [
           "msg-2",
-          "msg-4"
+          "msg-5"
         ],
         "quotes": [
-          "...ALSO IN APP.",
-          "3. DO ALL"
+          "AND IN DESK TOP ADD REGULER EXPENCE BUTTON",
+          "YES"
         ]
       },
       "acceptanceCriteria": [
-        "No visible text overlaps other UI elements in the main app layout at typical desktop widths and narrow/mobile widths (responsive).",
-        "Any adjustments preserve existing workflows and do not introduce new user-facing non-English text."
+        "On desktop (lg and up), the Deskboard page shows a \"Regular Expense\" button.",
+        "On mobile/tablet (< lg), the Deskboard \"Regular Expense\" button is not shown.",
+        "Clicking the button navigates to the \"Regular Expense\" tab/page."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Implement the \"Regular Expense\" page UI that lets an authenticated user (Internet Identity) set a budget and log expenses with date, expense type, amount, and a daily update workflow.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "ADD REGULER EXPENCE BUTTON IN WHICH WE CAN SET BUDGET AND DAILY UPDATE USE MONEY WITH DATE, TYPE OF EXPENXCE,AND AMOUNT"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The page includes a budget input (numeric) that can be saved for the logged-in user.",
+        "The page includes an expense entry form with fields: Date, Type, Amount, and an \"Add\" action.",
+        "After adding an expense, the new expense appears in a list/table on the same page.",
+        "If the user is not logged in, the page shows an English message indicating login is required to manage expenses, and prevents submitting changes."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Add backend persistence for per-user budgets and expense entries, including APIs to save/read the budget, create expense entries, and list expense entries for the caller (authorized users only).",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-2"
+        ],
+        "quotes": [
+          "WE CAN SET BUDGET AND DAILY UPDATE USE MONEY WITH DATE, TYPE OF EXPENXCE,AND AMOUNT"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Budget and expenses are stored per Principal and are returned only to the authorized caller.",
+        "Backend exposes methods to: get current budget, set/update budget, add expense entry, list expense entries.",
+        "Unauthorized callers (no #user permission) are rejected consistent with existing backend authorization behavior."
+      ]
+    },
+    {
+      "id": "REQ-6",
+      "text": "Add PDF download for expense reports where the user can choose report type (weekly, monthly, yearly), and the generated PDF content/format reflects the selected range.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-2",
+          "msg-5"
+        ],
+        "quotes": [
+          "WE CAN DOWNLOAD EXPENCE WEECKLY, MONTHLY, YEARLY EXPENCE REPORT IN PDF",
+          "CAN CHOOSE REPORT TYPE AND DOWNLOAD - FORMAT ACCORDING TO THE CHOICE"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The Regular Expense page provides a UI control to select: Weekly, Monthly, or Yearly report type.",
+        "A \"Download PDF\" action generates a PDF using the selected report type.",
+        "The PDF filename clearly indicates the selected range (weekly/monthly/yearly) and the covered dates.",
+        "The PDF table includes at minimum: Date, Type, Amount, and includes totals appropriate to the selected range (e.g., total amount for the period)."
       ]
     }
   ],
   "constraints": [
-    "Use only English for any visible/user-facing text.",
-    "Do not edit files under frontend/src/components/ui (shadcn UI components must be composed, not modified).",
-    "Do not change the direction of the new continuous rotation animation (must not reverse/alternate).",
-    "The new round red PATENTED logo/animation change applies only to the Upload tab empty state; do not replace the app header logo or any PDF watermark/header logo assets.",
-    "Do not route images through the backend; store and load them as static frontend assets."
+    "Backend must remain a single Motoko actor in backend/main.mo; only add migration.mo if existing stable state requires it.",
+    "Do not edit files under frontend/src/components/ui (compose existing shadcn components instead).",
+    "Do not modify immutable frontend hook paths listed in SYSTEM_CONTEXT (e.g., frontend/src/hooks/useActor.ts, frontend/src/hooks/useInternetIdentity.ts/x).",
+    "Use English for all user-facing text.",
+    "Generate PDFs on the frontend using the existing PDF export utilities; do not generate PDFs in the backend."
   ],
   "nonGoals": [
-    "Changing Internet Identity/authentication behavior.",
-    "Changing Update Checking, VLOOKUP logic, History persistence, or export file formats beyond fixing PDF layout/overlap issues.",
-    "Replacing the existing PDF watermark tablet-logo asset or Crystal Atlas header logo asset."
+    "Adding third-party authentication providers (only Internet Identity is supported).",
+    "Real-time syncing via WebSockets/push notifications.",
+    "Using external databases or non-Motoko backend services.",
+    "Adding mobile-specific navigation for Regular Expense (unless required to make the desktop-only request work)."
   ],
   "imageRequirements": {
-    "required": [
-      "Round red circular logo with the word \"PATENTED\" centered, transparent background cutout (patented-round-red-cutout.dim_1200x1200.png)"
-    ],
+    "required": [],
     "edits": []
-  },
-  "userProfileUpdate": {
-    "goalsToAdd": [],
-    "goalsToRemove": [],
-    "preferencesToAdd": [],
-    "preferencesToRemove": [],
-    "miscToAdd": [],
-    "miscToRemove": [],
-    "fieldsToSet": {},
-    "fieldsToDelete": []
   }
 }

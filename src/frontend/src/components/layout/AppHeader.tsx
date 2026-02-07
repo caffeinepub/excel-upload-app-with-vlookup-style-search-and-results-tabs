@@ -2,6 +2,7 @@ import { useRef } from 'react';
 import { useAppState } from '../../state/appState';
 import { Button } from '../ui/button';
 import { RotateCcw, Upload } from 'lucide-react';
+import { LoginButton } from '../auth/LoginButton';
 
 export function AppHeader() {
   const { workbook, reset, replaceWorkbook, uploadLoading, setUploadLoading, setUploadError } = useAppState();
@@ -68,19 +69,22 @@ export function AppHeader() {
               className="h-12 sm:h-16 w-auto object-contain"
             />
           </div>
-          {workbook && (
-            <div className="flex gap-2 flex-wrap justify-center sm:justify-end">
-              <Button onClick={handleReplaceWorkbook} variant="outline" size="sm" disabled={uploadLoading}>
-                <Upload className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
-                <span className="hidden xs:inline">Replace Excel</span>
-                <span className="xs:hidden">Replace</span>
-              </Button>
-              <Button onClick={reset} variant="outline" size="sm" disabled={uploadLoading}>
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Reset
-              </Button>
-            </div>
-          )}
+          <div className="flex gap-2 flex-wrap justify-center sm:justify-end items-center">
+            <LoginButton />
+            {workbook && (
+              <>
+                <Button onClick={handleReplaceWorkbook} variant="outline" size="sm" disabled={uploadLoading}>
+                  <Upload className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
+                  <span className="hidden xs:inline">Replace Excel</span>
+                  <span className="xs:hidden">Replace</span>
+                </Button>
+                <Button onClick={reset} variant="outline" size="sm" disabled={uploadLoading}>
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Reset
+                </Button>
+              </>
+            )}
+          </div>
         </div>
       </div>
       

@@ -1,151 +1,118 @@
 import Map "mo:core/Map";
 import Nat "mo:core/Nat";
-import List "mo:core/List";
-import Text "mo:core/Text";
-import Iter "mo:core/Iter";
+import Principal "mo:core/Principal";
+import Runtime "mo:core/Runtime";
+import Array "mo:core/Array";
 
+import AccessControl "authorization/access-control";
+import MixinAuthorization "authorization/MixinAuthorization";
+import Migration "migration";
+
+(with migration = Migration.run)
 actor {
-  type DataHistoryEntry = {
-    determinant : Text;
-    diagnosticTestResult : Text;
-    dtSensitivityScore : Nat;
-    filterCount : Nat;
-    filterLabels : [Text];
-    indicatorsUsed : Text;
-    itemReviewed : Text;
-    maintenanceAction : Text;
-    manipulatedVariables : Text;
-    mpvShortList : Text;
-    scoreSummary : Text;
-    trueCheck : Bool;
-    varControlStatus : Text;
-    varDefSummary : Text;
+  public type ExpenseEntry = {
+    id : Nat;
+    date : Text;
+    type_ : Text;
+    amount : Nat;
+    description : Text;
   };
 
-  let entries = Map.empty<Nat, DataHistoryEntry>();
+  public type UserProfile = {
+    name : Text;
+  };
 
-  public shared ({ caller }) func addHistoryEntry(
-    determinant : Text,
-    diagnosticTestResult : Text,
-    dtSensitivityScore : Nat,
-    filterCount : Nat,
-    filterLabelsOpt : ?[Text],
-    indicatorsUsed : Text,
-    itemReviewed : Text,
-    maintenanceAction : Text,
-    manipulatedVariables : Text,
-    mpvShortList : Text,
-    scoreSummary : Text,
-    trueCheck : Bool,
-    varControlStatus : Text,
-    varDefSummary : Text,
-  ) : async (Nat, DataHistoryEntry) {
-    let id = entries.size();
+  public type Budget = {
+    monthlyLimit : Nat;
+    savingsGoal : Nat;
+    lastUpdated : Text;
+  };
 
-    let filterLabels = List.empty<Text>();
+  let budgets = Map.empty<Principal, Budget>();
+  let expenses = Map.empty<Principal, Map.Map<Nat, ExpenseEntry>>();
+  let userProfiles = Map.empty<Principal, UserProfile>();
+  let accessControlState = AccessControl.initState();
+  var nextExpenseId = 0;
 
-    switch (filterLabelsOpt) {
-      case (null) {};
-      case (?labels) {
-        labels.values().forEach(
-          func(filterLabel) {
-            if (filterLabel.size() > 0) {
-              filterLabels.add(filterLabel);
-            };
-          }
-        );
+  include MixinAuthorization(accessControlState);
+
+  public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access profiles");
+    };
+    userProfiles.get(caller);
+  };
+
+  public query ({ caller }) func getUserProfile(user : Principal) : async ?UserProfile {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access profiles");
+    };
+    if (caller != user and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Can only view your own profile");
+    };
+    userProfiles.get(user);
+  };
+
+  public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save profiles");
+    };
+    userProfiles.add(caller, profile);
+  };
+
+  public shared ({ caller }) func saveBudget(monthlyLimit : Nat, savingsGoal : Nat, lastUpdated : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can save budgets");
+    };
+    let newBudget : Budget = {
+      monthlyLimit;
+      savingsGoal;
+      lastUpdated;
+    };
+    budgets.add(caller, newBudget);
+  };
+
+  public query ({ caller }) func getBudget() : async ?Budget {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access budgets");
+    };
+    budgets.get(caller);
+  };
+
+  public shared ({ caller }) func addExpense(date : Text, type_ : Text, amount : Nat, description : Text) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can add expenses");
+    };
+
+    let newEntry : ExpenseEntry = {
+      id = nextExpenseId;
+      date;
+      type_;
+      amount;
+      description;
+    };
+
+    switch (expenses.get(caller)) {
+      case (null) {
+        let newExpenseMap = Map.empty<Nat, ExpenseEntry>();
+        newExpenseMap.add(newEntry.id, newEntry);
+        expenses.add(caller, newExpenseMap);
+      };
+      case (?expenseMap) {
+        expenseMap.add(newEntry.id, newEntry);
       };
     };
+    nextExpenseId += 1;
+  };
 
-    let entry = {
-      determinant;
-      diagnosticTestResult;
-      dtSensitivityScore;
-      filterCount;
-      filterLabels = filterLabels.toArray();
-      indicatorsUsed;
-      itemReviewed;
-      maintenanceAction;
-      manipulatedVariables;
-      mpvShortList;
-      scoreSummary;
-      trueCheck;
-      varControlStatus;
-      varDefSummary;
+  public query ({ caller }) func getExpensesForCaller() : async [ExpenseEntry] {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can access expenses");
     };
-    entries.add(id, entry);
-    (id, entry);
-  };
 
-  public query ({ caller }) func getEntry(id : Nat) : async ?DataHistoryEntry {
-    entries.get(id);
-  };
-
-  public query ({ caller }) func listEntries() : async [(Nat, DataHistoryEntry)] {
-    entries.toArray();
-  };
-
-  public shared ({ caller }) func clearHistory() : async () {
-    entries.clear();
-  };
-
-  public query ({ caller }) func count() : async Nat {
-    entries.size();
-  };
-
-  public query ({ caller }) func existsWithFilterCount(filterCount : Nat) : async Bool {
-    let iter = entries.filter(
-      func(_id, entry) {
-        entry.filterCount == filterCount;
-      }
-    );
-    not iter.isEmpty();
-  };
-
-  public shared ({ caller }) func clearWithFilterCount(filterCount : Nat) : async () {
-    entries.forEach(
-      func(id, entry) {
-        if (entry.filterCount == filterCount) {
-          entries.remove(id);
-        };
-      }
-    );
-  };
-
-  public query ({ caller }) func findByFilterLabel(filterLabel : Text) : async [(Nat, DataHistoryEntry)] {
-    entries.toArray().filter(
-      func((_, entry)) {
-        entry.filterLabels.any(func(existingLabel) { existingLabel == filterLabel });
-      }
-    );
-  };
-
-  public shared ({ caller }) func convertAndAddHistoryEntry(
-    determinant : Text,
-    diagnosticTestResult : Text,
-    dtSensitivityScore : Nat,
-    filterCount : Nat,
-    filterLabelsArray : [Text],
-    indicatorsUsed : Text,
-    itemReviewed : Text,
-    maintenanceAction : Text,
-    manipulatedVariables : Text,
-    mpvShortList : Text,
-    scoreSummary : Text,
-    trueCheck : Bool,
-    varControlStatus : Text,
-    varDefSummary : Text,
-  ) : async (Nat, DataHistoryEntry) {
-    await addHistoryEntry(determinant, diagnosticTestResult, dtSensitivityScore, filterCount, ?filterLabelsArray, indicatorsUsed, itemReviewed, maintenanceAction, manipulatedVariables, mpvShortList, scoreSummary, trueCheck, varControlStatus, varDefSummary);
-  };
-
-  public shared ({ caller }) func clearWithFilterLabel(filterLabel : Text) : async () {
-    entries.forEach(
-      func(id, entry) {
-        if (entry.filterLabels.any(func(existingLabel) { existingLabel == filterLabel })) {
-          entries.remove(id);
-        };
-      }
-    );
+    switch (expenses.get(caller)) {
+      case (null) { [] };
+      case (?callerExpenses) { callerExpenses.values().toArray() };
+    };
   };
 };
