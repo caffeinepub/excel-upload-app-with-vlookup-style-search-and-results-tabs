@@ -1,67 +1,26 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Build an in-app reminder/notification feature that plays a generic iPhone-style ringtone and displays a permanent 3D armored-hero (Ironman-inspired) character in the UI with idle animations, switching to a dance animation when reminders trigger, plus different animations per tab.",
-  "architectural_notes": [
-    "Use legally safe assets: generic iPhone-style ringtone (not Apple’s official tone) and a generic Ironman-inspired armored character (not copyrighted IP).",
-    "Reminder notifications are in-app only (no real push notifications)."
+  "summary": "Project to adjust UI character preview box so the character is perfectly centered and not clipped in the display frame.",
+  "architectural_notes": [],
+  "known_issues": [
+    "Character is not centered in the character preview box; head gets cut off by the display frame."
   ],
-  "known_issues": [],
-  "isFixRequest": false,
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-ensure-the-app-provides-in-app-reminder-notifications-that-trigger-while-the-app-is-open-displaying-a-toast-notification-with-reminder-title-and-scheduled-time-and-allowing-the-user-to-dismiss-it",
-      "title": "Ensure the app provides in-app reminder notifications that trigger while the app is open, displaying a toast notification with reminder title and scheduled time, and allowing the user to dismiss it.",
+      "id": "feature-update-the-character-dock-preview-box-ui-frame-so-the-3d-character-appears-perfectly-centered-within-the-preview-box-and-is-not-clipped-including-the-head-by-the-box-frame",
+      "title": "Update the Character Dock preview box UI frame so the 3D character appears perfectly centered within the preview box and is not clipped (including the head) by the box/frame.",
       "reqIds": [
         "REQ-1"
       ],
       "version": 1
     },
     {
-      "id": "feature-play-a-legally-safe-generic-iphone-style-ringtone-when-an-in-app-reminder-notification-triggers-and-stop-reset-the-audio-when-the-notification-is-dismissed",
-      "title": "Play a legally-safe, generic iPhone-style ringtone when an in-app reminder notification triggers, and stop/reset the audio when the notification is dismissed.",
+      "id": "feature-adjust-the-character-dock-canvas-container-styling-layout-to-ensure-consistent-centering-and-safe-framing-e-g-padding-safe-area-within-the-preview-box-appropriate-fixed-min-height-and-overflow-handling-so-the-3d-canvas-has-enough-vertical-space-to-display-the-full-character",
+      "title": "Adjust the Character Dock canvas container styling/layout to ensure consistent centering and safe framing (e.g., padding/safe-area within the preview box, appropriate fixed/min height, and overflow handling) so the 3D canvas has enough vertical space to display the full character.",
       "reqIds": [
         "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-permanent-non-copyright-infringing-3d-armored-hero-robot-character-inside-the-main-app-interface-that-is-visible-during-normal-app-usage-not-only-inside-the-reminder-toast",
-      "title": "Add a permanent, non-copyright-infringing 3D armored-hero/robot character inside the main app interface that is visible during normal app usage (not only inside the reminder toast).",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-implement-character-animation-states-an-idle-normal-mode-by-default-switch-to-a-clear-dancing-animation-automatically-when-a-reminder-triggers-and-return-to-idle-after-the-reminder-is-dismissed",
-      "title": "Implement character animation states: an idle/normal mode by default, switch to a clear dancing animation automatically when a reminder triggers, and return to idle after the reminder is dismissed.",
-      "reqIds": [
-        "REQ-4"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-change-the-character-s-animation-based-on-the-currently-selected-app-tab-when-the-user-switches-tabs-the-character-switches-to-a-tab-specific-animation-e-g-drink-water-jump-doing-call-funny-movement-while-still-overriding-to-dance-during-active-reminder-notifications",
-      "title": "Change the character’s animation based on the currently selected app tab: when the user switches tabs, the character switches to a tab-specific animation (e.g., drink water, jump, doing call, funny movement) while still overriding to 'dance' during active reminder notifications.",
-      "reqIds": [
-        "REQ-5"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-wire-the-reminder-notification-trigger-to-the-character-animation-system-so-that-the-reminder-toast-and-the-main-interface-character-respond-to-the-same-reminder-event",
-      "title": "Wire the reminder-notification trigger to the character animation system so that the reminder toast and the main-interface character respond to the same reminder event.",
-      "reqIds": [
-        "REQ-6"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-apply-a-cohesive-creative-visual-theme-for-the-new-character-area-and-reminder-notification-ui-colors-typography-spacing-and-motion-consistent-with-the-existing-tailwind-design-system-avoiding-a-blue-purple-dominant-palette",
-      "title": "Apply a cohesive, creative visual theme for the new character area and reminder notification UI (colors, typography, spacing, and motion), consistent with the existing Tailwind design system, avoiding a blue/purple-dominant palette.",
-      "reqIds": [
-        "REQ-7"
       ],
       "version": 1
     }
@@ -69,13 +28,12 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "In-app reminders with ringtone + 3D armored character animations (idle, dance on reminder, different per tab)",
+      "summary": "Reposition/adjust the character preview box UI frame so the character is perfectly centered and not cut off.",
       "reqIds": [],
-      "status": "pending"
+      "status": "in_progress"
     }
   ],
-  "gameProjectType": "3d",
-  "projectName": "Add in-app reminders with ringtone + animated 3D armored character with per-tab animations",
+  "projectName": "Center the character within the Character Dock preview box (prevent head clipping)",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

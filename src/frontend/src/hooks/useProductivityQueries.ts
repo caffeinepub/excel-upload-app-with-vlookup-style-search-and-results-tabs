@@ -40,9 +40,13 @@ export interface Note {
 
 // Convert backend Reminder to frontend Reminder
 function mapBackendReminder(backendReminder: BackendReminder): Reminder {
-  // Combine date (YYYY-MM-DD) and time (HH:MM) into a timestamp
-  const dateTimeString = `${backendReminder.date}T${backendReminder.time}`;
-  const timestamp = new Date(dateTimeString).getTime();
+  // Combine date (YYYY-MM-DD) and time (HH:MM) into a local timestamp
+  // Parse as local time to avoid timezone shifts
+  const dateTimeString = `${backendReminder.date}T${backendReminder.time}:00`;
+  const localDate = new Date(dateTimeString);
+  
+  // Ensure we have a valid date
+  const timestamp = isNaN(localDate.getTime()) ? 0 : localDate.getTime();
   
   return {
     id: backendReminder.id,

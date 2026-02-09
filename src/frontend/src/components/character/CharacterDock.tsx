@@ -23,11 +23,13 @@ export function CharacterDock({ activeTab }: CharacterDockProps) {
   return (
     <div className="character-dock-container">
       <div className="character-dock-canvas">
-        <ArmoredHero3DCanvas animation={currentAnimation} />
+        <div className="character-dock-canvas-inner">
+          <ArmoredHero3DCanvas animation={currentAnimation} />
+        </div>
       </div>
       <div className="character-dock-status">
         <p className="text-xs text-muted-foreground text-center">
-          {isReminderActive ? '🎵 Reminder Active' : '🤖 Tech Hero'}
+          {isReminderActive ? '🎵 Reminder Active' : '🤖 Your Assistant'}
         </p>
       </div>
     </div>

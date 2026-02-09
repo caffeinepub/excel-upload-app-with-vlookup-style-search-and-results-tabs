@@ -1,5 +1,6 @@
 export type AnimationType = 
   | 'idle'
+  | 'walk'
   | 'dance'
   | 'drinkWater'
   | 'jump'
@@ -20,7 +21,7 @@ export const TAB_ANIMATION_MAP: Record<string, AnimationType> = {
   'update-checking': 'typing',
   'history': 'wave',
   'regular-expense': 'drinkWater',
-  'attendance': 'nod',
+  'attendance': 'walk',
   'reminders': 'call',
   'calendar': 'thinking',
   'todo': 'jump',

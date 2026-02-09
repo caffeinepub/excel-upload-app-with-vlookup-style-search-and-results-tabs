@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useGetToDoItems } from '../hooks/useProductivityQueries';
-import { useCreateToDoItem, useToggleToDoItem } from '../hooks/useProductivityMutations';
+import { useCreateTodo, useToggleTodo } from '../hooks/useProductivityMutations';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { CheckSquare, AlertCircle, Plus } from 'lucide-react';
 import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
@@ -17,8 +17,8 @@ export function TodoTab() {
   const isAuthenticated = !!identity;
 
   const { data: todos = [], isLoading } = useGetToDoItems();
-  const createMutation = useCreateToDoItem();
-  const toggleMutation = useToggleToDoItem();
+  const createMutation = useCreateTodo();
+  const toggleMutation = useToggleTodo();
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [text, setText] = useState('');
@@ -29,7 +29,7 @@ export function TodoTab() {
     setError(null);
 
     try {
-      await createMutation.mutateAsync({ text });
+      await createMutation.mutateAsync(text);
       setDialogOpen(false);
       setText('');
     } catch (err) {

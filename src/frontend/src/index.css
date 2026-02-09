@@ -245,7 +245,14 @@
 }
 
 .character-dock-canvas {
-  @apply w-full h-64 bg-gradient-to-b from-muted/20 to-muted/5;
+  @apply w-full bg-gradient-to-b from-muted/20 to-muted/5 flex items-center justify-center;
+  min-height: 20rem;
+  height: 20rem;
+  padding: 1.5rem 0;
+}
+
+.character-dock-canvas-inner {
+  @apply w-full h-full;
 }
 
 .character-dock-status {

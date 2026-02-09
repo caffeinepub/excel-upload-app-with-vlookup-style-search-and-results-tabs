@@ -11,11 +11,17 @@ export function getUserFriendlyError(error: unknown): string {
     if (error.toLowerCase().includes('unauthorized')) {
       return 'Please log in to perform this action.';
     }
-    if (error.toLowerCase().includes('actor not available')) {
+    if (error.toLowerCase().includes('actor not available') || error.toLowerCase().includes('actor not ready')) {
       return 'Connecting to backend... Please try again in a moment.';
     }
     if (error.toLowerCase().includes('invalid principal')) {
       return 'Invalid Principal ID. Please refresh and try again.';
+    }
+    if (error.toLowerCase().includes('invalid date format')) {
+      return 'Invalid date format. Please select a valid date.';
+    }
+    if (error.toLowerCase().includes('invalid time format')) {
+      return 'Invalid time format. Please select a valid time.';
     }
     return error;
   }
@@ -36,8 +42,16 @@ export function getUserFriendlyError(error: unknown): string {
       return 'Invalid Principal ID. Please refresh and try again.';
     }
     
+    if (message.includes('invalid date format')) {
+      return 'Invalid date format. Please select a valid date.';
+    }
+    
+    if (message.includes('invalid time format')) {
+      return 'Invalid time format. Please select a valid time.';
+    }
+    
     if (message.includes('trap') || message.includes('rejected')) {
-      return 'Operation failed. Please try again or contact support if the issue persists.';
+      return 'Operation failed. Please check your input and try again.';
     }
     
     return error.message;

@@ -23,26 +23,29 @@ export function RemindersTab() {
   const deleteMutation = useDeleteReminder();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [time, setTime] = useState('');
+  const [message, setMessage] = useState('');
+  const [dateValue, setDateValue] = useState('');
+  const [timeValue, setTimeValue] = useState('');
   const [error, setError] = useState('');
 
   const handleCreate = async () => {
-    if (!title.trim() || !time) {
+    if (!message.trim() || !dateValue || !timeValue) {
       setError('Please fill in all required fields');
       return;
     }
 
     try {
       setError('');
-      const timeMs = new Date(time).getTime();
+      // Send date and time as separate strings (YYYY-MM-DD and HH:MM)
       await createMutation.mutateAsync({
-        title,
-        time: BigInt(timeMs),
+        message: message.trim(),
+        date: dateValue,
+        time: timeValue,
       });
       setDialogOpen(false);
-      setTitle('');
-      setTime('');
+      setMessage('');
+      setDateValue('');
+      setTimeValue('');
     } catch (error) {
       const friendlyError = getUserFriendlyError(error);
       setError(friendlyError);
@@ -105,21 +108,30 @@ export function RemindersTab() {
             </DialogHeader>
             <div className="space-y-4">
               <div>
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="message">Message *</Label>
                 <Input
-                  id="title"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  id="message"
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
                   placeholder="Team meeting"
                 />
               </div>
               <div>
-                <Label htmlFor="time">Date & Time *</Label>
+                <Label htmlFor="date">Date *</Label>
+                <Input
+                  id="date"
+                  type="date"
+                  value={dateValue}
+                  onChange={(e) => setDateValue(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="time">Time *</Label>
                 <Input
                   id="time"
-                  type="datetime-local"
-                  value={time}
-                  onChange={(e) => setTime(e.target.value)}
+                  type="time"
+                  value={timeValue}
+                  onChange={(e) => setTimeValue(e.target.value)}
                 />
               </div>
               {error && (
@@ -132,7 +144,7 @@ export function RemindersTab() {
             <DialogFooter>
               <Button 
                 onClick={handleCreate} 
-                disabled={createMutation.isPending || !isActorReady || !title.trim() || !time}
+                disabled={createMutation.isPending || !isActorReady || !message.trim() || !dateValue || !timeValue}
               >
                 {createMutation.isPending ? (
                   <>

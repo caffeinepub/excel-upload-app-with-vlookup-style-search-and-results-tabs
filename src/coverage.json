@@ -1,120 +1,39 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-09T04:15:53.503Z",
+  "generatedAt": "2026-02-09T05:14:15.771Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 7,
-    "implemented": 7,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Ensure the app provides in-app reminder notifications that trigger while the app is open, displaying a toast notification with reminder title and scheduled time, and allowing the user to dismiss it.",
+        "summary": "Update the Character Dock preview box UI frame so the 3D character appears perfectly centered within the preview box and is not clipped (including the head) by the box/frame.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useInAppReminderNotifications.ts",
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
+          "frontend/src/components/character/CharacterDock.tsx",
+          "frontend/src/index.css"
         ],
         "matchedFiles": [
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
+          "frontend/src/components/character/CharacterDock.tsx",
+          "frontend/src/index.css"
         ]
       },
       {
         "id": "REQ-2",
-        "summary": "Play a legally-safe, generic iPhone-style ringtone when an in-app reminder notification triggers, and stop/reset the audio when the notification is dismissed.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/public/assets/ringtones/iphone-like-chime.mp3"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add a permanent, non-copyright-infringing 3D armored-hero/robot character inside the main app interface that is visible during normal app usage (not only inside the reminder toast).",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "frontend/src/components/character/CharacterDock.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "frontend/src/components/character/CharacterDock.tsx",
-          "frontend/src/components/layout/AppLayout.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Implement character animation states: an idle/normal mode by default, switch to a clear dancing animation automatically when a reminder triggers, and return to idle after the reminder is dismissed.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
-        ]
-      },
-      {
-        "id": "REQ-5",
-        "summary": "Change the character’s animation based on the currently selected app tab: when the user switches tabs, the character switches to a tab-specific animation (e.g., drink water, jump, doing call, funny movement) while still overriding to 'dance' during active reminder notifications.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/lib/character/tabAnimationMapping.ts",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/AppLayout.tsx",
-          "frontend/src/components/character/CharacterDock.tsx",
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/lib/character/tabAnimationMapping.ts",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/AppLayout.tsx",
-          "frontend/src/components/character/CharacterDock.tsx",
-          "frontend/src/components/character/ArmoredHero3DCanvas.tsx"
-        ]
-      },
-      {
-        "id": "REQ-6",
-        "summary": "Wire the reminder-notification trigger to the character animation system so that the reminder toast and the main-interface character respond to the same reminder event.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/context/ReminderEventsContext.tsx",
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
-        ]
-      },
-      {
-        "id": "REQ-7",
-        "summary": "Apply a cohesive, creative visual theme for the new character area and reminder notification UI (colors, typography, spacing, and motion), consistent with the existing Tailwind design system, avoiding a blue/purple-dominant palette.",
+        "summary": "Adjust the Character Dock canvas container styling/layout to ensure consistent centering and safe framing (e.g., padding/safe-area within the preview box, appropriate fixed/min height, and overflow handling) so the 3D canvas has enough vertical space to display the full character.",
         "status": "implemented",
         "plannedFiles": [
           "frontend/src/index.css",
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
+          "frontend/src/components/character/ArmoredHero3DCanvas.tsx"
         ],
         "matchedFiles": [
           "frontend/src/index.css",
-          "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "frontend/src/components/character/CharacterDock.tsx"
+          "frontend/src/components/character/ArmoredHero3DCanvas.tsx"
         ]
       }
     ]
@@ -124,14 +43,10 @@
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
     "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
     "frontend/src/components/character/CharacterDock.tsx",
-    "frontend/src/components/layout/AppLayout.tsx",
-    "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-    "frontend/src/context/ReminderEventsContext.tsx",
+    "frontend/src/components/character/TripoCharacterModel.tsx",
     "frontend/src/index.css",
-    "frontend/src/lib/character/tabAnimationMapping.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

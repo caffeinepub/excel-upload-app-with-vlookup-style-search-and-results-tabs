@@ -1,197 +1,48 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "In-app reminders with ringtone, themed toast, and permanent animated 3D armored character (tab-aware)",
+  "title": "Center and safely frame the CharacterDock 3D preview (prevent head clipping)",
   "requirements": [
     {
       "id": "REQ-1",
-      "summary": "Trigger in-app reminder notifications while the app is open, showing a dismissible toast with reminder title and scheduled time.",
+      "summary": "Adjust the Character Dock preview box frame/layout so the 3D character is visually centered and not clipped by the preview box.",
       "acceptanceCriteria": [
-        "When a reminder becomes due (based on its scheduled timestamp), a visible in-app toast appears without requiring a page refresh.",
-        "The toast shows the reminder title and a human-readable date/time in English.",
-        "The user can dismiss the toast, and dismissing hides the toast reliably."
+        "On desktop (where the CharacterDock is visible on xl+), the character is visually centered within the preview box area.",
+        "The top of the character (head/antenna) is not cut off by the preview box boundaries during idle and other animations.",
+        "No horizontal or vertical clipping occurs within the preview box at typical viewport sizes where the dock is shown.",
+        "The change is achieved by adjusting the UI frame/layout/styling of the character preview box (not by changing character/model transforms as the primary approach)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/hooks/useInAppReminderNotifications.ts",
+          "path": "frontend/src/components/character/CharacterDock.tsx",
           "operation": "modify",
-          "description": "Harden due-reminder detection (based on scheduled timestamp) and ensure a single due reminder reliably triggers a notification callback while the app is open (polling-based), without requiring page refresh."
+          "description": "Introduce a dedicated inner frame wrapper around the 3D canvas area (e.g., an additional div with a new class) so centering/safe-area padding can be controlled by CharacterDock layout/styling rather than altering the 3D model transforms."
         },
         {
-          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+          "path": "frontend/src/index.css",
           "operation": "modify",
-          "description": "Render a toast that displays reminder title and scheduled time (English, human-readable) and supports reliable dismissal UX using shadcn-ui Button for actions. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/context/ReminderEventsContext.tsx",
-          "operation": "create",
-          "description": "Add a small React context to broadcast a single 'reminder due' event/state across the UI (toast + character), including current active reminder and a dismiss action."
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Wire the reminder event provider and keep the notifier mounted globally so toasts can appear during normal app usage across tabs."
+          "description": "Update the existing Character Dock CSS classes to center the canvas content within the preview frame and prevent head/top clipping by adjusting container layout (e.g., using flex/grid centering, safe-area padding, and a taller fixed/min-height for the preview region) while keeping the change UI/frame-based."
         }
       ]
     },
     {
       "id": "REQ-2",
-      "summary": "Play a legally-safe generic iPhone-style ringtone when a reminder triggers, handle autoplay restrictions, and stop/reset audio on dismiss.",
+      "summary": "Refine Character Dock canvas container styling for consistent centering and safe framing (padding/min-height/overflow handling) so the full 3D character fits without cropping.",
       "acceptanceCriteria": [
-        "When a reminder toast appears, the ringtone attempts to play immediately.",
-        "If browser autoplay policy blocks audio, the UI provides an explicit user action (e.g., an 'Enable sound' control) that allows future reminder sounds to play after the user interacts.",
-        "When the reminder is dismissed, any playing ringtone is paused and reset to the start.",
-        "No copyrighted Apple audio files are included in the repository; the ringtone asset is generic/legally safe."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "operation": "modify",
-          "description": "Implement ringtone playback using an HTMLAudioElement that attempts immediate play on reminder trigger, pauses+resets on dismiss, and exposes an explicit 'Enable sound' interaction when autoplay is blocked (persist the user choice locally). Use shadcn-ui Button for the enable/dismiss controls. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/public/assets/ringtones/iphone-like-chime.mp3",
-          "operation": "create",
-          "description": "Add/ensure a legally-safe generic iPhone-style chime asset at this exact path for in-app reminder sound playback (no copyrighted Apple audio)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Render a permanent, non-infringing 3D armored-hero/robot character in the main app interface with graceful fallback if 3D fails.",
-      "acceptanceCriteria": [
-        "A 3D character is rendered in the main interface while navigating the app.",
-        "The character design is clearly a generic armored hero/robot and does not use Iron Man branding, logos, or copyrighted models/textures.",
-        "If WebGL/3D rendering fails, the UI degrades gracefully (e.g., shows a simple placeholder panel) without crashing the app."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "operation": "create",
-          "description": "Create a permanent 3D character renderer using a local WebGL canvas (no external models/textures), building a generic armored-robot silhouette from simple primitives and flat materials; include WebGL support checks and a placeholder panel fallback on failure."
-        },
-        {
-          "path": "frontend/src/components/character/CharacterDock.tsx",
-          "operation": "create",
-          "description": "Create a themed container ('character area') that hosts the 3D canvas, labels/status, and gracefully displays fallback UI when rendering is unavailable."
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Mount the CharacterDock in the main interface so it remains visible during normal app usage across tabs (not just inside reminder toasts)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Implement character animation states: idle by default, dance on reminder trigger, return to idle after dismiss.",
-      "acceptanceCriteria": [
-        "With no active reminder toast, the character displays an idle/normal animation.",
-        "When a reminder triggers, the character switches to a dance animation within 1 second of the toast appearing.",
-        "After the reminder is dismissed, the character returns to the idle/normal animation."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "operation": "modify",
-          "description": "Add animation state handling in the render loop: default idle motion, a visually distinct dance motion, and state transitions driven by props/context; ensure dance activates within 1s of reminder activation and resets on dismiss."
-        },
-        {
-          "path": "frontend/src/context/ReminderEventsContext.tsx",
-          "operation": "modify",
-          "description": "Expose an 'isReminderActive' (or active reminder) state that the character dock/canvas can consume to toggle dance vs non-dance modes."
-        },
-        {
-          "path": "frontend/src/components/character/CharacterDock.tsx",
-          "operation": "modify",
-          "description": "Wire reminder-active state into the 3D canvas so the character switches to dance when a reminder is active and returns to the correct non-dance animation when dismissed."
-        }
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "summary": "Switch character animation based on selected app tab with deterministic mappings, while reminder dance overrides tab-specific animations.",
-      "acceptanceCriteria": [
-        "Switching between tabs changes the character animation within 500ms.",
-        "Each of the app’s major tabs has a deterministic animation mapping (same tab always yields the same animation).",
-        "If a reminder triggers while a tab-specific animation is playing, the dance animation takes priority until the reminder is dismissed, then the character returns to the correct tab-specific animation."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/lib/character/tabAnimationMapping.ts",
-          "operation": "create",
-          "description": "Define a deterministic mapping from the app’s tab ids (e.g., deskboard, upload, search, results, update-checking, history, regular-expense, attendance, reminders, calendar, todo, notes, admin-users) to named character animations (e.g., drinkWater, jump, call, funnyMove, etc.)."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Pass the currently selected tab into AppLayout (or into the character dock) so tab changes can drive the character animation within 500ms."
-        },
-        {
-          "path": "frontend/src/components/layout/AppLayout.tsx",
-          "operation": "modify",
-          "description": "Accept activeTab as a prop and forward it to CharacterDock so the dock/canvas can pick the correct tab-specific animation, while still allowing reminder-active dance override."
-        },
-        {
-          "path": "frontend/src/components/character/CharacterDock.tsx",
-          "operation": "modify",
-          "description": "Consume activeTab and the tab-to-animation mapping to select the correct animation quickly, but always prioritize the reminder-triggered dance state when active."
-        },
-        {
-          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
-          "operation": "modify",
-          "description": "Implement the additional tab-specific animation motions (drink water, jump, doing call, funny movement, etc.) and ensure state switching is immediate in the next animation frame (target <500ms perceived)."
-        }
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "summary": "Use a single reminder event to drive toast, ringtone, and character dance together; dismissing resets all three.",
-      "acceptanceCriteria": [
-        "A single due reminder causes: (1) the toast to appear, (2) the ringtone to play/attempt, and (3) the character to switch to dance.",
-        "Dismissing the toast causes: (1) toast to close, (2) ringtone to stop/reset, and (3) character to exit dance mode."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/context/ReminderEventsContext.tsx",
-          "operation": "modify",
-          "description": "Centralize reminder-trigger and reminder-dismiss actions so both the notifier (toast+sound) and the character dock can respond to the same shared state/event."
-        },
-        {
-          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-          "operation": "modify",
-          "description": "Replace isolated local reminder state with ReminderEventsContext: on due reminder, set shared active reminder (show toast + attempt audio); on dismiss, clear shared active reminder and stop/reset audio accordingly. Use shadcn-ui Button for the unified dismissal action. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/character/CharacterDock.tsx",
-          "operation": "modify",
-          "description": "Subscribe to ReminderEventsContext so the character’s dance override is driven by the same reminder activation and dismissal as the toast+sound."
-        }
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "summary": "Apply a cohesive Tailwind-consistent theme for the character area and reminder toast UI, avoiding a blue/purple-dominant palette and supporting light/dark modes.",
-      "acceptanceCriteria": [
-        "The character area looks intentionally designed (container, background treatment, and spacing) and matches the app’s existing styling conventions.",
-        "The reminder toast styling is consistent with the chosen theme and remains readable in light and dark modes.",
-        "The theme does not rely on a primarily blue/purple palette."
+        "The CharacterDock preview box provides enough vertical space for the full character model without cropping.",
+        "The 3D canvas remains fully contained within the preview box with no accidental cropping caused by container overflow rules.",
+        "Any styling changes are applied via existing Character Dock classes (e.g., character-dock-container / character-dock-canvas) or equivalent safe composition patterns in the frontend codebase."
       ],
       "file_operations": [
         {
           "path": "frontend/src/index.css",
           "operation": "modify",
-          "description": "Update/add scoped styles for the reminder toast and the new character dock area to use a cohesive warm/emerald/neutral palette (not blue/purple-dominant), including spacing, container treatment, and reduced-motion considerations; keep consistent with existing Tailwind conventions."
+          "description": "Adjust .character-dock-container and .character-dock-canvas (and any newly introduced wrapper class from CharacterDock) to add a consistent safe-area (top/bottom padding), increase vertical space via fixed/min-height, and ensure overflow rules do not accidentally crop the 3D canvas content while keeping the canvas visually centered."
         },
         {
-          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
           "operation": "modify",
-          "description": "Adjust toast classes to align with the updated theme (readable in light/dark), and ensure any motion respects prefers-reduced-motion. Use existing shadcn-ui components where applicable. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/character/CharacterDock.tsx",
-          "operation": "modify",
-          "description": "Apply the themed container styling (Tailwind + existing global class patterns like mac-card/mac-soft) so the character area feels integrated with the app’s design system and remains readable in light/dark modes."
+          "description": "Ensure the 3D canvas element reliably fills the updated CharacterDock canvas container (e.g., confirm the Canvas wrapper honors 100% width/height and does not introduce extra inline sizing that could fight the container’s centering/safe-area layout). Keep this as a secondary support to the UI frame changes, not the primary centering approach."
         }
       ]
     }

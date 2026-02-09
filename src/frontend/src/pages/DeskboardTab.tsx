@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { useAppState } from '../state/appState';
 import { useGetReminders, useGetCalendarEvents, useGetToDoItems, useGetNotes } from '../hooks/useProductivityQueries';
-import { useCreateReminder, useCreateToDoItem, useCreateNote } from '../hooks/useProductivityMutations';
+import { useCreateReminder, useCreateTodo, useCreateNote } from '../hooks/useProductivityMutations';
 import { useInternetIdentity } from '../hooks/useInternetIdentity';
 import { Upload, Search as SearchIcon, History, FileCheck, Calendar, Bell, CheckSquare, StickyNote, AlertCircle, Wallet } from 'lucide-react';
 import { ClockCalendarWidget } from '../components/deskboard/ClockCalendarWidget';
@@ -33,7 +33,8 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
   const [noteDialogOpen, setNoteDialogOpen] = useState(false);
 
   // Quick add form states
-  const [reminderTitle, setReminderTitle] = useState('');
+  const [reminderMessage, setReminderMessage] = useState('');
+  const [reminderDate, setReminderDate] = useState('');
   const [reminderTime, setReminderTime] = useState('');
   const [todoText, setTodoText] = useState('');
   const [noteTitle, setNoteTitle] = useState('');
@@ -47,7 +48,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
 
   // Mutations
   const createReminderMutation = useCreateReminder();
-  const createTodoMutation = useCreateToDoItem();
+  const createTodoMutation = useCreateTodo();
   const createNoteMutation = useCreateNote();
 
   const handleExploreSearch = () => {
@@ -56,16 +57,17 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
   };
 
   const handleCreateReminder = async () => {
-    if (!reminderTitle.trim() || !reminderTime) return;
+    if (!reminderMessage.trim() || !reminderDate || !reminderTime) return;
     
     try {
-      const timeMs = new Date(reminderTime).getTime();
       await createReminderMutation.mutateAsync({
-        title: reminderTitle,
-        time: BigInt(timeMs),
+        message: reminderMessage,
+        date: reminderDate,
+        time: reminderTime,
       });
       setReminderDialogOpen(false);
-      setReminderTitle('');
+      setReminderMessage('');
+      setReminderDate('');
       setReminderTime('');
     } catch (error) {
       console.error('Failed to create reminder:', error);
@@ -77,7 +79,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
     if (!todoText.trim()) return;
     
     try {
-      await createTodoMutation.mutateAsync({ text: todoText });
+      await createTodoMutation.mutateAsync(todoText);
       setTodoDialogOpen(false);
       setTodoText('');
     } catch (error) {
@@ -229,19 +231,28 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                     </DialogHeader>
                     <div className="space-y-4">
                       <div>
-                        <Label htmlFor="quick-reminder-title">Title</Label>
+                        <Label htmlFor="quick-reminder-message">Message</Label>
                         <Input
-                          id="quick-reminder-title"
-                          value={reminderTitle}
-                          onChange={(e) => setReminderTitle(e.target.value)}
+                          id="quick-reminder-message"
+                          value={reminderMessage}
+                          onChange={(e) => setReminderMessage(e.target.value)}
                           placeholder="Team meeting"
                         />
                       </div>
                       <div>
-                        <Label htmlFor="quick-reminder-time">Date & Time</Label>
+                        <Label htmlFor="quick-reminder-date">Date</Label>
+                        <Input
+                          id="quick-reminder-date"
+                          type="date"
+                          value={reminderDate}
+                          onChange={(e) => setReminderDate(e.target.value)}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="quick-reminder-time">Time</Label>
                         <Input
                           id="quick-reminder-time"
-                          type="datetime-local"
+                          type="time"
                           value={reminderTime}
                           onChange={(e) => setReminderTime(e.target.value)}
                         />
@@ -250,7 +261,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                     <DialogFooter>
                       <Button
                         onClick={handleCreateReminder}
-                        disabled={createReminderMutation.isPending || !reminderTitle.trim() || !reminderTime}
+                        disabled={createReminderMutation.isPending || !reminderMessage.trim() || !reminderDate || !reminderTime}
                       >
                         {createReminderMutation.isPending ? 'Creating...' : 'Create'}
                       </Button>
@@ -443,10 +454,12 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
                   <p className="text-sm text-muted-foreground">No notes yet</p>
                 ) : (
                   <div className="space-y-2">
-                    {notes.slice(0, 3).map((note) => (
+                    {notes.slice(0, 5).map((note) => (
                       <div key={Number(note.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p className="font-medium line-clamp-1">{note.title || 'Untitled'}</p>
-                        <p className="text-xs text-muted-foreground line-clamp-2">{note.content}</p>
+                        <p className="font-medium">{note.title}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {note.content || 'No content'}
+                        </p>
                       </div>
                     ))}
                   </div>
@@ -456,20 +469,20 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
           </div>
         )}
 
-        {/* Budget & Expenses Quick Action - Desktop Only */}
+        {/* Regular Expense Quick Action - Desktop Only */}
         {isAuthenticated && (
-          <div className="hidden lg:block">
+          <div className="hidden xl:block">
             <Card className="mac-card">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
                   <Wallet className="w-4 h-4" />
-                  Budget & Expenses
+                  Budget & Expense
                 </CardTitle>
-                <CardDescription className="text-xs">Manage your finances</CardDescription>
+                <CardDescription className="text-xs">Quick access to expense tracking</CardDescription>
               </CardHeader>
               <CardContent>
                 <Button onClick={() => onNavigate('regular-expense')} variant="outline" className="w-full">
-                  Open Budget & Expenses
+                  Manage Budget & Expenses
                 </Button>
               </CardContent>
             </Card>
@@ -480,7 +493,7 @@ export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
           <Alert>
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              Log in to access reminders, calendar, to-dos, notes, and budget features.
+              Log in to access productivity features like reminders, to-dos, and notes.
             </AlertDescription>
           </Alert>
         )}

@@ -34,8 +34,8 @@ export function useInAppReminderNotifications(onNotification: NotificationCallba
         
         const reminderId = String(reminder.id);
         
-        // Check if reminder is due (within 1 second tolerance)
-        const isDue = reminderTime <= now && reminderTime > now - 1000;
+        // Check if reminder is due (within 5 second tolerance to avoid missing)
+        const isDue = reminderTime <= now && reminderTime > now - 5000;
         
         // Check if we haven't already notified for this reminder
         if (isDue && !notifiedRemindersRef.current.has(reminderId)) {

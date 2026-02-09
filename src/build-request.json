@@ -1,158 +1,72 @@
 {
   "kind": "build_request",
-  "title": "Add in-app reminders with ringtone + animated 3D armored character with per-tab animations",
+  "title": "Center the character within the Character Dock preview box (prevent head clipping)",
   "priority": "normal",
   "requirements": [
     {
       "id": "REQ-1",
-      "text": "Ensure the app provides in-app reminder notifications that trigger while the app is open, displaying a toast notification with reminder title and scheduled time, and allowing the user to dismiss it.",
+      "text": "Update the Character Dock preview box UI frame so the 3D character appears perfectly centered within the preview box and is not clipped (including the head) by the box/frame.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-1",
-          "msg-2"
+          "recent-messages"
         ],
         "quotes": [
-          "build a reminder/notification feature inside your app where a ringtone should play",
-          "want in‑app"
+          "CHARACTOR NOT IN BOX PROPER IN MIDDLE HIS HEAD IS CUTTING IN THE DISPLAY FRAME",
+          "a character preview box",
+          "character be perfectly centered in the preview box,",
+          "BUILD"
         ]
       },
       "acceptanceCriteria": [
-        "When a reminder becomes due (based on its scheduled timestamp), a visible in-app toast appears without requiring a page refresh.",
-        "The toast shows the reminder title and a human-readable date/time in English.",
-        "The user can dismiss the toast, and dismissing hides the toast reliably."
+        "On desktop (where the CharacterDock is visible on xl+), the character is visually centered within the preview box area.",
+        "The top of the character (head/antenna) is not cut off by the preview box boundaries during idle and other animations.",
+        "No horizontal or vertical clipping occurs within the preview box at typical viewport sizes where the dock is shown.",
+        "The change is achieved by adjusting the UI frame/layout/styling of the character preview box (not by changing character/model transforms as the primary approach)."
       ]
     },
     {
       "id": "REQ-2",
-      "text": "Play a legally-safe, generic iPhone-style ringtone when an in-app reminder notification triggers, and stop/reset the audio when the notification is dismissed.",
+      "text": "Adjust the Character Dock canvas container styling/layout to ensure consistent centering and safe framing (e.g., padding/safe-area within the preview box, appropriate fixed/min height, and overflow handling) so the 3D canvas has enough vertical space to display the full character.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-3",
-          "msg-4"
+          "recent-messages"
         ],
         "quotes": [
-          "YOU ADD IPHONE RINGTONE",
-          "generic iPhone‑style sound (legally safe)"
+          "YES, 3.  the UI frame itself",
+          "ONLY CHARCTOR NOT IN MIDDLE"
         ]
       },
       "acceptanceCriteria": [
-        "When a reminder toast appears, the ringtone attempts to play immediately.",
-        "If browser autoplay policy blocks audio, the UI provides an explicit user action (e.g., an 'Enable sound' control) that allows future reminder sounds to play after the user interacts.",
-        "When the reminder is dismissed, any playing ringtone is paused and reset to the start.",
-        "No copyrighted Apple audio files are included in the repository; the ringtone asset is generic/legally safe."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Add a permanent, non-copyright-infringing 3D armored-hero/robot character inside the main app interface that is visible during normal app usage (not only inside the reminder toast).",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-5"
-        ],
-        "quotes": [
-          "3D/animated character inside the main app interface",
-          "generic robot/armored hero inspired by Ironman"
-        ]
-      },
-      "acceptanceCriteria": [
-        "A 3D character is rendered in the main interface while navigating the app.",
-        "The character design is clearly a generic armored hero/robot and does not use Iron Man branding, logos, or copyrighted models/textures.",
-        "If WebGL/3D rendering fails, the UI degrades gracefully (e.g., shows a simple placeholder panel) without crashing the app."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Implement character animation states: an idle/normal mode by default, switch to a clear dancing animation automatically when a reminder triggers, and return to idle after the reminder is dismissed.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6"
-        ],
-        "quotes": [
-          "character dance automatically whenever a reminder notification appears",
-          "the character appear permanently in the main interface (idle animation) and then switch to dancing only when a reminder triggers"
-        ]
-      },
-      "acceptanceCriteria": [
-        "With no active reminder toast, the character displays an idle/normal animation.",
-        "When a reminder triggers, the character switches to a dance animation within 1 second of the toast appearing.",
-        "After the reminder is dismissed, the character returns to the idle/normal animation."
-      ]
-    },
-    {
-      "id": "REQ-5",
-      "text": "Change the character’s animation based on the currently selected app tab: when the user switches tabs, the character switches to a tab-specific animation (e.g., drink water, jump, doing call, funny movement) while still overriding to 'dance' during active reminder notifications.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-7"
-        ],
-        "quotes": [
-          "WHEN I CLICK ON OTHER TABS IT WILL SHOW DIFFRENT DIFFRENT ANIMATION, AND IN NORMAL IT WILL - DRINK WATER, JUMP, DOING CALL, FUNNY MOVMENT, ETC....."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Switching between tabs changes the character animation within 500ms.",
-        "Each of the app’s major tabs has a deterministic animation mapping (same tab always yields the same animation).",
-        "If a reminder triggers while a tab-specific animation is playing, the dance animation takes priority until the reminder is dismissed, then the character returns to the correct tab-specific animation."
-      ]
-    },
-    {
-      "id": "REQ-6",
-      "text": "Wire the reminder-notification trigger to the character animation system so that the reminder toast and the main-interface character respond to the same reminder event.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-6",
-          "msg-8"
-        ],
-        "quotes": [
-          "character dance automatically whenever a reminder notification appears",
-          "I’ll now build the full in‑app reminder system with a generic iPhone‑style ringtone, a permanent Ironman‑inspired robot character, idle and dancing animations, and unique animations per tab."
-        ]
-      },
-      "acceptanceCriteria": [
-        "A single due reminder causes: (1) the toast to appear, (2) the ringtone to play/attempt, and (3) the character to switch to dance.",
-        "Dismissing the toast causes: (1) toast to close, (2) ringtone to stop/reset, and (3) character to exit dance mode."
-      ]
-    },
-    {
-      "id": "REQ-7",
-      "text": "Apply a cohesive, creative visual theme for the new character area and reminder notification UI (colors, typography, spacing, and motion), consistent with the existing Tailwind design system, avoiding a blue/purple-dominant palette.",
-      "target": "frontend",
-      "source": {
-        "messageIds": [
-          "msg-9"
-        ],
-        "quotes": [
-          "BUILD IT"
-        ]
-      },
-      "acceptanceCriteria": [
-        "The character area looks intentionally designed (container, background treatment, and spacing) and matches the app’s existing styling conventions.",
-        "The reminder toast styling is consistent with the chosen theme and remains readable in light and dark modes.",
-        "The theme does not rely on a primarily blue/purple palette."
+        "The CharacterDock preview box provides enough vertical space for the full character model without cropping.",
+        "The 3D canvas remains fully contained within the preview box with no accidental cropping caused by container overflow rules.",
+        "Any styling changes are applied via existing Character Dock classes (e.g., character-dock-container / character-dock-canvas) or equivalent safe composition patterns in the frontend codebase."
       ]
     }
   ],
   "constraints": [
-    "Do not implement real push notifications; reminders must be in-app only (works while the app is open).",
-    "Do not include or reference copyrighted Apple ringtone audio; use only a legally-safe generic iPhone-style sound.",
-    "Do not include or reference copyrighted Iron Man assets (models, textures, logos, or names); the character must be a generic armored hero/robot.",
-    "Backend must remain single-actor in Motoko (all logic in backend/main.mo).",
-    "Do not edit frontend files under the immutable paths listed in SYSTEM_CONTEXT (compose existing components instead)."
+    "Do not edit files under frontend/src/components/ui (read-only).",
+    "Do not modify immutable hook entrypoints (e.g., frontend/src/hooks/useInternetIdentity.ts(x), frontend/src/hooks/useActor.ts, frontend/src/main.tsx).",
+    "Keep all user-facing text in English."
   ],
   "nonGoals": [
-    "Native mobile notification support (system notifications) and background alarms when the app is closed.",
-    "WebSocket-based real-time delivery; reminder checks may remain polling-based.",
-    "Using third-party character/model marketplaces or external asset hosting/CDNs.",
-    "Adding new authentication methods beyond Internet Identity."
+    "Do not change backend logic or Motoko canister state.",
+    "Do not add new character models, GLB assets, or change the 3D model implementation as part of this request.",
+    "Do not add new app features unrelated to the character preview box framing/alignment."
   ],
   "imageRequirements": {
     "required": [],
     "edits": []
+  },
+  "userProfileUpdate": {
+    "goalsToAdd": [],
+    "goalsToRemove": [],
+    "preferencesToAdd": [],
+    "preferencesToRemove": [],
+    "miscToAdd": [],
+    "miscToRemove": [],
+    "fieldsToSet": {},
+    "fieldsToDelete": []
   }
 }

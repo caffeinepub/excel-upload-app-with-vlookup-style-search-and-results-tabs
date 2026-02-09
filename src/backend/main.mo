@@ -6,11 +6,8 @@ import Runtime "mo:core/Runtime";
 import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
-import MixinAuthorization "authorization/MixinAuthorization";
 import UserApproval "user-approval/approval";
-
-
-// Enable data migration from existing version
+import MixinAuthorization "authorization/MixinAuthorization";
 
 actor {
   public type AttendanceDayEntry = {
@@ -626,7 +623,7 @@ actor {
     histories.remove(caller);
   };
 
-  public query func getVersion() : async Text { "V1.0.0" };
+  public query func getVersion() : async Text { "V1.0.1" };
 
   public shared ({ caller }) func clearAllData() : async () {
     authorizeAdmin(caller);

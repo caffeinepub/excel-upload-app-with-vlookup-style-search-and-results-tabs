@@ -10,7 +10,7 @@ export function useCreateReminder() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, time }: { title: string; description?: string; time: bigint }) => {
+    mutationFn: async ({ message, date, time }: { message: string; date: string; time: string }) => {
       // Check authentication first
       if (!identity) {
         throw new Error('Please log in to create reminders');
@@ -20,17 +20,20 @@ export function useCreateReminder() {
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
-      
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
+
+      // Validate date format (YYYY-MM-DD)
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new Error('Invalid date format. Please use YYYY-MM-DD format.');
       }
-      
-      // Convert timestamp to date and time strings
-      const date = new Date(Number(time));
-      const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD
-      const timeStr = date.toTimeString().slice(0, 5); // HH:MM
-      
-      return actor.addReminder(title, dateStr, timeStr);
+
+      // Validate time format (HH:MM)
+      if (!/^\d{2}:\d{2}$/.test(time)) {
+        throw new Error('Invalid time format. Please use HH:MM format.');
+      }
+
+      // Call backend with local date and time strings
+      const reminderId = await actor.addReminder(message, date, time);
+      return reminderId;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
@@ -42,27 +45,21 @@ export function useCreateReminder() {
 }
 
 export function useDeleteReminder() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      // Check authentication first
       if (!identity) {
         throw new Error('Please log in to delete reminders');
       }
       
-      // Check actor readiness
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
-      
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-      
-      return actor.deleteReminder(id);
+
+      await actor.deleteReminder(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] });
@@ -73,98 +70,61 @@ export function useDeleteReminder() {
   });
 }
 
-export function useCreateCalendarEvent() {
+export function useCreateTodo() {
   const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async ({ title, description, startTime }: { title: string; description: string; startTime: bigint }) => {
-      // Backend no longer supports calendar events
-      throw new Error('Calendar events feature is not available');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
-    },
-  });
-}
-
-export function useDeleteCalendarEvent() {
-  const { actor } = useActor();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id: bigint) => {
-      // Backend no longer supports calendar events
-      throw new Error('Calendar events feature is not available');
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
-    },
-  });
-}
-
-export function useCreateToDoItem() {
-  const { actor, isFetching } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ text }: { text: string }) => {
+    mutationFn: async (text: string) => {
       if (!identity) {
-        throw new Error('Please log in to create to-do items');
+        throw new Error('Please log in to create to-dos');
       }
-
+      
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
 
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      return actor.addTodo(text);
+      const todo = await actor.addTodo(text);
+      return todo;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todoItems'] });
     },
     onError: (error) => {
-      console.error('Create to-do error:', error);
+      console.error('Create todo error:', error);
     },
   });
 }
 
-export function useToggleToDoItem() {
-  const { actor, isFetching } = useActor();
+export function useToggleTodo() {
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: bigint) => {
       if (!identity) {
-        throw new Error('Please log in to toggle to-do items');
+        throw new Error('Please log in to update to-dos');
       }
-
+      
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
 
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      return actor.toggleTodo(id);
+      await actor.toggleTodo(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todoItems'] });
     },
     onError: (error) => {
-      console.error('Toggle to-do error:', error);
+      console.error('Toggle todo error:', error);
     },
   });
 }
 
 export function useCreateNote() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
@@ -173,17 +133,14 @@ export function useCreateNote() {
       if (!identity) {
         throw new Error('Please log in to create notes');
       }
-
+      
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
 
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
       const encodedText = encodeNoteText(title, content);
-      return actor.addNote(encodedText);
+      const note = await actor.addNote(encodedText);
+      return note;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
@@ -195,7 +152,7 @@ export function useCreateNote() {
 }
 
 export function useDeleteNote() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
@@ -204,16 +161,12 @@ export function useDeleteNote() {
       if (!identity) {
         throw new Error('Please log in to delete notes');
       }
-
+      
       if (!actor) {
         throw new Error('Backend connection not ready. Please wait a moment and try again.');
       }
 
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      return actor.deleteNote(id);
+      await actor.deleteNote(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['notes'] });
