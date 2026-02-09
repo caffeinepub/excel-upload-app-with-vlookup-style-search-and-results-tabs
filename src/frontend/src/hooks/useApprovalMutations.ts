@@ -3,6 +3,7 @@ import { useActor } from './useActor';
 import { useInternetIdentity } from './useInternetIdentity';
 import { ApprovalStatus } from '../backend';
 import type { Principal } from '@icp-sdk/core/principal';
+import { parsePrincipal } from '../utils/principal/parsePrincipal';
 
 /**
  * Mutation to request approval for the current user
@@ -46,7 +47,7 @@ export function useSetApproval() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ user, status }: { user: Principal; status: ApprovalStatus }) => {
+    mutationFn: async ({ user, status }: { user: Principal | string; status: ApprovalStatus }) => {
       if (!identity) {
         throw new Error('Please log in to manage approvals');
       }
@@ -59,7 +60,13 @@ export function useSetApproval() {
         throw new Error('Backend is initializing. Please wait a moment and try again.');
       }
 
-      await actor.setApproval(user, status);
+      // Validate and normalize the Principal
+      const parseResult = parsePrincipal(user);
+      if (!parseResult.success) {
+        throw new Error(`Invalid Principal ID. ${parseResult.error}`);
+      }
+
+      await actor.setApproval(parseResult.principal, status);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['approvals'] });

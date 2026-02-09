@@ -14,6 +14,9 @@ export function getUserFriendlyError(error: unknown): string {
     if (error.toLowerCase().includes('actor not available')) {
       return 'Connecting to backend... Please try again in a moment.';
     }
+    if (error.toLowerCase().includes('invalid principal')) {
+      return 'Invalid Principal ID. Please refresh and try again.';
+    }
     return error;
   }
 
@@ -27,6 +30,10 @@ export function getUserFriendlyError(error: unknown): string {
     
     if (message.includes('actor not available') || message.includes('actor not ready')) {
       return 'Connecting to backend... Please try again in a moment.';
+    }
+    
+    if (message.includes('invalid principal')) {
+      return 'Invalid Principal ID. Please refresh and try again.';
     }
     
     if (message.includes('trap') || message.includes('rejected')) {

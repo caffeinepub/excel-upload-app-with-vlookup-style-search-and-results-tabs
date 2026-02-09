@@ -1,15 +1,11 @@
 # Specification
 
 ## Summary
-**Goal:** Add admin-approved username/password user management, fix attendance hours recalculation and summaries, add work brief notes to attendance, and make the Calendar feature functional with attendance-to-calendar integration.
+**Goal:** Fix Admin Users approve/reject so it sends a valid `Principal` to the backend and prevents the “Invalid principal argument” runtime error, with clear UI error handling when a Principal cannot be constructed.
 
 **Planned changes:**
-- Add username/password registration and login, with admin approval required before accessing user features; provide admin user CRUD (list/edit/delete) plus approve/reject.
-- Enforce approval checks in backend authorization for user-only features and surface pending/rejected status in the UI.
-- Fix attendance working-time calculation so edits (including past dates) correctly recompute per-day workingTime and summary totalWorkingTime sums the full selected range.
-- Add validation and clear English errors for invalid time ranges (e.g., check-out before check-in) and update the attendance summary UI after edits without a full reload.
-- Add a persisted “work brief note” field to attendance entries and make it editable/viewable in the attendance day editor UI.
-- Wire the existing Calendar UI to real backend event queries/mutations (list/create/delete).
-- Integrate attendance with calendar events so attendance entries appear as calendar events without duplication and respecting authorization rules.
+- Update `AdminUsersTab` approve/reject actions to pass a real `Principal` (e.g., existing `approval.principal` or `Principal.fromText(...)`) into `useSetApproval().mutateAsync` instead of casting a string to `any`.
+- Add frontend validation for Principal parsing/construction before calling the mutation; if invalid, block the action and show an English error message in the Admin Users UI.
+- Improve user-facing error handling for approval/rejection failures so errors are displayed in the Admin Users page (not only logged).
 
-**User-visible outcome:** Users can register and log in with a username/password and can only use the app after admin approval; admins can manage users. Attendance edits correctly update daily and total hours, users can add a work brief note per day, and the Calendar tab can create/list/delete events while also showing attendance entries as calendar events.
+**User-visible outcome:** Admins can approve or reject users from the Admin Users tab without the “Invalid principal argument” error; if a user’s Principal is invalid, the UI shows a clear message and does not attempt the backend call.

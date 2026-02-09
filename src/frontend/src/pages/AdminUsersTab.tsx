@@ -8,6 +8,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { AlertCircle, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
+import type { Principal } from '@icp-sdk/core/principal';
 
 export function AdminUsersTab() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
@@ -15,34 +17,43 @@ export function AdminUsersTab() {
   const setApprovalMutation = useSetApproval();
 
   const [processingUser, setProcessingUser] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
 
-  const handleApprove = async (userPrincipal: string) => {
-    setProcessingUser(userPrincipal);
+  const handleApprove = async (principal: Principal) => {
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
     try {
       await setApprovalMutation.mutateAsync({
-        user: userPrincipal as any,
+        user: principal,
         status: ApprovalStatus.approved,
       });
       await refetch();
     } catch (error) {
       console.error('Failed to approve user:', error);
+      setActionError(getUserFriendlyError(error));
     } finally {
       setProcessingUser(null);
     }
   };
 
-  const handleReject = async (userPrincipal: string) => {
+  const handleReject = async (principal: Principal) => {
     if (!confirm('Are you sure you want to reject this user?')) return;
 
-    setProcessingUser(userPrincipal);
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
     try {
       await setApprovalMutation.mutateAsync({
-        user: userPrincipal as any,
+        user: principal,
         status: ApprovalStatus.rejected,
       });
       await refetch();
     } catch (error) {
       console.error('Failed to reject user:', error);
+      setActionError(getUserFriendlyError(error));
     } finally {
       setProcessingUser(null);
     }
@@ -107,14 +118,10 @@ export function AdminUsersTab() {
         <p className="text-muted-foreground mt-1">Manage user access and approvals</p>
       </div>
 
-      {setApprovalMutation.isError && (
+      {actionError && (
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            {setApprovalMutation.error instanceof Error
-              ? setApprovalMutation.error.message
-              : 'Failed to update user status'}
-          </AlertDescription>
+          <AlertDescription>{actionError}</AlertDescription>
         </Alert>
       )}
 
@@ -157,7 +164,7 @@ export function AdminUsersTab() {
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => handleApprove(principalStr)}
+                                onClick={() => handleApprove(approval.principal)}
                                 disabled={isProcessing}
                               >
                                 {isProcessing ? 'Processing...' : 'Approve'}
@@ -167,7 +174,7 @@ export function AdminUsersTab() {
                               <Button
                                 size="sm"
                                 variant="destructive"
-                                onClick={() => handleReject(principalStr)}
+                                onClick={() => handleReject(approval.principal)}
                                 disabled={isProcessing}
                               >
                                 {isProcessing ? 'Processing...' : 'Reject'}

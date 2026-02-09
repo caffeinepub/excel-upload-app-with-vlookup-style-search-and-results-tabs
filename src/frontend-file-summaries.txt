@@ -50,7 +50,7 @@
   "frontend/src/lib/results/applyRowEdits.ts": "Utility to merge in-memory edited rows map onto base dataset for export, ensuring only exports reflect temporary edits without mutating workbook state.",
   "frontend/src/lib/results/exportFilters.ts": "Export filtering utilities providing column/value dropdown options derived from current Results dataset and applying selected filters to rows before export.",
   "frontend/src/components/reminders/TechHeroRadioCharacter.tsx": "Presentational component that renders an animated tech-hero GIF with automatic fallback to a static PNG on load error.",
-  "frontend/src/utils/errors/userFriendlyError.ts": "Converts common mutation errors (unauthorized, actor not ready, backend traps) into actionable English messages while logging full error details to console for debugging.",
+  "frontend/src/utils/errors/userFriendlyError.ts": "Error message converter that maps common mutation errors (unauthorized, actor not ready, invalid principal) to user-friendly English messages while logging full details to console.",
   "frontend/src/utils/number/parseNatBigInt.ts": "Strict Nat/BigInt input parser that validates and converts string inputs to bigint, rejecting empty, negative, non-integer, and non-finite values with clear error messages.",
   "frontend/src/hooks/useAttendance.ts": "React Query hooks for attendance operations including config management, check-in/check-out mutations, working time queries, attendance summary retrieval, and new date-specific entry queries/mutations with authentication and actor readiness validation.",
   "frontend/src/lib/attendance/dateRanges.ts": "Date utility functions for attendance including YYYY-MM-DD formatting, week/month/year range calculation, duration formatting (seconds to hours/minutes), and timestamp formatting for display.",
@@ -64,11 +64,12 @@
   "frontend/src/lib/attendance/attendancePdfExportMapping.ts": "Attendance PDF export mapping utilities that convert AttendanceSummary into detailed report-style ExportData with summary section, daily breakdown table, and formatted English values with graceful missing-time handling.",
   "frontend/src/components/attendance/AttendancePdfExportSection.tsx": "Attendance PDF export section component with week/month/year selector, single download action, loading/disabled states, no-data handling, and English error messages using existing shared PDF export utility.",
   "frontend/src/hooks/useApproval.ts": "React Query hooks for checking caller approval status, admin status, and listing all user approvals with proper actor readiness validation.",
-  "frontend/src/hooks/useApprovalMutations.ts": "React Query mutation hooks for requesting approval and setting approval status (admin only) with proper authentication checks and cache invalidation.",
+  "frontend/src/hooks/useApprovalMutations.ts": "React Query mutation hooks for approval operations with Principal validation using parsePrincipal utility before calling backend, ensuring type safety and clear error messages.",
   "frontend/src/hooks/useUserProfile.ts": "React Query hooks for fetching and saving user profiles with proper actor dependency handling to prevent profile setup modal flash.",
   "frontend/src/components/auth/ApprovalGate.tsx": "Wrapper component that blocks access to features for non-approved users, displays approval status, and provides a request approval action with English messaging.",
   "frontend/src/components/auth/UserProfileSetup.tsx": "Modal dialog that prompts new users to enter their name on first login, with proper loading state handling to prevent flash and form validation.",
-  "frontend/src/pages/AdminUsersTab.tsx": "Admin-only user management panel displaying all users with approval status, approve/reject actions, and a note about upcoming username/password features.",
+  "frontend/src/pages/AdminUsersTab.tsx": "Admin-only user management panel that passes Principal objects (not strings) to approval mutations, displays user-friendly error alerts, and provides approve/reject actions with proper loading states.",
   "frontend/src/hooks/useCalendarEvents.ts": "React Query hooks for calendar events with placeholder implementation noting backend support is not yet available, returning empty arrays and appropriate error messages.",
-  "frontend/src/hooks/useAttendanceCalendarOverlay.ts": "Hook that fetches all attendance entries and maps them to calendar events with status, working time, notes, and check-in/out times for integrated calendar display."
+  "frontend/src/hooks/useAttendanceCalendarOverlay.ts": "Hook that fetches all attendance entries and maps them to calendar events with status, working time, notes, and check-in/out times for integrated calendar display.",
+  "frontend/src/utils/principal/parsePrincipal.ts": "Utility for safely parsing and normalizing Principal values from various input types (Principal instances or text strings) with typed success/error results."
 }

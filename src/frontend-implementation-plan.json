@@ -1,149 +1,56 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Admin-approved auth, attendance fixes (hours + notes), and functional calendar integration",
+  "title": "Fix Admin Users approve/reject Principal handling and UI error reporting",
   "requirements": [
     {
-      "id": "REQ-1",
-      "summary": "Add username/password auth UI with approval status gating and an admin-only user management panel (without modifying Internet Identity hooks).",
+      "id": "REQ-5",
+      "summary": "Ensure Admin Users approve/reject sends a real Principal object to setApproval (no string cast) to prevent 'Invalid principal argument' runtime errors.",
       "acceptanceCriteria": [
-        "Frontend provides screens/components for: (a) registration, (b) login, (c) showing approval status if the user is pending/rejected, and (d) an admin-only user management panel for approve/reject, edit, and delete.",
-        "All user-facing text for auth and admin screens is in English.",
-        "Existing Internet Identity login remains functional and is not modified in immutable hook paths; new username/password flows are implemented without editing files under frontend/src/hooks/useInternetIdentity.ts(x) or other immutable paths."
+        "From `AdminUsersTab`, clicking Approve on a pending user updates that user to `Approved` without throwing an 'Invalid principal argument' error.",
+        "From `AdminUsersTab`, clicking Reject on a pending/approved user updates that user to `Rejected` without throwing an 'Invalid principal argument' error.",
+        "The frontend sends a `Principal` value (e.g., `approval.principal` or a `Principal.fromText(...)` result) to `useSetApproval().mutateAsync`, rather than `userPrincipal as any`."
       ],
       "file_operations": [
-        {
-          "path": "frontend/src/hooks/useApproval.ts",
-          "operation": "create",
-          "description": "Create React Query hooks for approval + role status using existing backend capabilities (isCallerApproved, requestApproval, getCallerUserRole, isCallerAdmin) to support UI gating and admin-only screens. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/auth/ApprovalGate.tsx",
-          "operation": "create",
-          "description": "Add an ApprovalGate wrapper that blocks app features for non-approved users, displays pending/rejected status in English, and offers a Request Approval action for logged-in users. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/auth/PasswordAuthDialog.tsx",
-          "operation": "create",
-          "description": "Implement a dialog providing username/password Registration + Login forms (English UI), and a place to show password-auth errors and approval status messages; keep Internet Identity flow separate and unchanged. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/usePasswordAuth.ts",
-          "operation": "create",
-          "description": "Create hooks for username/password registration/login that call backend capabilities to be implemented (e.g., register/login) and store any returned session info in frontend storage; ensure logout clears cached app data via React Query clear. Verify the component's usage instructions before implementing."
-        },
         {
           "path": "frontend/src/pages/AdminUsersTab.tsx",
+          "operation": "modify",
+          "description": "Update approve/reject handlers to pass `approval.principal` (Principal) directly into `useSetApproval().mutateAsync` (remove `userPrincipal as any`), while keeping string formatting only for display and processing state. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/utils/principal/parsePrincipal.ts",
           "operation": "create",
-          "description": "Create an admin-only user management panel that lists users + approval status (listApprovals), supports approve/reject (setApproval), role assignment (assignCallerUserRole), and includes UI for edit/delete actions that call backend capabilities to be implemented (delete/update user fields). Verify the component's usage instructions before implementing."
+          "description": "Add a small utility that safely constructs/normalizes a Principal from a value (e.g., Principal instance or text) using `Principal.fromText(...)`, returning a typed success/error result used by Admin approval actions. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/hooks/useAdminUsers.ts",
-          "operation": "create",
-          "description": "Add admin-only hooks for listing approvals and updating approval/roles using existing backend capabilities, plus placeholders for update/delete user operations expected by requirements. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/layout/AppHeader.tsx",
+          "path": "frontend/src/hooks/useApprovalMutations.ts",
           "operation": "modify",
-          "description": "Add entry points to open the new PasswordAuthDialog while keeping the existing Internet Identity LoginButton intact; ensure all new user-facing text is English. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Wire ApprovalGate around user feature tabs to block non-approved users, and add an admin-only tab that renders AdminUsersTab when the caller is an admin (hide/disable it otherwise). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/components/layout/DesktopSidebarNav.tsx",
-          "operation": "modify",
-          "description": "Add an admin-only navigation item for the AdminUsersTab (visible only when admin), without changing immutable UI component implementations. Verify the component's usage instructions before implementing."
+          "description": "Harden `useSetApproval` mutation by normalizing/validating the incoming `user` argument into a real Principal (using the new principal parsing utility) before calling the backend capability, preventing accidental string misuse from any call site. Verify the component's usage instructions before implementing."
         }
       ]
     },
     {
-      "id": "REQ-2",
-      "summary": "Ensure attendance editor correctly validates and recalculates working time for past edits and that summaries refresh immediately after edits.",
+      "id": "REQ-6",
+      "summary": "Add frontend validation and user-facing error handling for approval actions, blocking mutations when Principal parsing fails and showing clear English errors in the Admin Users UI.",
       "acceptanceCriteria": [
-        "Frontend attendance summary UI updates after editing an entry (including past entries) without requiring a full page reload.",
-        "Invalid time ranges (check-out before check-in) are rejected with a clear English error message."
+        "If an invalid Principal string is ever encountered in the Admin Users page, the UI shows a descriptive error (e.g., 'Invalid Principal ID. Please refresh and try again.') and does not call the backend.",
+        "Approval/rejection errors are displayed in the Admin Users page using a user-friendly message (not just console logs)."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/components/attendance/AttendanceDateEditor.tsx",
+          "path": "frontend/src/pages/AdminUsersTab.tsx",
           "operation": "modify",
-          "description": "Harden time validation for edited entries (including past dates) and ensure workingTime is recalculated consistently (0 when missing times or non-working statuses) with clear English error messages. Verify the component's usage instructions before implementing."
+          "description": "Add local UI state for action errors and display them in the Admin Users page (English). Before calling `mutateAsync`, validate/construct the Principal (via the principal parsing utility); if invalid, show a clear message and skip the mutation. Also map mutation failures to a user-friendly message instead of only console logging. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/hooks/useAttendance.ts",
+          "path": "frontend/src/utils/errors/userFriendlyError.ts",
           "operation": "modify",
-          "description": "Ensure editAttendanceEntry invalidation fully refreshes any relevant attendance summaries and entry queries used by the UI so edits reflect immediately without reload. Verify the component's usage instructions before implementing."
+          "description": "Extend `getUserFriendlyError` to recognize Principal-related failures (e.g., messages containing 'invalid principal') and return a clear English message suitable for Admin Users approval actions. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/pages/AttendanceTab.tsx",
+          "path": "frontend/src/hooks/useApprovalMutations.ts",
           "operation": "modify",
-          "description": "Confirm the summary and calendar views are driven from query data that refreshes after an edit; add any missing query dependencies so totals and breakdown update immediately. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "summary": "Add and persist a work brief note field in the attendance day editor UI.",
-      "acceptanceCriteria": [
-        "Frontend AttendanceDateEditor displays an input (textarea or text input) for the work brief note when editing a date and saves it with the entry.",
-        "The note is loaded and shown when reopening an existing attendance entry for a date."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-          "operation": "modify",
-          "description": "Add a Work Brief Note text field bound to entry.note, load it on open, and include it in the saved AttendanceDayEntry payload. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/pages/AttendanceTab.tsx",
-          "operation": "modify",
-          "description": "Ensure the date editor save path passes through the updated AttendanceDayEntry including the note and that post-save refresh keeps the note visible on reopen. Verify the component's usage instructions before implementing."
-        }
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "summary": "Make Calendar functional by wiring real event queries/mutations and overlaying attendance entries as non-duplicated calendar events.",
-      "acceptanceCriteria": [
-        "Frontend Calendar tab lists events from the backend (useGetCalendarEvents returns real data; create/delete mutations call real backend methods).",
-        "Creating a calendar event in the Calendar tab persists it and it appears in the events list after creation.",
-        "Deleting a calendar event removes it and it disappears from the list after deletion.",
-        "Attendance entries appear as calendar events according to a consistent mapping (at minimum: date and working status/time reflected in event title/description), and the mapping does not create duplicate events for the same attendance date on repeated refreshes.",
-        "Calendar/attendance integration respects authorization rules (only approved users can manage their own calendar events; admins can manage per the app’s existing authorization conventions)."
-      ],
-      "file_operations": [
-        {
-          "path": "frontend/src/hooks/useCalendarEvents.ts",
-          "operation": "create",
-          "description": "Implement real calendar event queries/mutations that call backend capabilities (to be implemented) and expose a stable event shape for the UI (list/create/delete). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-          "operation": "create",
-          "description": "Create a helper hook that maps attendance entries into derived calendar events (deterministic mapping per date, no duplication on refresh), including status/time and work brief note in title/description for display. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useProductivityQueries.ts",
-          "operation": "modify",
-          "description": "Replace the stubbed calendar events query with a call into the new calendar hooks so CalendarTab receives real data. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/hooks/useProductivityMutations.ts",
-          "operation": "modify",
-          "description": "Replace the stubbed calendar create/delete mutations with real mutations that call backend capabilities via the new calendar hooks, and ensure cache invalidation keeps the list current. Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/pages/CalendarTab.tsx",
-          "operation": "modify",
-          "description": "Update Calendar UI to render both persisted calendar events and derived attendance events (clearly labeled, non-deletable if derived), and gate access using ApprovalGate rules (approved users/admin only). Verify the component's usage instructions before implementing."
-        },
-        {
-          "path": "frontend/src/App.tsx",
-          "operation": "modify",
-          "description": "Wire CalendarTab behind ApprovalGate to enforce that only approved users (or admins) can manage their calendar events and view integrated attendance events. Verify the component's usage instructions before implementing."
+          "description": "When Principal validation fails in `useSetApproval`, throw an Error with a clear English message so the Admin Users UI can surface it and the backend is not called. Verify the component's usage instructions before implementing."
         }
       ]
     }

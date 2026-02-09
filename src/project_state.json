@@ -1,71 +1,32 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "Attendance tracking app with total working time calculation, calendar event integration, work brief notes, and admin-approved user management (username/password).",
+  "summary": "New project",
   "architectural_notes": [],
-  "known_issues": [],
+  "known_issues": [
+    "User admin approval flow is broken: approving/rejecting users fails with error 'Invalid principal argument: \"<principal>\"' (cannot approve users)."
+  ],
   "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-implement-username-password-user-management-with-admin-approval-required-before-a-user-can-use-the-app-including-admin-crud-view-edit-delete-for-users",
-      "title": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
+      "id": "feature-fix-the-admin-users-approval-rejection-flow-so-it-passes-a-real-principal-to-the-backend-setapproval-call-not-a-string-cast-to-any-preventing-the-runtime-error-invalid-principal-argument-principal-when-approving-or-rejecting-users",
+      "title": "Fix the Admin Users approval/rejection flow so it passes a real Principal to the backend `setApproval` call (not a string cast to `any`), preventing the runtime error `Invalid principal argument: \"<principal>\"` when approving or rejecting users.",
       "reqIds": [
-        "REQ-1"
+        "REQ-5"
       ],
       "version": 1
     },
     {
-      "id": "feature-fix-and-ensure-total-working-time-is-correctly-calculated-and-updated-when-attendance-check-in-check-out-times-are-set-edited-for-past-dates-and-ensure-attendance-summaries-correctly-sum-totalworkingtime-over-the-selected-range",
-      "title": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+      "id": "feature-add-frontend-validation-and-user-facing-error-handling-for-approval-actions-if-a-principal-cannot-be-parsed-constructed-block-the-mutation-and-show-a-clear-error-message-in-the-admin-users-ui-english",
+      "title": "Add frontend validation and user-facing error handling for approval actions: if a Principal cannot be parsed/constructed, block the mutation and show a clear error message in the Admin Users UI (English).",
       "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-a-work-brief-note-text-field-to-each-attendance-entry-persisted-in-the-backend-and-editable-in-the-attendance-day-editor-ui",
-      "title": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
-      "reqIds": [
-        "REQ-3"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-make-the-existing-calendar-feature-functional-by-wiring-calendar-event-queries-mutations-to-the-backend-and-integrate-attendance-with-calendar-events-so-attendance-entries-appear-as-calendar-events",
-      "title": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
-      "reqIds": [
-        "REQ-4"
+        "REQ-6"
       ],
       "version": 1
     }
   ],
-  "new_feature_requests": [
-    {
-      "id": "AR-1",
-      "summary": "Update total working time by calculating/recalculating hours from attendance check-in/check-out times, including past date/time edits.",
-      "reqIds": [],
-      "status": "in_progress"
-    },
-    {
-      "id": "AR-2",
-      "summary": "Make the existing calendar feature work with attendance (attendance entries appear as calendar events).",
-      "reqIds": [],
-      "status": "in_progress"
-    },
-    {
-      "id": "AR-3",
-      "summary": "Add a 'work brief note' text field to each attendance entry.",
-      "reqIds": [],
-      "status": "in_progress"
-    },
-    {
-      "id": "AR-4",
-      "summary": "Add user management: username/password login, admin approval required before access, and admin CRUD (view/edit/delete) for users.",
-      "reqIds": [],
-      "status": "in_progress"
-    }
-  ],
-  "projectName": "User management with admin approval, attendance hours recalculation, work brief notes, and calendar integration",
+  "new_feature_requests": [],
+  "projectName": "Fix admin user approval/rejection failing with 'Invalid principal argument'",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

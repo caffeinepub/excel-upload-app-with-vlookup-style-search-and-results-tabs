@@ -1,105 +1,61 @@
 {
   "kind": "build_request",
-  "title": "User management with admin approval, attendance hours recalculation, work brief notes, and calendar integration",
-  "priority": "normal",
+  "title": "Fix admin user approval/rejection failing with 'Invalid principal argument'",
+  "priority": "high",
   "requirements": [
     {
-      "id": "REQ-1",
-      "text": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
-      "target": "both",
+      "id": "REQ-5",
+      "text": "Fix the Admin Users approval/rejection flow so it passes a real Principal to the backend `setApproval` call (not a string cast to `any`), preventing the runtime error `Invalid principal argument: \"<principal>\"` when approving or rejecting users.",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-7",
-          "msg-8"
+          "msg-11",
+          "msg-12",
+          "msg-13"
         ],
         "quotes": [
-          "ADD USER MANAGEMENT. I WILL APROVE AFTER THAT SOMEONE USE THIS APP.",
-          "1.YES 2.username/password system. 3.YES"
+          "Invalid principal argument: \"guaqh-4pyji-naq27-ewgxq-n6a62-q2uqm-svesc-ojhzm-lj5k2-ht26q-aqe\"",
+          "YES DURING USER AOOROVAL AND ALSO NOT REJECT",
+          "FIX IT NOW"
         ]
       },
       "acceptanceCriteria": [
-        "Backend exposes user-management APIs to (a) register with username/password, (b) login with username/password, (c) allow an admin to approve/reject users, (d) allow an admin to list users, update user fields (at minimum username and approval/role), and delete users.",
-        "Backend enforces that non-approved users cannot access user-only features (existing calls that currently require #user permission must also require the user to be approved).",
-        "Frontend provides screens/components for: (a) registration, (b) login, (c) showing approval status if the user is pending/rejected, and (d) an admin-only user management panel for approve/reject, edit, and delete.",
-        "All user-facing text for auth and admin screens is in English.",
-        "Existing Internet Identity login remains functional and is not modified in immutable hook paths; new username/password flows are implemented without editing files under frontend/src/hooks/useInternetIdentity.ts(x) or other immutable paths."
+        "From `AdminUsersTab`, clicking Approve on a pending user updates that user to `Approved` without throwing an 'Invalid principal argument' error.",
+        "From `AdminUsersTab`, clicking Reject on a pending/approved user updates that user to `Rejected` without throwing an 'Invalid principal argument' error.",
+        "The frontend sends a `Principal` value (e.g., `approval.principal` or a `Principal.fromText(...)` result) to `useSetApproval().mutateAsync`, rather than `userPrincipal as any`."
       ]
     },
     {
-      "id": "REQ-2",
-      "text": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
-      "target": "both",
+      "id": "REQ-6",
+      "text": "Add frontend validation and user-facing error handling for approval actions: if a Principal cannot be parsed/constructed, block the mutation and show a clear error message in the Admin Users UI (English).",
+      "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-4",
-          "msg-5"
+          "msg-10",
+          "msg-11",
+          "msg-12"
         ],
         "quotes": [
-          "DO CALCULATE HOURS WHICH ARE SET IN PAST DATE  AND TIME SETED IN ATTENDANCE",
-          "1. IN TOTAL WORKING TIME UPDATE."
+          "I CANT APPROVE USERS",
+          "Invalid principal argument: \"guaqh-4pyji-naq27-ewgxq-n6a62-q2uqm-svesc-ojhzm-lj5k2-ht26q-aqe\"",
+          "YES DURING USER AOOROVAL AND ALSO NOT REJECT"
         ]
       },
       "acceptanceCriteria": [
-        "When an attendance entry is edited for any date (including past dates), the stored workingTime reflects the duration between checkIn and checkOut (and is 0 when either is missing or when the status is a non-working day).",
-        "Attendance summary totalWorkingTime equals the sum of workingTime across all entries in the requested range (and does not overwrite/return only a single day’s workingTime).",
-        "Frontend attendance summary UI updates after editing an entry (including past entries) without requiring a full page reload.",
-        "Invalid time ranges (check-out before check-in) are rejected with a clear English error message."
-      ]
-    },
-    {
-      "id": "REQ-3",
-      "text": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-5"
-        ],
-        "quotes": [
-          "ALSO ADD WORK BREEF NOTE IN ATTENDANCE.",
-          "3.YES"
-        ]
-      },
-      "acceptanceCriteria": [
-        "Backend AttendanceDayEntry (or an associated attendance record) stores a brief note field for each date.",
-        "Frontend AttendanceDateEditor displays an input (textarea or text input) for the work brief note when editing a date and saves it with the entry.",
-        "The note is loaded and shown when reopening an existing attendance entry for a date.",
-        "Work brief notes are included in any attendance breakdown data returned by the backend (so they can be used by UI/export features as needed)."
-      ]
-    },
-    {
-      "id": "REQ-4",
-      "text": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
-      "target": "both",
-      "source": {
-        "messageIds": [
-          "msg-4",
-          "msg-5"
-        ],
-        "quotes": [
-          "AND START Calendar Events WORKING.",
-          "2. WE HAVE CALANDER FUTURE SO DO WORKING."
-        ]
-      },
-      "acceptanceCriteria": [
-        "Frontend Calendar tab lists events from the backend (useGetCalendarEvents returns real data; create/delete mutations call real backend methods).",
-        "Creating a calendar event in the Calendar tab persists it and it appears in the events list after creation.",
-        "Deleting a calendar event removes it and it disappears from the list after deletion.",
-        "Attendance entries appear as calendar events according to a consistent mapping (at minimum: date and working status/time reflected in event title/description), and the mapping does not create duplicate events for the same attendance date on repeated refreshes.",
-        "Calendar/attendance integration respects authorization rules (only approved users can manage their own calendar events; admins can manage per the app’s existing authorization conventions)."
+        "If an invalid Principal string is ever encountered in the Admin Users page, the UI shows a descriptive error (e.g., 'Invalid Principal ID. Please refresh and try again.') and does not call the backend.",
+        "Approval/rejection errors are displayed in the Admin Users page using a user-friendly message (not just console logs)."
       ]
     }
   ],
   "constraints": [
-    "Backend must remain a single Motoko actor with logic in backend/main.mo; only add backend/migration.mo changes if required by stable state upgrades.",
-    "Do not edit files in frontend immutablePaths: frontend/src/hooks/useInternetIdentity.ts, frontend/src/hooks/useInternetIdentity.tsx, frontend/src/hooks/useActor.ts, frontend/src/main.tsx, frontend/src/components/ui.",
-    "No external databases or third-party authentication providers; implement username/password and approval using canister state only.",
-    "Use English for any user-facing text."
+    "Use English for any user-facing text.",
+    "Do not edit files under frontend/src/components/ui or any frontend immutablePaths listed in SYSTEM_CONTEXT.",
+    "Keep backend in the single Motoko actor architecture; only add migration.mo changes if state migration is truly required (not expected for this fix)."
   ],
   "nonGoals": [
-    "Adding third-party OAuth/social logins (e.g., Google/GitHub/Facebook/Auth0).",
-    "Adding real-time features like WebSockets/push notifications.",
-    "Integrating external calendar providers (Google Calendar, Outlook, etc.)."
+    "Implementing username/password authentication (the app currently uses Internet Identity).",
+    "Adding new admin CRUD capabilities beyond fixing approve/reject.",
+    "Changing backend authorization rules beyond what is required to support correct approve/reject calls."
   ],
   "imageRequirements": {
     "required": [],

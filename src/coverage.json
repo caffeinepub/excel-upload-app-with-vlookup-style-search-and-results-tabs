@@ -1,112 +1,56 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T09:06:22.160Z",
+  "generatedAt": "2026-02-07T09:28:27.640Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
-    "total": 4,
-    "implemented": 4,
+    "total": 2,
+    "implemented": 2,
     "items": [
       {
-        "id": "REQ-1",
-        "summary": "Implement username/password user management with admin approval required before a user can use the app, including admin CRUD (view/edit/delete) for users.",
+        "id": "REQ-5",
+        "summary": "Fix the Admin Users approval/rejection flow so it passes a real Principal to the backend `setApproval` call (not a string cast to `any`), preventing the runtime error `Invalid principal argument: \"<principal>\"` when approving or rejecting users.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/hooks/useApproval.ts",
-          "frontend/src/components/auth/ApprovalGate.tsx",
-          "frontend/src/components/auth/PasswordAuthDialog.tsx",
-          "frontend/src/hooks/usePasswordAuth.ts",
           "frontend/src/pages/AdminUsersTab.tsx",
-          "frontend/src/hooks/useAdminUsers.ts",
-          "frontend/src/components/layout/AppHeader.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/DesktopSidebarNav.tsx"
+          "frontend/src/utils/principal/parsePrincipal.ts",
+          "frontend/src/hooks/useApprovalMutations.ts"
         ],
         "matchedFiles": [
-          "frontend/src/hooks/useApproval.ts",
-          "frontend/src/components/auth/ApprovalGate.tsx",
           "frontend/src/pages/AdminUsersTab.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/components/layout/DesktopSidebarNav.tsx"
+          "frontend/src/utils/principal/parsePrincipal.ts",
+          "frontend/src/hooks/useApprovalMutations.ts"
         ]
       },
       {
-        "id": "REQ-2",
-        "summary": "Fix and ensure total working time is correctly calculated and updated when attendance check-in/check-out times are set/edited for past dates, and ensure attendance summaries correctly sum totalWorkingTime over the selected range.",
+        "id": "REQ-6",
+        "summary": "Add frontend validation and user-facing error handling for approval actions: if a Principal cannot be parsed/constructed, block the mutation and show a clear error message in the Admin Users UI (English).",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-          "frontend/src/hooks/useAttendance.ts",
-          "frontend/src/pages/AttendanceTab.tsx"
+          "frontend/src/pages/AdminUsersTab.tsx",
+          "frontend/src/utils/errors/userFriendlyError.ts",
+          "frontend/src/hooks/useApprovalMutations.ts"
         ],
         "matchedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx"
-        ]
-      },
-      {
-        "id": "REQ-3",
-        "summary": "Add a 'work brief note' text field to each attendance entry, persisted in the backend and editable in the attendance day editor UI.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-          "frontend/src/pages/AttendanceTab.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/attendance/AttendanceDateEditor.tsx"
-        ]
-      },
-      {
-        "id": "REQ-4",
-        "summary": "Make the existing Calendar feature functional by wiring calendar event queries/mutations to the backend and integrate attendance with calendar events so attendance entries appear as calendar events.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/hooks/useCalendarEvents.ts",
-          "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-          "frontend/src/hooks/useProductivityQueries.ts",
-          "frontend/src/hooks/useProductivityMutations.ts",
-          "frontend/src/pages/CalendarTab.tsx",
-          "frontend/src/App.tsx"
-        ],
-        "matchedFiles": [
-          "frontend/src/hooks/useCalendarEvents.ts",
-          "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-          "frontend/src/hooks/useProductivityMutations.ts",
-          "frontend/src/pages/CalendarTab.tsx",
-          "frontend/src/App.tsx"
+          "frontend/src/pages/AdminUsersTab.tsx",
+          "frontend/src/utils/errors/userFriendlyError.ts",
+          "frontend/src/hooks/useApprovalMutations.ts"
         ]
       }
     ]
   },
   "changedFiles": [
-    "backend/main.mo",
-    "backend/migration.mo",
-    "backend/user-approval/approval.mo",
     "build-request.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
-    "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/attendance/AttendanceDateEditor.tsx",
-    "frontend/src/components/auth/ApprovalGate.tsx",
-    "frontend/src/components/auth/UserProfileSetup.tsx",
-    "frontend/src/components/layout/DesktopSidebarNav.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useApproval.ts",
     "frontend/src/hooks/useApprovalMutations.ts",
-    "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-    "frontend/src/hooks/useCalendarEvents.ts",
-    "frontend/src/hooks/useProductivityMutations.ts",
-    "frontend/src/hooks/useUserProfile.ts",
     "frontend/src/pages/AdminUsersTab.tsx",
-    "frontend/src/pages/CalendarTab.tsx",
-    "frontend/src/pages/TodoTab.tsx",
+    "frontend/src/utils/errors/userFriendlyError.ts",
+    "frontend/src/utils/principal/parsePrincipal.ts",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

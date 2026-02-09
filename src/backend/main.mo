@@ -8,10 +8,10 @@ import Principal "mo:core/Principal";
 import AccessControl "authorization/access-control";
 import MixinAuthorization "authorization/MixinAuthorization";
 import UserApproval "user-approval/approval";
-import Migration "migration";
+
 
 // Enable data migration from existing version
-(with migration = Migration.run)
+
 actor {
   public type AttendanceDayEntry = {
     checkIn : ?Time.Time;
