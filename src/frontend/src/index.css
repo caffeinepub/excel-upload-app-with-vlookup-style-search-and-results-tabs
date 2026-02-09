@@ -41,6 +41,9 @@
     /* Emerald accent for History and Budget/Expense */
     --history-accent: 65% 0.18 160;
     --expense-accent: 65% 0.18 160;
+    
+    /* Character dock accent */
+    --character-accent: 60% 0.20 25;
   }
 
   .dark {
@@ -80,6 +83,9 @@
     /* Emerald accent for History and Budget/Expense (dark mode) */
     --history-accent: 70% 0.18 160;
     --expense-accent: 70% 0.18 160;
+    
+    /* Character dock accent (dark mode) */
+    --character-accent: 65% 0.20 25;
   }
 }
 
@@ -229,12 +235,31 @@
   background-color: oklch(var(--expense-accent) / 0.9);
 }
 
+/* Character Dock Styles */
+.character-dock-container {
+  @apply w-64 sticky top-8;
+  background-color: oklch(var(--card) / 0.85);
+  backdrop-filter: blur(16px);
+  @apply border rounded-2xl shadow-mac-soft overflow-hidden;
+  border-color: oklch(var(--character-accent) / 0.3);
+}
+
+.character-dock-canvas {
+  @apply w-full h-64 bg-gradient-to-b from-muted/20 to-muted/5;
+}
+
+.character-dock-status {
+  @apply p-3 border-t;
+  border-color: oklch(var(--border) / 0.3);
+  background-color: oklch(var(--card) / 0.5);
+}
+
 /* Reminder Notification Toast Styles */
 .reminder-notification-toast {
   background-color: oklch(var(--card) / 0.95);
   backdrop-filter: blur(24px);
   @apply border shadow-2xl rounded-2xl p-4 w-80 max-w-[calc(100vw-2rem)];
-  border-color: oklch(var(--border) / 0.5);
+  border-color: oklch(var(--character-accent) / 0.4);
   animation: reminder-slide-in 0.3s ease-out;
 }
 

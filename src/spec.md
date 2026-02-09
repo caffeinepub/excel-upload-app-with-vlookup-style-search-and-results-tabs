@@ -1,11 +1,15 @@
 # Specification
 
 ## Summary
-**Goal:** Fix Admin Users approve/reject so it sends a valid `Principal` to the backend and prevents the “Invalid principal argument” runtime error, with clear UI error handling when a Principal cannot be constructed.
+**Goal:** Add in-app (while-open) reminder notifications that show a dismissible toast, play a generic iPhone-style ringtone, and drive a permanent on-screen 3D armored-hero character with reminder- and tab-based animations.
 
 **Planned changes:**
-- Update `AdminUsersTab` approve/reject actions to pass a real `Principal` (e.g., existing `approval.principal` or `Principal.fromText(...)`) into `useSetApproval().mutateAsync` instead of casting a string to `any`.
-- Add frontend validation for Principal parsing/construction before calling the mutation; if invalid, block the action and show an English error message in the Admin Users UI.
-- Improve user-facing error handling for approval/rejection failures so errors are displayed in the Admin Users page (not only logged).
+- Implement in-app reminder due detection that triggers without page refresh and shows a toast with reminder title + human-readable English date/time and a reliable dismiss action.
+- Add a legally-safe, generic iPhone-style ringtone that plays when a reminder triggers, provides an “Enable sound” style user action when autoplay is blocked, and stops/resets when the toast is dismissed.
+- Add a permanent, non-infringing 3D armored-hero/robot character rendered in the main interface with graceful fallback if 3D/WebGL fails.
+- Implement character animation states: idle by default, switch to dance when a reminder triggers, and return after dismissal.
+- Map each major app tab to a deterministic character animation (e.g., drink water, jump, call, funny movement) with fast switching, while ensuring reminder “dance” overrides tab animations until dismissed.
+- Wire the reminder event so the toast, ringtone, and character animation respond together.
+- Apply a cohesive visual theme for the character area and reminder toast consistent with existing Tailwind styling and not primarily blue/purple.
 
-**User-visible outcome:** Admins can approve or reject users from the Admin Users tab without the “Invalid principal argument” error; if a user’s Principal is invalid, the UI shows a clear message and does not attempt the backend call.
+**User-visible outcome:** While using the app, due reminders pop up as a toast you can dismiss; a generic ringtone plays (after sound is enabled if needed); and a permanent 3D armored character animates per tab and dances during active reminders, returning to normal afterward.

@@ -1,32 +1,56 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-07T09:28:27.637Z",
-  "summary": "REQ-5 and REQ-6 appear to be implemented: AdminUsersTab now passes a typed Principal into the approval mutation, the mutation normalizes/validates via parsePrincipal before calling the backend, and UI-facing error messaging is added via an Alert + getUserFriendlyError. However, there are unrequested changes to meta/summary files that describe unrelated features.",
-  "missing_requirements": [],
-  "hallucinated_features": [
+  "generatedAt": "2026-02-09T04:15:53.499Z",
+  "summary": "Diff adds an in-app reminder toast system with shared reminder-event context, a ringtone playback flow with autoplay fallback UI, and a 3D armored robot rendered via react-three-fiber whose animation is driven by active tab and reminder state. Some BuildRequest requirements are not fully evidenced, notably always-visible character placement, graceful 3D fallback handling, and the non-blue/purple-dominant theme constraint.",
+  "missing_requirements": [
     {
-      "description": "Updated/added broad unrelated frontend feature summaries (e.g., VLOOKUP, layout changes, reminder notifier, export features) in a project-wide summary file, which were not requested as part of fixing admin approve/reject Principal handling.",
-      "reason": "BuildRequest is narrowly scoped to fixing Admin Users approve/reject Principal handling and adding UI validation/error messaging; the diff includes changes to a summary file describing many unrelated features.",
+      "id": "REQ-3",
+      "requirement": "3D armored-hero/robot character is visible during normal app usage (not only in reminder toast).",
+      "reason": "Character dock is only rendered on xl+ screens (`hidden xl:block`), so it is not visible during normal usage on smaller viewports.",
       "evidence": [
-        "frontend-file-summaries.txt"
+        "frontend/src/components/layout/AppLayout.tsx"
       ]
     },
     {
-      "description": "Project state tracking updates (new_feature_requests, known issues) not explicitly requested as part of the fix.",
-      "reason": "BuildRequest does not mention updating project_state.json; this appears to be ancillary bookkeeping outside the stated requirements.",
+      "id": "REQ-3",
+      "requirement": "If WebGL/3D rendering fails, the UI degrades gracefully (e.g., placeholder) without crashing.",
+      "reason": "No error boundary, try/catch, or explicit fallback/placeholder behavior is shown for the 3D Canvas; the ArmoredHero3DCanvas file is truncated and the diff summary does not evidence graceful degradation.",
       "evidence": [
-        "project_state.json"
+        "frontend/src/components/character/ArmoredHero3DCanvas.tsx (truncated)",
+        "frontend/src/components/character/CharacterDock.tsx"
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "requirement": "Apply a cohesive theme avoiding a blue/purple-dominant palette.",
+      "reason": "Global theme variables set `--primary` to OKLCH hue 264 in both light and dark modes (blue/purple region), and the 3D character visor material uses a bright blue color (`#3498db`), suggesting the new UI may still be blue/purple-dominant.",
+      "evidence": [
+        "frontend/src/index.css",
+        "frontend/src/components/character/ArmoredHero3DCanvas.tsx (truncated)"
       ]
     }
   ],
-  "confidence": 0.72,
+  "hallucinated_features": [
+    {
+      "description": "3D character status text includes emojis ('🎵', '🤖') in the main UI.",
+      "reason": "Emojis in the character dock status were not requested in the BuildRequest requirements.",
+      "evidence": [
+        "frontend/src/components/character/CharacterDock.tsx"
+      ]
+    }
+  ],
+  "confidence": 0.66,
   "changed_files": [
     "frontend-file-summaries.txt",
-    "frontend/src/hooks/useApprovalMutations.ts",
-    "frontend/src/pages/AdminUsersTab.tsx",
-    "frontend/src/utils/errors/userFriendlyError.ts",
-    "frontend/src/utils/principal/parsePrincipal.ts",
+    "frontend/src/App.tsx",
+    "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
+    "frontend/src/components/character/CharacterDock.tsx",
+    "frontend/src/components/layout/AppLayout.tsx",
+    "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+    "frontend/src/context/ReminderEventsContext.tsx",
+    "frontend/src/index.css",
+    "frontend/src/lib/character/tabAnimationMapping.ts",
     "project_state.json"
   ]
 }

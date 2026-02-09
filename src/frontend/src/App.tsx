@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AppStateProvider, useAppState } from './state/appState';
+import { ReminderEventsProvider } from './context/ReminderEventsContext';
 import { AppLayout } from './components/layout/AppLayout';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './components/ui/tabs';
 import { ScrollArea, ScrollBar } from './components/ui/scroll-area';
@@ -47,7 +48,7 @@ function AppContent() {
   return (
     <>
       <UserProfileSetup />
-      <AppLayout onNavigate={setActiveTab}>
+      <AppLayout onNavigate={setActiveTab} activeTab={activeTab}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           {/* Mobile navigation - visible on small screens with horizontal scroll */}
           <ScrollArea className="lg:hidden mb-8 w-full whitespace-nowrap">
@@ -193,7 +194,9 @@ export default function App() {
       <AppStateProvider>
         {({ reset }) => (
           <AppErrorBoundary onReset={reset}>
-            <AppContent />
+            <ReminderEventsProvider>
+              <AppContent />
+            </ReminderEventsProvider>
           </AppErrorBoundary>
         )}
       </AppStateProvider>

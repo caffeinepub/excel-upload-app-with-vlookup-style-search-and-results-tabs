@@ -1,61 +1,155 @@
 {
   "kind": "build_request",
-  "title": "Fix admin user approval/rejection failing with 'Invalid principal argument'",
-  "priority": "high",
+  "title": "Add in-app reminders with ringtone + animated 3D armored character with per-tab animations",
+  "priority": "normal",
   "requirements": [
     {
-      "id": "REQ-5",
-      "text": "Fix the Admin Users approval/rejection flow so it passes a real Principal to the backend `setApproval` call (not a string cast to `any`), preventing the runtime error `Invalid principal argument: \"<principal>\"` when approving or rejecting users.",
+      "id": "REQ-1",
+      "text": "Ensure the app provides in-app reminder notifications that trigger while the app is open, displaying a toast notification with reminder title and scheduled time, and allowing the user to dismiss it.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-11",
-          "msg-12",
-          "msg-13"
+          "msg-1",
+          "msg-2"
         ],
         "quotes": [
-          "Invalid principal argument: \"guaqh-4pyji-naq27-ewgxq-n6a62-q2uqm-svesc-ojhzm-lj5k2-ht26q-aqe\"",
-          "YES DURING USER AOOROVAL AND ALSO NOT REJECT",
-          "FIX IT NOW"
+          "build a reminder/notification feature inside your app where a ringtone should play",
+          "want in‑app"
         ]
       },
       "acceptanceCriteria": [
-        "From `AdminUsersTab`, clicking Approve on a pending user updates that user to `Approved` without throwing an 'Invalid principal argument' error.",
-        "From `AdminUsersTab`, clicking Reject on a pending/approved user updates that user to `Rejected` without throwing an 'Invalid principal argument' error.",
-        "The frontend sends a `Principal` value (e.g., `approval.principal` or a `Principal.fromText(...)` result) to `useSetApproval().mutateAsync`, rather than `userPrincipal as any`."
+        "When a reminder becomes due (based on its scheduled timestamp), a visible in-app toast appears without requiring a page refresh.",
+        "The toast shows the reminder title and a human-readable date/time in English.",
+        "The user can dismiss the toast, and dismissing hides the toast reliably."
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "Play a legally-safe, generic iPhone-style ringtone when an in-app reminder notification triggers, and stop/reset the audio when the notification is dismissed.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-3",
+          "msg-4"
+        ],
+        "quotes": [
+          "YOU ADD IPHONE RINGTONE",
+          "generic iPhone‑style sound (legally safe)"
+        ]
+      },
+      "acceptanceCriteria": [
+        "When a reminder toast appears, the ringtone attempts to play immediately.",
+        "If browser autoplay policy blocks audio, the UI provides an explicit user action (e.g., an 'Enable sound' control) that allows future reminder sounds to play after the user interacts.",
+        "When the reminder is dismissed, any playing ringtone is paused and reset to the start.",
+        "No copyrighted Apple audio files are included in the repository; the ringtone asset is generic/legally safe."
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add a permanent, non-copyright-infringing 3D armored-hero/robot character inside the main app interface that is visible during normal app usage (not only inside the reminder toast).",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-5"
+        ],
+        "quotes": [
+          "3D/animated character inside the main app interface",
+          "generic robot/armored hero inspired by Ironman"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A 3D character is rendered in the main interface while navigating the app.",
+        "The character design is clearly a generic armored hero/robot and does not use Iron Man branding, logos, or copyrighted models/textures.",
+        "If WebGL/3D rendering fails, the UI degrades gracefully (e.g., shows a simple placeholder panel) without crashing the app."
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Implement character animation states: an idle/normal mode by default, switch to a clear dancing animation automatically when a reminder triggers, and return to idle after the reminder is dismissed.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-6"
+        ],
+        "quotes": [
+          "character dance automatically whenever a reminder notification appears",
+          "the character appear permanently in the main interface (idle animation) and then switch to dancing only when a reminder triggers"
+        ]
+      },
+      "acceptanceCriteria": [
+        "With no active reminder toast, the character displays an idle/normal animation.",
+        "When a reminder triggers, the character switches to a dance animation within 1 second of the toast appearing.",
+        "After the reminder is dismissed, the character returns to the idle/normal animation."
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "text": "Change the character’s animation based on the currently selected app tab: when the user switches tabs, the character switches to a tab-specific animation (e.g., drink water, jump, doing call, funny movement) while still overriding to 'dance' during active reminder notifications.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-7"
+        ],
+        "quotes": [
+          "WHEN I CLICK ON OTHER TABS IT WILL SHOW DIFFRENT DIFFRENT ANIMATION, AND IN NORMAL IT WILL - DRINK WATER, JUMP, DOING CALL, FUNNY MOVMENT, ETC....."
+        ]
+      },
+      "acceptanceCriteria": [
+        "Switching between tabs changes the character animation within 500ms.",
+        "Each of the app’s major tabs has a deterministic animation mapping (same tab always yields the same animation).",
+        "If a reminder triggers while a tab-specific animation is playing, the dance animation takes priority until the reminder is dismissed, then the character returns to the correct tab-specific animation."
       ]
     },
     {
       "id": "REQ-6",
-      "text": "Add frontend validation and user-facing error handling for approval actions: if a Principal cannot be parsed/constructed, block the mutation and show a clear error message in the Admin Users UI (English).",
+      "text": "Wire the reminder-notification trigger to the character animation system so that the reminder toast and the main-interface character respond to the same reminder event.",
       "target": "frontend",
       "source": {
         "messageIds": [
-          "msg-10",
-          "msg-11",
-          "msg-12"
+          "msg-6",
+          "msg-8"
         ],
         "quotes": [
-          "I CANT APPROVE USERS",
-          "Invalid principal argument: \"guaqh-4pyji-naq27-ewgxq-n6a62-q2uqm-svesc-ojhzm-lj5k2-ht26q-aqe\"",
-          "YES DURING USER AOOROVAL AND ALSO NOT REJECT"
+          "character dance automatically whenever a reminder notification appears",
+          "I’ll now build the full in‑app reminder system with a generic iPhone‑style ringtone, a permanent Ironman‑inspired robot character, idle and dancing animations, and unique animations per tab."
         ]
       },
       "acceptanceCriteria": [
-        "If an invalid Principal string is ever encountered in the Admin Users page, the UI shows a descriptive error (e.g., 'Invalid Principal ID. Please refresh and try again.') and does not call the backend.",
-        "Approval/rejection errors are displayed in the Admin Users page using a user-friendly message (not just console logs)."
+        "A single due reminder causes: (1) the toast to appear, (2) the ringtone to play/attempt, and (3) the character to switch to dance.",
+        "Dismissing the toast causes: (1) toast to close, (2) ringtone to stop/reset, and (3) character to exit dance mode."
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "text": "Apply a cohesive, creative visual theme for the new character area and reminder notification UI (colors, typography, spacing, and motion), consistent with the existing Tailwind design system, avoiding a blue/purple-dominant palette.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-9"
+        ],
+        "quotes": [
+          "BUILD IT"
+        ]
+      },
+      "acceptanceCriteria": [
+        "The character area looks intentionally designed (container, background treatment, and spacing) and matches the app’s existing styling conventions.",
+        "The reminder toast styling is consistent with the chosen theme and remains readable in light and dark modes.",
+        "The theme does not rely on a primarily blue/purple palette."
       ]
     }
   ],
   "constraints": [
-    "Use English for any user-facing text.",
-    "Do not edit files under frontend/src/components/ui or any frontend immutablePaths listed in SYSTEM_CONTEXT.",
-    "Keep backend in the single Motoko actor architecture; only add migration.mo changes if state migration is truly required (not expected for this fix)."
+    "Do not implement real push notifications; reminders must be in-app only (works while the app is open).",
+    "Do not include or reference copyrighted Apple ringtone audio; use only a legally-safe generic iPhone-style sound.",
+    "Do not include or reference copyrighted Iron Man assets (models, textures, logos, or names); the character must be a generic armored hero/robot.",
+    "Backend must remain single-actor in Motoko (all logic in backend/main.mo).",
+    "Do not edit frontend files under the immutable paths listed in SYSTEM_CONTEXT (compose existing components instead)."
   ],
   "nonGoals": [
-    "Implementing username/password authentication (the app currently uses Internet Identity).",
-    "Adding new admin CRUD capabilities beyond fixing approve/reject.",
-    "Changing backend authorization rules beyond what is required to support correct approve/reject calls."
+    "Native mobile notification support (system notifications) and background alarms when the app is closed.",
+    "WebSocket-based real-time delivery; reminder checks may remain polling-based.",
+    "Using third-party character/model marketplaces or external asset hosting/CDNs.",
+    "Adding new authentication methods beyond Internet Identity."
   ],
   "imageRequirements": {
     "required": [],

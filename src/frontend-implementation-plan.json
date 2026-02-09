@@ -1,56 +1,197 @@
 {
   "kind": "implementation_plan",
   "version": "1.0",
-  "title": "Fix Admin Users approve/reject Principal handling and UI error reporting",
+  "title": "In-app reminders with ringtone, themed toast, and permanent animated 3D armored character (tab-aware)",
   "requirements": [
     {
-      "id": "REQ-5",
-      "summary": "Ensure Admin Users approve/reject sends a real Principal object to setApproval (no string cast) to prevent 'Invalid principal argument' runtime errors.",
+      "id": "REQ-1",
+      "summary": "Trigger in-app reminder notifications while the app is open, showing a dismissible toast with reminder title and scheduled time.",
       "acceptanceCriteria": [
-        "From `AdminUsersTab`, clicking Approve on a pending user updates that user to `Approved` without throwing an 'Invalid principal argument' error.",
-        "From `AdminUsersTab`, clicking Reject on a pending/approved user updates that user to `Rejected` without throwing an 'Invalid principal argument' error.",
-        "The frontend sends a `Principal` value (e.g., `approval.principal` or a `Principal.fromText(...)` result) to `useSetApproval().mutateAsync`, rather than `userPrincipal as any`."
+        "When a reminder becomes due (based on its scheduled timestamp), a visible in-app toast appears without requiring a page refresh.",
+        "The toast shows the reminder title and a human-readable date/time in English.",
+        "The user can dismiss the toast, and dismissing hides the toast reliably."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminUsersTab.tsx",
+          "path": "frontend/src/hooks/useInAppReminderNotifications.ts",
           "operation": "modify",
-          "description": "Update approve/reject handlers to pass `approval.principal` (Principal) directly into `useSetApproval().mutateAsync` (remove `userPrincipal as any`), while keeping string formatting only for display and processing state. Verify the component's usage instructions before implementing."
+          "description": "Harden due-reminder detection (based on scheduled timestamp) and ensure a single due reminder reliably triggers a notification callback while the app is open (polling-based), without requiring page refresh."
         },
         {
-          "path": "frontend/src/utils/principal/parsePrincipal.ts",
+          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+          "operation": "modify",
+          "description": "Render a toast that displays reminder title and scheduled time (English, human-readable) and supports reliable dismissal UX using shadcn-ui Button for actions. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/context/ReminderEventsContext.tsx",
           "operation": "create",
-          "description": "Add a small utility that safely constructs/normalizes a Principal from a value (e.g., Principal instance or text) using `Principal.fromText(...)`, returning a typed success/error result used by Admin approval actions. Verify the component's usage instructions before implementing."
+          "description": "Add a small React context to broadcast a single 'reminder due' event/state across the UI (toast + character), including current active reminder and a dismiss action."
         },
         {
-          "path": "frontend/src/hooks/useApprovalMutations.ts",
+          "path": "frontend/src/components/layout/AppLayout.tsx",
           "operation": "modify",
-          "description": "Harden `useSetApproval` mutation by normalizing/validating the incoming `user` argument into a real Principal (using the new principal parsing utility) before calling the backend capability, preventing accidental string misuse from any call site. Verify the component's usage instructions before implementing."
+          "description": "Wire the reminder event provider and keep the notifier mounted globally so toasts can appear during normal app usage across tabs."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Play a legally-safe generic iPhone-style ringtone when a reminder triggers, handle autoplay restrictions, and stop/reset audio on dismiss.",
+      "acceptanceCriteria": [
+        "When a reminder toast appears, the ringtone attempts to play immediately.",
+        "If browser autoplay policy blocks audio, the UI provides an explicit user action (e.g., an 'Enable sound' control) that allows future reminder sounds to play after the user interacts.",
+        "When the reminder is dismissed, any playing ringtone is paused and reset to the start.",
+        "No copyrighted Apple audio files are included in the repository; the ringtone asset is generic/legally safe."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+          "operation": "modify",
+          "description": "Implement ringtone playback using an HTMLAudioElement that attempts immediate play on reminder trigger, pauses+resets on dismiss, and exposes an explicit 'Enable sound' interaction when autoplay is blocked (persist the user choice locally). Use shadcn-ui Button for the enable/dismiss controls. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/public/assets/ringtones/iphone-like-chime.mp3",
+          "operation": "create",
+          "description": "Add/ensure a legally-safe generic iPhone-style chime asset at this exact path for in-app reminder sound playback (no copyrighted Apple audio)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Render a permanent, non-infringing 3D armored-hero/robot character in the main app interface with graceful fallback if 3D fails.",
+      "acceptanceCriteria": [
+        "A 3D character is rendered in the main interface while navigating the app.",
+        "The character design is clearly a generic armored hero/robot and does not use Iron Man branding, logos, or copyrighted models/textures.",
+        "If WebGL/3D rendering fails, the UI degrades gracefully (e.g., shows a simple placeholder panel) without crashing the app."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
+          "operation": "create",
+          "description": "Create a permanent 3D character renderer using a local WebGL canvas (no external models/textures), building a generic armored-robot silhouette from simple primitives and flat materials; include WebGL support checks and a placeholder panel fallback on failure."
+        },
+        {
+          "path": "frontend/src/components/character/CharacterDock.tsx",
+          "operation": "create",
+          "description": "Create a themed container ('character area') that hosts the 3D canvas, labels/status, and gracefully displays fallback UI when rendering is unavailable."
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Mount the CharacterDock in the main interface so it remains visible during normal app usage across tabs (not just inside reminder toasts)."
+        }
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "summary": "Implement character animation states: idle by default, dance on reminder trigger, return to idle after dismiss.",
+      "acceptanceCriteria": [
+        "With no active reminder toast, the character displays an idle/normal animation.",
+        "When a reminder triggers, the character switches to a dance animation within 1 second of the toast appearing.",
+        "After the reminder is dismissed, the character returns to the idle/normal animation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
+          "operation": "modify",
+          "description": "Add animation state handling in the render loop: default idle motion, a visually distinct dance motion, and state transitions driven by props/context; ensure dance activates within 1s of reminder activation and resets on dismiss."
+        },
+        {
+          "path": "frontend/src/context/ReminderEventsContext.tsx",
+          "operation": "modify",
+          "description": "Expose an 'isReminderActive' (or active reminder) state that the character dock/canvas can consume to toggle dance vs non-dance modes."
+        },
+        {
+          "path": "frontend/src/components/character/CharacterDock.tsx",
+          "operation": "modify",
+          "description": "Wire reminder-active state into the 3D canvas so the character switches to dance when a reminder is active and returns to the correct non-dance animation when dismissed."
+        }
+      ]
+    },
+    {
+      "id": "REQ-5",
+      "summary": "Switch character animation based on selected app tab with deterministic mappings, while reminder dance overrides tab-specific animations.",
+      "acceptanceCriteria": [
+        "Switching between tabs changes the character animation within 500ms.",
+        "Each of the app’s major tabs has a deterministic animation mapping (same tab always yields the same animation).",
+        "If a reminder triggers while a tab-specific animation is playing, the dance animation takes priority until the reminder is dismissed, then the character returns to the correct tab-specific animation."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/lib/character/tabAnimationMapping.ts",
+          "operation": "create",
+          "description": "Define a deterministic mapping from the app’s tab ids (e.g., deskboard, upload, search, results, update-checking, history, regular-expense, attendance, reminders, calendar, todo, notes, admin-users) to named character animations (e.g., drinkWater, jump, call, funnyMove, etc.)."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Pass the currently selected tab into AppLayout (or into the character dock) so tab changes can drive the character animation within 500ms."
+        },
+        {
+          "path": "frontend/src/components/layout/AppLayout.tsx",
+          "operation": "modify",
+          "description": "Accept activeTab as a prop and forward it to CharacterDock so the dock/canvas can pick the correct tab-specific animation, while still allowing reminder-active dance override."
+        },
+        {
+          "path": "frontend/src/components/character/CharacterDock.tsx",
+          "operation": "modify",
+          "description": "Consume activeTab and the tab-to-animation mapping to select the correct animation quickly, but always prioritize the reminder-triggered dance state when active."
+        },
+        {
+          "path": "frontend/src/components/character/ArmoredHero3DCanvas.tsx",
+          "operation": "modify",
+          "description": "Implement the additional tab-specific animation motions (drink water, jump, doing call, funny movement, etc.) and ensure state switching is immediate in the next animation frame (target <500ms perceived)."
         }
       ]
     },
     {
       "id": "REQ-6",
-      "summary": "Add frontend validation and user-facing error handling for approval actions, blocking mutations when Principal parsing fails and showing clear English errors in the Admin Users UI.",
+      "summary": "Use a single reminder event to drive toast, ringtone, and character dance together; dismissing resets all three.",
       "acceptanceCriteria": [
-        "If an invalid Principal string is ever encountered in the Admin Users page, the UI shows a descriptive error (e.g., 'Invalid Principal ID. Please refresh and try again.') and does not call the backend.",
-        "Approval/rejection errors are displayed in the Admin Users page using a user-friendly message (not just console logs)."
+        "A single due reminder causes: (1) the toast to appear, (2) the ringtone to play/attempt, and (3) the character to switch to dance.",
+        "Dismissing the toast causes: (1) toast to close, (2) ringtone to stop/reset, and (3) character to exit dance mode."
       ],
       "file_operations": [
         {
-          "path": "frontend/src/pages/AdminUsersTab.tsx",
+          "path": "frontend/src/context/ReminderEventsContext.tsx",
           "operation": "modify",
-          "description": "Add local UI state for action errors and display them in the Admin Users page (English). Before calling `mutateAsync`, validate/construct the Principal (via the principal parsing utility); if invalid, show a clear message and skip the mutation. Also map mutation failures to a user-friendly message instead of only console logging. Verify the component's usage instructions before implementing."
+          "description": "Centralize reminder-trigger and reminder-dismiss actions so both the notifier (toast+sound) and the character dock can respond to the same shared state/event."
         },
         {
-          "path": "frontend/src/utils/errors/userFriendlyError.ts",
+          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
           "operation": "modify",
-          "description": "Extend `getUserFriendlyError` to recognize Principal-related failures (e.g., messages containing 'invalid principal') and return a clear English message suitable for Admin Users approval actions. Verify the component's usage instructions before implementing."
+          "description": "Replace isolated local reminder state with ReminderEventsContext: on due reminder, set shared active reminder (show toast + attempt audio); on dismiss, clear shared active reminder and stop/reset audio accordingly. Use shadcn-ui Button for the unified dismissal action. Verify the component's usage instructions before implementing."
         },
         {
-          "path": "frontend/src/hooks/useApprovalMutations.ts",
+          "path": "frontend/src/components/character/CharacterDock.tsx",
           "operation": "modify",
-          "description": "When Principal validation fails in `useSetApproval`, throw an Error with a clear English message so the Admin Users UI can surface it and the backend is not called. Verify the component's usage instructions before implementing."
+          "description": "Subscribe to ReminderEventsContext so the character’s dance override is driven by the same reminder activation and dismissal as the toast+sound."
+        }
+      ]
+    },
+    {
+      "id": "REQ-7",
+      "summary": "Apply a cohesive Tailwind-consistent theme for the character area and reminder toast UI, avoiding a blue/purple-dominant palette and supporting light/dark modes.",
+      "acceptanceCriteria": [
+        "The character area looks intentionally designed (container, background treatment, and spacing) and matches the app’s existing styling conventions.",
+        "The reminder toast styling is consistent with the chosen theme and remains readable in light and dark modes.",
+        "The theme does not rely on a primarily blue/purple palette."
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/index.css",
+          "operation": "modify",
+          "description": "Update/add scoped styles for the reminder toast and the new character dock area to use a cohesive warm/emerald/neutral palette (not blue/purple-dominant), including spacing, container treatment, and reduced-motion considerations; keep consistent with existing Tailwind conventions."
+        },
+        {
+          "path": "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+          "operation": "modify",
+          "description": "Adjust toast classes to align with the updated theme (readable in light/dark), and ensure any motion respects prefers-reduced-motion. Use existing shadcn-ui components where applicable. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/components/character/CharacterDock.tsx",
+          "operation": "modify",
+          "description": "Apply the themed container styling (Tailwind + existing global class patterns like mac-card/mac-soft) so the character area feels integrated with the app’s design system and remains readable in light/dark modes."
         }
       ]
     }
