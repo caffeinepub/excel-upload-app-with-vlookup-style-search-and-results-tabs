@@ -1,0 +1,110 @@
+{
+  "kind": "build_request",
+  "title": "Add Daily Reminder repeat-until-date, app-start popup, and Customer PDF/Excel import",
+  "projectName": "WorkDesk Pro",
+  "priority": "high",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "text": "Add a 'Repeat Daily Until' date field to the reminder creation/edit form. When this field is set, the reminder should be stored with a repeat-until date and generate daily occurrences from the reminder's start date up to and including the specified end date.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-2"
+        ],
+        "quotes": [
+          "ADD OPTION IN REMINDER DAILY REMINDER - IN WHICH IT CAN REMIND DAILY UPTO LAST DATE"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Reminder form has an optional 'Repeat Daily Until' date picker field",
+        "Backend stores the repeat-until date alongside the reminder record",
+        "A reminder with a repeat-until date triggers on every day from start date to end date inclusive",
+        "Existing reminders without a repeat-until date are unaffected"
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "text": "On app startup, display a dismissible modal popup that shows all pending and upcoming reminders for the current day, including any reminders that are active due to the daily-repeat feature. The popup must have a visible close/dismiss button and must not reappear until the next app session.",
+      "target": "frontend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-2"
+        ],
+        "quotes": [
+          "ALSO SHOW POP UP WHEN APP START AND WE CAN CLOSE",
+          "all pending/upcoming reminders for the day"
+        ]
+      },
+      "acceptanceCriteria": [
+        "A modal popup appears automatically when the app first loads each session",
+        "The popup lists all reminders due today (including daily-repeat reminders active today)",
+        "Each reminder entry shows its title, time, and any relevant details",
+        "A dismiss/close button closes the popup without any further action",
+        "The popup does not reappear during the same browser session after dismissal",
+        "If there are no reminders for today the popup is not shown"
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "text": "Add an import button in the Customers tab that allows users to upload a PDF or Excel file. The app should parse the uploaded file and extract customer fields (name, phone, email, and any other detectable fields such as address or company) and insert them as new customer records. Display a preview of parsed rows before confirming the import.",
+      "target": "both",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-3"
+        ],
+        "quotes": [
+          "CUSTOMERS DETAILS IMPORT AS PDF AND EXCEL",
+          "parse and extract specific fields (like name, phone, email, etc.) into the customer records"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Customers tab has an 'Import' button that opens a file picker accepting .pdf, .xlsx, and .xls files",
+        "Uploaded Excel files are parsed using SheetJS to extract rows mapping to customer fields",
+        "Uploaded PDF files are parsed to extract customer field data from tabular or structured content",
+        "A preview table is shown with the parsed rows before the user confirms import",
+        "On confirmation, extracted records are added as new customer entries via the backend",
+        "Duplicate detection warns the user if an imported record shares a phone or email with an existing customer",
+        "All existing customer CRUD functionality remains unaffected"
+      ]
+    },
+    {
+      "id": "REQ-4",
+      "text": "Update the backend Reminder data model to include an optional repeatUntilDate field (stored as ?Int or ?Text timestamp). Update the createReminder and related query functions to handle this field. Add a query function that returns all reminders active on a given date, accounting for daily-repeat reminders.",
+      "target": "backend",
+      "source": {
+        "messageIds": [
+          "msg-1",
+          "msg-2"
+        ],
+        "quotes": [
+          "DAILY REMINDER - IN WHICH IT CAN REMIND DAILY UPTO LAST DATE"
+        ]
+      },
+      "acceptanceCriteria": [
+        "Reminder type in main.mo includes an optional repeatUntilDate field",
+        "createReminder accepts and stores repeatUntilDate when provided",
+        "A getRemindersForDate(date: Int) query returns all reminders due on the given date, including daily-repeat active reminders",
+        "Existing reminder data and queries continue to work correctly"
+      ]
+    }
+  ],
+  "constraints": [
+    "Do not break or modify any existing features: attendance, budget, todos, notes, history, VLOOKUP, workbook upload, calendar, or admin user management",
+    "Customer import must not replace or overwrite existing customer records without explicit user confirmation",
+    "Immutable frontend paths (hooks/useInternetIdentity.ts, hooks/useActor.ts, main.tsx, components/ui) must not be modified"
+  ],
+  "nonGoals": [
+    "Sending actual push/email/SMS notifications for reminders — only in-app display",
+    "Exporting customers to PDF/Excel (only importing is in scope)",
+    "Editing imported customer records during the import preview step",
+    "Changing the visual theme or layout of existing tabs"
+  ],
+  "imageRequirements": {
+    "required": [],
+    "edits": []
+  }
+}

@@ -1,0 +1,62 @@
+{
+  "schemaVersion": "1.0.0",
+  "projectStateVersion": 3,
+  "summary": "App with daily reminder enhancements and customer import features. Includes repeat-daily-until-date reminders, dismissible app-start popup showing pending reminders, and PDF/Excel import for customer records with field parsing.",
+  "architectural_notes": [
+    "New features (daily reminder enhancement, customer import) must not disrupt existing functionality"
+  ],
+  "known_issues": [],
+  "isFixRequest": false,
+  "existing_features": [
+    {
+      "id": "feature-add-a-repeat-daily-until-date-field-to-the-reminder-creation-edit-form-when-this-field-is-set-the-reminder-should-be-stored-with-a-repeat-until-date-and-generate-daily-occurrences-from-the-reminder-s-start-date-up-to-and-including-the-specified-end-date",
+      "title": "Add a 'Repeat Daily Until' date field to the reminder creation/edit form. When this field is set, the reminder should be stored with a repeat-until date and generate daily occurrences from the reminder's start date up to and including the specified end date.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-on-app-startup-display-a-dismissible-modal-popup-that-shows-all-pending-and-upcoming-reminders-for-the-current-day-including-any-reminders-that-are-active-due-to-the-daily-repeat-feature-the-popup-must-have-a-visible-close-dismiss-button-and-must-not-reappear-until-the-next-app-session",
+      "title": "On app startup, display a dismissible modal popup that shows all pending and upcoming reminders for the current day, including any reminders that are active due to the daily-repeat feature. The popup must have a visible close/dismiss button and must not reappear until the next app session.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "version": 1
+    },
+    {
+      "id": "feature-add-an-import-button-in-the-customers-tab-that-allows-users-to-upload-a-pdf-or-excel-file-the-app-should-parse-the-uploaded-file-and-extract-customer-fields-name-phone-email-and-any-other-detectable-fields-such-as-address-or-company-and-insert-them-as-new-customer-records-display-a-preview-of-parsed-rows-before-confirming-the-import",
+      "title": "Add an import button in the Customers tab that allows users to upload a PDF or Excel file. The app should parse the uploaded file and extract customer fields (name, phone, email, and any other detectable fields such as address or company) and insert them as new customer records. Display a preview of parsed rows before confirming the import.",
+      "reqIds": [
+        "REQ-3"
+      ],
+      "version": 1
+    }
+  ],
+  "new_feature_requests": [
+    {
+      "id": "AR-1",
+      "summary": "Daily Reminder: add 'Repeat Daily Until [date]' option and dismissible app-start popup showing all pending/upcoming reminders for the day",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-2",
+      "summary": "Customer Tab: import customer details via PDF and Excel, parsing and extracting fields (name, phone, email, etc.) into customer records",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-6",
+      "summary": "Update the backend Reminder data model to include an optional repeatUntilDate field (stored as ?Int or ?Text timestamp). Update the createReminder and related query functions to handle this field. Add a query function that returns all reminders active on a given date, accounting for daily-repeat reminders.",
+      "reqIds": [
+        "REQ-4"
+      ],
+      "status": "pending"
+    }
+  ],
+  "gameProjectType": "none",
+  "projectName": "WorkDesk Pro",
+  "clarification_mode": "instant",
+  "clarification_rounds": 0
+}

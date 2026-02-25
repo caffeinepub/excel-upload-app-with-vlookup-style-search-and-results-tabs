@@ -1,0 +1,87 @@
+{
+  "kind": "implementation_plan",
+  "version": "1.0",
+  "title": "Add Daily Reminder repeat-until-date, app-start popup, and Customer PDF/Excel import",
+  "requirements": [
+    {
+      "id": "REQ-1",
+      "summary": "Add 'Repeat Daily Until' date field to reminder form for daily recurring reminders",
+      "acceptanceCriteria": [
+        "Reminder form has an optional 'Repeat Daily Until' date picker field",
+        "A reminder with a repeat-until date triggers on every day from start date to end date inclusive",
+        "Existing reminders without a repeat-until date are unaffected"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/pages/RemindersTab.tsx",
+          "operation": "modify",
+          "description": "Add an optional 'Repeat Daily Until' date input field to the reminder creation and edit dialogs. Wire the field to the createReminder and updateReminder mutations, passing the repeatUntilDate as a bigint timestamp (milliseconds since epoch) or null when not set. Ensure the field is clearly labeled and positioned after the date/time fields. Verify the backend's createReminder and updateReminder methods accept repeatUntilDate as the fourth parameter before implementing."
+        },
+        {
+          "path": "frontend/src/hooks/useProductivityMutations.ts",
+          "operation": "modify",
+          "description": "Update the createReminder and updateReminder mutation functions to accept an optional repeatUntilDate parameter (bigint | null). Convert the date input to a bigint timestamp in milliseconds before passing it to the backend actor methods. Ensure validation handles null values correctly and that the mutation invalidates the reminders query on success."
+        }
+      ]
+    },
+    {
+      "id": "REQ-2",
+      "summary": "Display a dismissible modal popup on app startup showing all reminders due today",
+      "acceptanceCriteria": [
+        "A modal popup appears automatically when the app first loads each session",
+        "The popup lists all reminders due today (including daily-repeat reminders active today)",
+        "Each reminder entry shows its title, time, and any relevant details",
+        "A dismiss/close button closes the popup without any further action",
+        "The popup does not reappear during the same browser session after dismissal",
+        "If there are no reminders for today the popup is not shown"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
+          "operation": "create",
+          "description": "Create a dismissible modal component that fetches and displays all reminders due for the current day using getRemindersForDate(Date.now()). Show reminder message, date, and time for each entry. Include a prominent close/dismiss button. Use shadcn/ui Dialog component for the modal. Store dismissal state in sessionStorage to prevent reappearing during the same session. Only render the modal if there are reminders for today and the session has not previously dismissed it. Verify the backend's getRemindersForDate method before implementing."
+        },
+        {
+          "path": "frontend/src/App.tsx",
+          "operation": "modify",
+          "description": "Import and render the DailyRemindersStartupModal component near the root of the app layout (after authentication is confirmed but before the main content). Ensure the modal appears on app load and respects the session-based dismissal logic. Position it so it does not interfere with the UserProfileSetup modal or other startup flows."
+        },
+        {
+          "path": "frontend/src/hooks/useProductivityQueries.ts",
+          "operation": "modify",
+          "description": "Add a new React Query hook useGetRemindersForDate(dateMs: bigint) that calls actor.getRemindersForDate(dateMs) and returns the list of reminders active on the specified date. Include proper identity and actor checks, and handle loading/error states. This hook will be used by the startup modal to fetch today's reminders."
+        }
+      ]
+    },
+    {
+      "id": "REQ-3",
+      "summary": "Add import button in Customers tab to upload and parse PDF or Excel files into customer records",
+      "acceptanceCriteria": [
+        "Customers tab has an 'Import' button that opens a file picker accepting .pdf, .xlsx, and .xls files",
+        "Uploaded Excel files are parsed using SheetJS to extract rows mapping to customer fields",
+        "Uploaded PDF files are parsed to extract customer field data from tabular or structured content",
+        "A preview table is shown with the parsed rows before the user confirms import",
+        "On confirmation, extracted records are added as new customer entries via the backend",
+        "Duplicate detection warns the user if an imported record shares a phone or email with an existing customer",
+        "All existing customer CRUD functionality remains unaffected"
+      ],
+      "file_operations": [
+        {
+          "path": "frontend/src/components/customers/CustomerImportDialog.tsx",
+          "operation": "create",
+          "description": "Create a dialog component with a file input that accepts .pdf, .xlsx, and .xls files. Use SheetJS (dynamically loaded via frontend/src/lib/excel/parseWorkbook.ts) to parse Excel files, extracting columns that map to customer fields (name, email, phoneNumber, address, company, workDetails). For PDF files, dynamically load a PDF parsing library (e.g., pdf-parse or pdfjs-dist) to extract tabular data and map it to customer fields. Display a preview table showing the parsed rows with column headers. Include a 'Confirm Import' button that iterates over the parsed rows, checks for duplicates by comparing phone/email with existing customers, and calls addCustomer for each unique record. Show warnings for duplicates and allow the user to skip or override. Use shadcn/ui Dialog and Table components. Verify the component's usage instructions before implementing."
+        },
+        {
+          "path": "frontend/src/pages/CustomersTab.tsx",
+          "operation": "modify",
+          "description": "Add an 'Import' button next to the existing 'Add Customer' button in the customers tab header. Wire the button to open the CustomerImportDialog component. Ensure the dialog integrates with the existing customer list and triggers a refetch of customers after a successful import. Maintain all existing customer CRUD functionality without modification."
+        },
+        {
+          "path": "frontend/src/hooks/useCustomers.ts",
+          "operation": "modify",
+          "description": "Add a new mutation hook useImportCustomers that accepts an array of customer objects (parsed from Excel/PDF) and iterates over them, calling addCustomer for each. Include duplicate detection logic that compares the incoming phone/email with existing customers fetched via useGetCustomers. Return a result object indicating success count, duplicate count, and any errors. Invalidate the customers query on success."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "kind": "spec_vs_diff_report",
+  "version": "1.0",
+  "generatedAt": "2026-02-25T08:33:29.584Z",
+  "summary": "The diff implements all four requirements with substantial coverage. REQ-1 (repeat-until date field in form and storage), REQ-2 (startup modal popup), REQ-3 (customer import with PDF/Excel parsing and preview), and REQ-4 (backend model and getRemindersForDate query) are all present. However, duplicate detection in import silently skips duplicates rather than surfacing a clear user-facing warning as required by REQ-3.",
+  "missing_requirements": [
+    {
+      "requirement": "Duplicate detection warns the user if an imported record shares a phone or email with an existing customer",
+      "reason": "The useImportCustomers hook silently increments duplicateCount and skips duplicates without adding them, but there is no clear evidence in the diff that the CustomerImportDialog surfaces a visible warning to the user about detected duplicates during the preview or confirmation step. The ImportResult object has duplicateCount but the dialog UI (truncated) does not clearly show a warning message presented to the user before or during import confirmation.",
+      "evidence": [
+        "frontend/src/hooks/useCustomers.ts",
+        "frontend/src/components/customers/CustomerImportDialog.tsx"
+      ]
+    }
+  ],
+  "hallucinated_features": [],
+  "confidence": 0.72,
+  "changed_files": [
+    "backend/main.mo",
+    "backend/migration.mo",
+    "frontend-file-summaries.txt",
+    "frontend/src/App.tsx",
+    "frontend/src/components/customers/CustomerFormDialog.tsx",
+    "frontend/src/components/customers/CustomerImportDialog.tsx",
+    "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
+    "frontend/src/components/reminders/InAppReminderNotifier.tsx",
+    "frontend/src/context/ReminderEventsContext.tsx",
+    "frontend/src/hooks/useAttendance.ts",
+    "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
+    "frontend/src/hooks/useCustomers.ts",
+    "frontend/src/hooks/useHolidays.ts",
+    "frontend/src/hooks/useInAppReminderNotifications.ts",
+    "frontend/src/hooks/useProductivityMutations.ts",
+    "frontend/src/hooks/useProductivityQueries.ts",
+    "frontend/src/hooks/useQueries.ts",
+    "frontend/src/hooks/useRegularExpense.ts",
+    "frontend/src/pages/AttendanceTab.tsx",
+    "frontend/src/pages/CustomersTab.tsx",
+    "frontend/src/pages/DeskboardTab.tsx",
+    "frontend/src/pages/RemindersTab.tsx",
+    "frontend/src/pages/TodoTab.tsx",
+    "project_state.json"
+  ]
+}
