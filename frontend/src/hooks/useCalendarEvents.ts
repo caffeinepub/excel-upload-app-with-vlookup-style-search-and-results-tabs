@@ -1,103 +1,64 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
+import { useIsCallerAdmin } from './useApproval';
+import type { CalendarEvent } from '../backend';
 
-export interface CalendarEvent {
-  id: bigint;
-  title: string;
-  description: string;
-  startTime: bigint;
-  endTime?: bigint;
-  location?: string;
-  participants: string[];
-  source: 'user' | 'attendance';
-  isDeletable: boolean;
-}
+// Re-export CalendarEvent so existing imports from this file still work
+export type { CalendarEvent };
 
-/**
- * Query to fetch calendar events
- * Note: Backend doesn't support calendar events yet, returns empty array
- */
 export function useGetCalendarEvents() {
   const { actor, isFetching } = useActor();
+  const { data: isAdmin } = useIsCallerAdmin();
 
   return useQuery<CalendarEvent[]>({
-    queryKey: ['calendarEvents'],
+    queryKey: ['calendarEvents', isAdmin],
     queryFn: async () => {
-      // Backend doesn't support calendar events yet
-      return [];
+      if (!actor) return [];
+      if (isAdmin) {
+        return actor.getAllCalendarEvents();
+      }
+      return actor.getCalendarEvents();
     },
     enabled: !!actor && !isFetching,
-    retry: 1,
   });
 }
 
-/**
- * Mutation to create a calendar event
- * Note: Backend doesn't support calendar events yet
- */
 export function useCreateCalendarEvent() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, description, startTime }: { title: string; description: string; startTime: bigint }) => {
-      if (!identity) {
-        throw new Error('Please log in to create calendar events');
-      }
-
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      // Backend doesn't support calendar events yet
-      throw new Error('Calendar events feature is not yet available. Backend support is coming soon.');
+    mutationFn: async (params: {
+      title: string;
+      dateTime: bigint;
+      description: string;
+      isAdminOnly: boolean;
+    }) => {
+      if (!actor) throw new Error('Actor not available');
+      return actor.createCalendarEvent(
+        params.title,
+        params.dateTime,
+        params.description,
+        params.isAdminOnly
+      );
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
     },
-    onError: (error) => {
-      console.error('Failed to create calendar event:', error);
-    },
   });
 }
 
-/**
- * Mutation to delete a calendar event
- * Note: Backend doesn't support calendar events yet
- */
 export function useDeleteCalendarEvent() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      if (!identity) {
-        throw new Error('Please log in to delete calendar events');
-      }
-
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      // Backend doesn't support calendar events yet
-      throw new Error('Calendar events feature is not yet available. Backend support is coming soon.');
+      if (!actor) throw new Error('Actor not available');
+      return actor.deleteCalendarEvent(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['calendarEvents'] });
-    },
-    onError: (error) => {
-      console.error('Failed to delete calendar event:', error);
     },
   });
 }

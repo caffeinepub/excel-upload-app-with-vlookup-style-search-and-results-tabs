@@ -1,12 +1,14 @@
 # Specification
 
 ## Summary
-**Goal:** Add a "Repeat Daily Until" option for reminders, a startup popup showing today's reminders, and a customer import feature supporting PDF and Excel files.
+**Goal:** Fix user profile display names and avatars so they fully persist across sessions and canister upgrades in Crystal Atlas Teams.
 
 **Planned changes:**
-- Add an optional "Repeat Daily Until" date picker to the reminder creation/edit form; reminders with this field trigger daily from start date through the specified end date
-- Update the backend Reminder data model to store an optional `repeatUntilDate` field and add a `getRemindersForDate` query that resolves daily-repeat reminders correctly
-- On app startup, show a dismissible modal listing all reminders due today (including daily-repeat occurrences); the popup only appears once per session and is skipped if no reminders are due today
-- Add an "Import" button in the Customers tab that accepts `.pdf`, `.xlsx`, and `.xls` files, parses them to extract customer fields (name, phone, email, address, company, etc.), shows a preview table of parsed rows, warns on duplicate phone/email matches, and inserts confirmed records as new customers
+- Store user profile data (displayName, profilePicture) in stable backend storage so it survives canister upgrades and session logouts
+- Ensure the `getUserProfile` backend call consistently returns saved display names and avatars for the authenticated principal
+- Run a migration to convert any legacy profile entries (using `name`) to the new schema with `displayName`, preserving existing values
+- Update `useUserProfile` hook and `ProfileEditorDialog` to correctly read from and write to the backend
+- After saving changes, immediately reflect updated display name and avatar in the sidebar and message feed without a hard refresh
+- On login, populate the UI with profile data fetched from the backend
 
-**User-visible outcome:** Users can set recurring daily reminders with an end date, see all today's reminders in a popup when the app loads, and bulk-import customer records from PDF or Excel files with a preview and duplicate warning before confirming.
+**User-visible outcome:** Users who set a display name or upload a profile picture will see their saved profile consistently after logging out and back in, and their avatar will appear correctly in the message feed and sidebar without needing to re-enter any information.

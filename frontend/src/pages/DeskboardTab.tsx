@@ -1,477 +1,77 @@
 import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { useAppState } from '../state/appState';
-import { useGetReminders, useGetTodos, useGetNotes } from '../hooks/useProductivityQueries';
-import { useCreateReminder, useCreateTodo, useCreateNote } from '../hooks/useProductivityMutations';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { Upload, Search as SearchIcon, History, FileCheck, Calendar, Bell, CheckSquare, StickyNote, AlertCircle, Wallet } from 'lucide-react';
-import { ClockCalendarWidget } from '../components/deskboard/ClockCalendarWidget';
-import { ExploreHerePanel } from '../components/search/ExploreHerePanel';
+import ClockCalendarWidget from '../components/deskboard/ClockCalendarWidget';
+import ExploreHerePanel from '../components/search/ExploreHerePanel';
+import { Telescope, LayoutDashboard, ChevronDown, ChevronUp } from 'lucide-react';
 
-interface DeskboardTabProps {
-  onNavigate: (tab: string) => void;
-}
-
-export function DeskboardTab({ onNavigate }: DeskboardTabProps) {
-  const { workbook } = useAppState();
-  const { identity } = useInternetIdentity();
-  const isAuthenticated = !!identity;
-
-  // Search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showExplorePanel, setShowExplorePanel] = useState(false);
-
-  // Quick add dialogs
-  const [reminderDialogOpen, setReminderDialogOpen] = useState(false);
-  const [todoDialogOpen, setTodoDialogOpen] = useState(false);
-  const [noteDialogOpen, setNoteDialogOpen] = useState(false);
-
-  // Quick add form states
-  const [reminderMessage, setReminderMessage] = useState('');
-  const [reminderDate, setReminderDate] = useState('');
-  const [reminderTime, setReminderTime] = useState('');
-  const [todoText, setTodoText] = useState('');
-  const [noteTitle, setNoteTitle] = useState('');
-  const [noteContent, setNoteContent] = useState('');
-
-  // Productivity data
-  const { data: reminders = [], isLoading: remindersLoading } = useGetReminders();
-  const { data: todos = [], isLoading: todosLoading } = useGetTodos();
-  const { data: notes = [], isLoading: notesLoading } = useGetNotes();
-
-  // Mutations
-  const createReminderMutation = useCreateReminder();
-  const createTodoMutation = useCreateTodo();
-  const createNoteMutation = useCreateNote();
-
-  const handleExploreSearch = () => {
-    if (!searchQuery.trim()) return;
-    setShowExplorePanel(true);
-  };
-
-  const handleCreateReminder = async () => {
-    if (!reminderMessage.trim() || !reminderDate || !reminderTime) return;
-    try {
-      await createReminderMutation.mutateAsync({
-        message: reminderMessage,
-        date: reminderDate,
-        time: reminderTime,
-      });
-      setReminderDialogOpen(false);
-      setReminderMessage('');
-      setReminderDate('');
-      setReminderTime('');
-    } catch (error) {
-      console.error('Failed to create reminder:', error);
-    }
-  };
-
-  const handleCreateTodo = async () => {
-    if (!todoText.trim()) return;
-    try {
-      await createTodoMutation.mutateAsync(todoText);
-      setTodoDialogOpen(false);
-      setTodoText('');
-    } catch (error) {
-      console.error('Failed to create todo:', error);
-    }
-  };
-
-  const handleCreateNote = async () => {
-    if (!noteTitle.trim()) return;
-    try {
-      await createNoteMutation.mutateAsync({
-        title: noteTitle,
-        content: noteContent,
-      });
-      setNoteDialogOpen(false);
-      setNoteTitle('');
-      setNoteContent('');
-    } catch (error) {
-      console.error('Failed to create note:', error);
-    }
-  };
-
-  // Get upcoming reminders (next 5) sorted by date+time
-  const upcomingReminders = reminders
-    .filter((r) => {
-      try {
-        const d = new Date(`${r.date}T${r.time}:00`);
-        return d.getTime() >= Date.now() - 60000; // include reminders from last minute
-      } catch {
-        return false;
-      }
-    })
-    .sort((a, b) => {
-      const ta = new Date(`${a.date}T${a.time}:00`).getTime();
-      const tb = new Date(`${b.date}T${b.time}:00`).getTime();
-      return ta - tb;
-    })
-    .slice(0, 5);
-
-  // Get open todos (first 5)
-  const openTodos = todos.filter((t) => !t.completed).slice(0, 5);
-
-  // suppress unused warning for notesLoading
-  void notesLoading;
-  void todosLoading;
+export default function DeskboardTab() {
+  const [exploreOpen, setExploreOpen] = useState(false);
 
   return (
-    <div className="deskboard-container">
-      <div className="deskboard-content space-y-5">
-        <div className="text-center mb-6">
-          <h1 className="text-3xl font-semibold mb-2 text-foreground/90">Welcome to Your Deskboard</h1>
-          <p className="text-muted-foreground/80">Your central hub for productivity and data management</p>
+    <div className="min-h-full bg-background p-4 md:p-6 space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+          <LayoutDashboard className="w-5 h-5 text-primary" />
+        </div>
+        <div>
+          <h1 className="text-xl font-bold text-foreground">Dashboard</h1>
+          <p className="text-xs text-muted-foreground">Your personal workspace overview</p>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Clock & Calendar */}
+        <div className="lg:col-span-1">
+          <ClockCalendarWidget />
         </div>
 
-        {/* Clock and Calendar Widget - Always Visible */}
-        <ClockCalendarWidget />
-
-        {/* Explore Here Search - Inline */}
-        <Card className="mac-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Explore Here</CardTitle>
-            <CardDescription>Search the web directly from your deskboard</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                placeholder="Search anything..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleExploreSearch()}
-                className="flex-1"
-              />
-              <Button onClick={handleExploreSearch} disabled={!searchQuery.trim()}>
-                <SearchIcon className="w-4 h-4 mr-2" />
-                Search
-              </Button>
-            </div>
-            <ExploreHerePanel
-              query={searchQuery}
-              isOpen={showExplorePanel}
-              onClose={() => setShowExplorePanel(false)}
-            />
-          </CardContent>
-        </Card>
-
-        {/* Activity Summary */}
-        <Card className="mac-card">
-          <CardHeader>
-            <CardTitle className="text-lg">Activity Summary</CardTitle>
-            <CardDescription>Quick overview of your data and tasks</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <button
-                onClick={() => onNavigate('upload')}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
-              >
-                <Upload className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">Upload</span>
-                <span className="text-xs text-muted-foreground">
-                  {workbook ? 'Active' : 'No file'}
-                </span>
-              </button>
-              <button
-                onClick={() => onNavigate('search')}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
-              >
-                <SearchIcon className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">Search</span>
-                <span className="text-xs text-muted-foreground">VLOOKUP</span>
-              </button>
-              <button
-                onClick={() => onNavigate('history')}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
-              >
-                <History className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">History</span>
-                <span className="text-xs text-muted-foreground">View logs</span>
-              </button>
-              <button
-                onClick={() => onNavigate('update-checking')}
-                className="flex flex-col items-center gap-2 p-4 rounded-lg hover:bg-accent transition-colors"
-              >
-                <FileCheck className="w-6 h-6 text-primary" />
-                <span className="text-sm font-medium">Updates</span>
-                <span className="text-xs text-muted-foreground">Compare</span>
-              </button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Productivity Previews */}
-        {isAuthenticated && (
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Upcoming Reminders */}
-            <Card className="mac-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Bell className="w-4 h-4" />
-                    Upcoming Reminders
-                  </CardTitle>
-                  <CardDescription className="text-xs">Next 5 reminders</CardDescription>
-                </div>
-                <Dialog open={reminderDialogOpen} onOpenChange={setReminderDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost">
-                      Add
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add General Reminder</DialogTitle>
-                      <DialogDescription>Create a new general reminder</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="quick-reminder-message">Message</Label>
-                        <Input
-                          id="quick-reminder-message"
-                          value={reminderMessage}
-                          onChange={(e) => setReminderMessage(e.target.value)}
-                          placeholder="Team meeting"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="quick-reminder-date">Date</Label>
-                        <Input
-                          id="quick-reminder-date"
-                          type="date"
-                          value={reminderDate}
-                          onChange={(e) => setReminderDate(e.target.value)}
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="quick-reminder-time">Time</Label>
-                        <Input
-                          id="quick-reminder-time"
-                          type="time"
-                          value={reminderTime}
-                          onChange={(e) => setReminderTime(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        onClick={handleCreateReminder}
-                        disabled={
-                          createReminderMutation.isPending ||
-                          !reminderMessage.trim() ||
-                          !reminderDate ||
-                          !reminderTime
-                        }
-                      >
-                        {createReminderMutation.isPending ? 'Creating...' : 'Create'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {remindersLoading ? (
-                  <p className="text-sm text-muted-foreground">Loading...</p>
-                ) : upcomingReminders.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No upcoming reminders</p>
-                ) : (
-                  <div className="space-y-2">
-                    {upcomingReminders.map((reminder) => (
-                      <div key={Number(reminder.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p className="font-medium">{reminder.message}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {reminder.date} at {reminder.time}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Calendar Events */}
-            <Card className="mac-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Calendar className="w-4 h-4" />
-                    Calendar Events
-                  </CardTitle>
-                  <CardDescription className="text-xs">Upcoming events</CardDescription>
-                </div>
-                <Button size="sm" variant="ghost" onClick={() => onNavigate('calendar')}>
-                  View
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">No upcoming events</p>
-              </CardContent>
-            </Card>
-
-            {/* Open To-Dos */}
-            <Card className="mac-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <CheckSquare className="w-4 h-4" />
-                    Open To-Dos
-                  </CardTitle>
-                  <CardDescription className="text-xs">First 5 open tasks</CardDescription>
-                </div>
-                <Dialog open={todoDialogOpen} onOpenChange={setTodoDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost">
-                      Add
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add To-Do</DialogTitle>
-                      <DialogDescription>Create a new to-do item</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="quick-todo-text">Task</Label>
-                        <Textarea
-                          id="quick-todo-text"
-                          value={todoText}
-                          onChange={(e) => setTodoText(e.target.value)}
-                          placeholder="Complete project report"
-                          rows={3}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        onClick={handleCreateTodo}
-                        disabled={createTodoMutation.isPending || !todoText.trim()}
-                      >
-                        {createTodoMutation.isPending ? 'Creating...' : 'Create'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {openTodos.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No open to-dos</p>
-                ) : (
-                  <div className="space-y-1">
-                    {openTodos.map((todo) => (
-                      <div key={Number(todo.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p>{todo.text}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Recent Notes */}
-            <Card className="mac-card">
-              <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <StickyNote className="w-4 h-4" />
-                    Recent Notes
-                  </CardTitle>
-                  <CardDescription className="text-xs">Latest notes</CardDescription>
-                </div>
-                <Dialog open={noteDialogOpen} onOpenChange={setNoteDialogOpen}>
-                  <DialogTrigger asChild>
-                    <Button size="sm" variant="ghost">
-                      Add
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Add Note</DialogTitle>
-                      <DialogDescription>Create a new note</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4">
-                      <div>
-                        <Label htmlFor="quick-note-title">Title</Label>
-                        <Input
-                          id="quick-note-title"
-                          value={noteTitle}
-                          onChange={(e) => setNoteTitle(e.target.value)}
-                          placeholder="Note title"
-                        />
-                      </div>
-                      <div>
-                        <Label htmlFor="quick-note-content">Content</Label>
-                        <Textarea
-                          id="quick-note-content"
-                          value={noteContent}
-                          onChange={(e) => setNoteContent(e.target.value)}
-                          placeholder="Note content..."
-                          rows={4}
-                        />
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button
-                        onClick={handleCreateNote}
-                        disabled={createNoteMutation.isPending || !noteTitle.trim()}
-                      >
-                        {createNoteMutation.isPending ? 'Creating...' : 'Create'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-              </CardHeader>
-              <CardContent>
-                {notes.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No notes yet</p>
-                ) : (
-                  <div className="space-y-2">
-                    {notes.slice(0, 5).map((note) => (
-                      <div key={Number(note.id)} className="text-sm border-l-2 border-primary pl-2">
-                        <p className="font-medium">{note.title || 'Untitled'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{note.content}</p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+        {/* Welcome / Stats */}
+        <div className="lg:col-span-2 space-y-4">
+          <div className="rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 border border-border/40 p-6 shadow-mac-soft">
+            <h2 className="text-lg font-bold text-foreground mb-1">Welcome to Crystal Atlas</h2>
+            <p className="text-sm text-muted-foreground">
+              Your all-in-one workspace for productivity, team collaboration, and data management.
+              Use the sidebar to navigate between features.
+            </p>
           </div>
-        )}
 
-        {/* Quick Actions for Expense */}
-        {isAuthenticated && (
-          <Card className="mac-card">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Wallet className="w-4 h-4" />
-                Quick Actions
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-wrap gap-2">
-                <Button variant="outline" size="sm" onClick={() => onNavigate('regular-expense')}>
-                  <Wallet className="w-4 h-4 mr-2" />
-                  Manage Expenses
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => onNavigate('attendance')}>
-                  <CheckSquare className="w-4 h-4 mr-2" />
-                  Attendance
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => onNavigate('customers')}>
-                  <AlertCircle className="w-4 h-4 mr-2" />
-                  Customers
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="rounded-2xl bg-card border border-border/40 p-4 shadow-mac-soft">
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Quick Access</div>
+              <div className="text-sm font-semibold text-foreground">Team Chat, Notes, Todos</div>
+              <div className="text-xs text-muted-foreground mt-1">Stay connected and organized</div>
+            </div>
+            <div className="rounded-2xl bg-card border border-border/40 p-4 shadow-mac-soft">
+              <div className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Data Tools</div>
+              <div className="text-sm font-semibold text-foreground">VLOOKUP, Filter, Compare</div>
+              <div className="text-xs text-muted-foreground mt-1">Powerful Excel operations</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Explore Universe Section */}
+      <div className="rounded-2xl bg-card border border-border/40 shadow-mac-soft overflow-hidden">
+        <button
+          onClick={() => setExploreOpen(o => !o)}
+          className="w-full flex items-center justify-between p-5 hover:bg-accent/10 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-indigo-500/10 flex items-center justify-center">
+              <Telescope className="w-5 h-5 text-indigo-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-bold text-foreground">Explore Universe</div>
+              <div className="text-xs text-muted-foreground">Search and discover topics powered by DuckDuckGo</div>
+            </div>
+          </div>
+          {exploreOpen ? <ChevronUp className="w-4 h-4 text-muted-foreground" /> : <ChevronDown className="w-4 h-4 text-muted-foreground" />}
+        </button>
+        {exploreOpen && (
+          <div className="px-5 pb-5 border-t border-border/40 pt-4">
+            <ExploreHerePanel />
+          </div>
         )}
       </div>
     </div>

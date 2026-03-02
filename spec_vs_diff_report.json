@@ -1,44 +1,59 @@
 {
   "kind": "spec_vs_diff_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T08:33:29.584Z",
-  "summary": "The diff implements all four requirements with substantial coverage. REQ-1 (repeat-until date field in form and storage), REQ-2 (startup modal popup), REQ-3 (customer import with PDF/Excel parsing and preview), and REQ-4 (backend model and getRemindersForDate query) are all present. However, duplicate detection in import silently skips duplicates rather than surfacing a clear user-facing warning as required by REQ-3.",
+  "generatedAt": "2026-02-28T08:12:08.090Z",
+  "summary": "The diff implements frontend profile persistence (REQ-3) well, with updated hooks, ProfileEditorDialog, MessageFeed avatars, and avatar utility helpers. The backend (backend/main.mo) includes the UserProfile type with displayName and profilePicture fields and uses stable storage patterns. However, REQ-4 is only superficially addressed: migration.mo exists but is essentially a no-op that does not actually migrate legacy 'name' fields to 'displayName'. REQ-1 and REQ-2 backend stable storage cannot be fully confirmed from the truncated main.mo diff, but the schema and migration module are present.",
   "missing_requirements": [
     {
-      "requirement": "Duplicate detection warns the user if an imported record shares a phone or email with an existing customer",
-      "reason": "The useImportCustomers hook silently increments duplicateCount and skips duplicates without adding them, but there is no clear evidence in the diff that the CustomerImportDialog surfaces a visible warning to the user about detected duplicates during the preview or confirmation step. The ImportResult object has duplicateCount but the dialog UI (truncated) does not clearly show a warning message presented to the user before or during import confirmation.",
+      "id": "REQ-4",
+      "requirement": "Run a migration that converts legacy profile entries with a 'name' field to use 'displayName', preserving the value. The migration must be idempotent and must not drop or reset any previously stored user profiles.",
+      "reason": "The migration.mo file defines a run() function that simply returns the old actor unchanged (identity transform). It does not inspect or transform any legacy 'name' field to 'displayName'. There is no logic to detect or migrate legacy schema entries.",
       "evidence": [
-        "frontend/src/hooks/useCustomers.ts",
-        "frontend/src/components/customers/CustomerImportDialog.tsx"
+        "backend/migration.mo"
       ]
     }
   ],
-  "hallucinated_features": [],
+  "hallucinated_features": [
+    {
+      "description": "A new useAvatarUrl hook that manages blob URL lifecycle (create and revoke) for profile pictures via useEffect.",
+      "reason": "The build request only asked for profile persistence fixes and updated hooks/ProfileEditorDialog. A dedicated useAvatarUrl hook was not explicitly requested, though it supports REQ-3 indirectly.",
+      "evidence": [
+        "frontend/src/hooks/useAvatarUrl.ts"
+      ]
+    },
+    {
+      "description": "A new avatarUtils.ts library with profilePictureToBlobUrl and getInitials helper functions.",
+      "reason": "The build request did not explicitly request a new utility library file. This is a supporting addition beyond the stated requirements, though it supports REQ-3.",
+      "evidence": [
+        "frontend/src/lib/avatarUtils.ts"
+      ]
+    },
+    {
+      "description": "CallPlaceholderModal component for voice and video call placeholders.",
+      "reason": "The build request explicitly lists implementing any new messaging, channel, or DM features as a non-goal, and call modals are unrelated to profile persistence. This component appears unrelated to any of REQ-1 through REQ-4.",
+      "evidence": [
+        "frontend/src/components/team/CallPlaceholderModal.tsx"
+      ]
+    }
+  ],
   "confidence": 0.72,
   "changed_files": [
     "backend/main.mo",
     "backend/migration.mo",
     "frontend-file-summaries.txt",
     "frontend/src/App.tsx",
-    "frontend/src/components/customers/CustomerFormDialog.tsx",
-    "frontend/src/components/customers/CustomerImportDialog.tsx",
-    "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
-    "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-    "frontend/src/context/ReminderEventsContext.tsx",
-    "frontend/src/hooks/useAttendance.ts",
-    "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-    "frontend/src/hooks/useCustomers.ts",
-    "frontend/src/hooks/useHolidays.ts",
-    "frontend/src/hooks/useInAppReminderNotifications.ts",
-    "frontend/src/hooks/useProductivityMutations.ts",
-    "frontend/src/hooks/useProductivityQueries.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/hooks/useRegularExpense.ts",
-    "frontend/src/pages/AttendanceTab.tsx",
-    "frontend/src/pages/CustomersTab.tsx",
-    "frontend/src/pages/DeskboardTab.tsx",
-    "frontend/src/pages/RemindersTab.tsx",
-    "frontend/src/pages/TodoTab.tsx",
+    "frontend/src/components/auth/UserProfileSetup.tsx",
+    "frontend/src/components/team/CallPlaceholderModal.tsx",
+    "frontend/src/components/team/ChannelView.tsx",
+    "frontend/src/components/team/DirectMessageView.tsx",
+    "frontend/src/components/team/MessageFeed.tsx",
+    "frontend/src/components/team/ProfileEditorDialog.tsx",
+    "frontend/src/components/team/TeamSidebar.tsx",
+    "frontend/src/hooks/useAvatarUrl.ts",
+    "frontend/src/hooks/useTeamMessaging.ts",
+    "frontend/src/hooks/useUserProfile.ts",
+    "frontend/src/lib/avatarUtils.ts",
+    "frontend/src/pages/TeamTab.tsx",
     "project_state.json"
   ]
 }

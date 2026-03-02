@@ -2,7 +2,16 @@ import { useMemo } from 'react';
 import { useActor } from './useActor';
 import { useQuery } from '@tanstack/react-query';
 import type { AttendanceDayEntry, AttendanceStatus } from '../backend';
-import type { CalendarEvent } from './useCalendarEvents';
+
+// Local interface for attendance-derived calendar events
+export interface AttendanceCalendarEvent {
+  id: bigint;
+  title: string;
+  description: string;
+  startTime: bigint;
+  source: 'attendance';
+  isDeletable: boolean;
+}
 
 const STATUS_LABELS: Record<AttendanceStatus, string> = {
   present: 'Present',
@@ -13,9 +22,6 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
   companyLeave: 'Company Leave',
 };
 
-/**
- * Hook to fetch all attendance entries and map them to calendar events
- */
 export function useAttendanceCalendarOverlay() {
   const { actor, isFetching } = useActor();
 
@@ -29,25 +35,20 @@ export function useAttendanceCalendarOverlay() {
     retry: 1,
   });
 
-  // Map attendance entries to calendar events
-  const attendanceEvents = useMemo<CalendarEvent[]>(() => {
+  const attendanceEvents = useMemo<AttendanceCalendarEvent[]>(() => {
     if (!query.data) return [];
 
     return query.data.map(([date, entry]) => {
-      // Parse date string (YYYY-MM-DD) to timestamp
       const dateObj = new Date(date + 'T00:00:00');
       const startTime = BigInt(dateObj.getTime());
 
-      // Format working time
       const hours = Math.floor(Number(entry.workingTime) / 3600);
       const minutes = Math.floor((Number(entry.workingTime) % 3600) / 60);
       const workingTimeStr = hours > 0 || minutes > 0 ? ` (${hours}h ${minutes}m)` : '';
 
-      // Build title
       const statusLabel = STATUS_LABELS[entry.status] || entry.status;
       const title = `${statusLabel}${workingTimeStr}`;
 
-      // Build description
       let description = `Status: ${statusLabel}`;
       if (entry.note) {
         description += `\n\nWork Note: ${entry.note}`;
@@ -62,13 +63,10 @@ export function useAttendanceCalendarOverlay() {
       }
 
       return {
-        id: BigInt(date.replace(/-/g, '')), // Use date as unique ID (e.g., 20260207)
+        id: BigInt(date.replace(/-/g, '')),
         title,
         description,
         startTime,
-        endTime: undefined,
-        location: undefined,
-        participants: [],
         source: 'attendance' as const,
         isDeletable: false,
       };

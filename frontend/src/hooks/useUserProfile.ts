@@ -1,11 +1,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useActor } from './useActor';
+import { UserProfile } from '../backend';
 import { useInternetIdentity } from './useInternetIdentity';
-import type { UserProfile } from '../backend';
 
-/**
- * Query to get the current user's profile
- */
 export function useGetCallerUserProfile() {
   const { actor, isFetching: actorFetching } = useActor();
 
@@ -17,9 +14,9 @@ export function useGetCallerUserProfile() {
     },
     enabled: !!actor && !actorFetching,
     retry: false,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   });
 
-  // Return custom state that properly reflects actor dependency
   return {
     ...query,
     isLoading: actorFetching || query.isLoading,
@@ -27,35 +24,52 @@ export function useGetCallerUserProfile() {
   };
 }
 
-/**
- * Mutation to save the current user's profile
- */
+export function useGetUserProfile(principalStr: string | null | undefined) {
+  const { actor, isFetching: actorFetching } = useActor();
+
+  return useQuery<UserProfile | null>({
+    queryKey: ['userProfile', principalStr],
+    queryFn: async () => {
+      if (!actor || !principalStr) return null;
+      const { Principal } = await import('@dfinity/principal');
+      try {
+        const principal = Principal.fromText(principalStr);
+        return actor.getUserProfile(principal);
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!actor && !actorFetching && !!principalStr,
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export function useSaveCallerUserProfile() {
-  const { actor, isFetching } = useActor();
-  const { identity } = useInternetIdentity();
+  const { actor } = useActor();
   const queryClient = useQueryClient();
+  const { identity } = useInternetIdentity();
 
   return useMutation({
     mutationFn: async (profile: UserProfile) => {
-      if (!identity) {
-        throw new Error('Please log in to save your profile');
-      }
-
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
+      if (!actor) throw new Error('Actor not available');
       await actor.saveCallerUserProfile(profile);
+      return profile;
     },
-    onSuccess: () => {
+    onSuccess: (savedProfile) => {
+      // Update the caller profile cache immediately
+      queryClient.setQueryData(['currentUserProfile'], savedProfile);
+
+      // Also invalidate the per-principal cache for the current user
+      const principalStr = identity?.getPrincipal().toString();
+      if (principalStr) {
+        queryClient.setQueryData(['userProfile', principalStr], savedProfile);
+      }
+
+      // Invalidate to ensure fresh data on next fetch
       queryClient.invalidateQueries({ queryKey: ['currentUserProfile'] });
-    },
-    onError: (error) => {
-      console.error('Failed to save user profile:', error);
+      if (principalStr) {
+        queryClient.invalidateQueries({ queryKey: ['userProfile', principalStr] });
+      }
     },
   });
 }

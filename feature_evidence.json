@@ -2,11 +2,14 @@
   "kind": "feature_evidence_report",
   "features": [
     {
-      "featureId": "feature-add-a-repeat-daily-until-date-field-to-the-reminder-creation-edit-form-when-this-field-is-set-the-reminder-should-be-stored-with-a-repeat-until-date-and-generate-daily-occurrences-from-the-reminder-s-start-date-up-to-and-including-the-specified-end-date",
-      "featureTitle": "Add a 'Repeat Daily Until' date field to the reminder creation/edit form. When this field is set, the reminder should be stored with a repeat-until date and generate daily occurrences from the reminder's start date up to and including the specified end date.",
+      "featureId": "feature-update-the-frontend-profile-hooks-useuserprofile-and-profileeditordialog-to-correctly-read-and-write-display-name-and-avatar-from-to-the-backend-ensuring-the-ui-reflects-the-persisted-values-immediately-after-login-and-after-saving-changes",
+      "featureTitle": "Update the frontend profile hooks (useUserProfile) and ProfileEditorDialog to correctly read and write display name and avatar from/to the backend, ensuring the UI reflects the persisted values immediately after login and after saving changes.",
       "files": [
-        "frontend/src/hooks/useProductivityMutations.ts",
-        "frontend/src/pages/RemindersTab.tsx"
+        "frontend/src/components/auth/UserProfileSetup.tsx",
+        "frontend/src/components/team/MessageFeed.tsx",
+        "frontend/src/components/team/ProfileEditorDialog.tsx",
+        "frontend/src/components/team/TeamSidebar.tsx",
+        "frontend/src/hooks/useUserProfile.ts"
       ],
       "components": [
         "core-infrastructure@1.0.2",
@@ -15,51 +18,8 @@
         "initial-app@1.0.0",
         "github-export-icp-cli@1.0.0",
         "authorization@4.0.0",
-        "user-approval@3.0.0"
-      ],
-      "testIds": [
-        "REQ-1"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-on-app-startup-display-a-dismissible-modal-popup-that-shows-all-pending-and-upcoming-reminders-for-the-current-day-including-any-reminders-that-are-active-due-to-the-daily-repeat-feature-the-popup-must-have-a-visible-close-dismiss-button-and-must-not-reappear-until-the-next-app-session",
-      "featureTitle": "On app startup, display a dismissible modal popup that shows all pending and upcoming reminders for the current day, including any reminders that are active due to the daily-repeat feature. The popup must have a visible close/dismiss button and must not reappear until the next app session.",
-      "files": [
-        "frontend/src/App.tsx",
-        "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
-        "frontend/src/hooks/useProductivityQueries.ts"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "user-approval@3.0.0"
-      ],
-      "testIds": [
-        "REQ-2"
-      ],
-      "confidence": "high"
-    },
-    {
-      "featureId": "feature-add-an-import-button-in-the-customers-tab-that-allows-users-to-upload-a-pdf-or-excel-file-the-app-should-parse-the-uploaded-file-and-extract-customer-fields-name-phone-email-and-any-other-detectable-fields-such-as-address-or-company-and-insert-them-as-new-customer-records-display-a-preview-of-parsed-rows-before-confirming-the-import",
-      "featureTitle": "Add an import button in the Customers tab that allows users to upload a PDF or Excel file. The app should parse the uploaded file and extract customer fields (name, phone, email, and any other detectable fields such as address or company) and insert them as new customer records. Display a preview of parsed rows before confirming the import.",
-      "files": [
-        "frontend/src/components/customers/CustomerImportDialog.tsx",
-        "frontend/src/hooks/useCustomers.ts",
-        "frontend/src/pages/CustomersTab.tsx"
-      ],
-      "components": [
-        "core-infrastructure@1.0.2",
-        "shadcn-ui@1.0.0",
-        "build-template-react@1.0.0",
-        "initial-app@1.0.0",
-        "github-export-icp-cli@1.0.0",
-        "authorization@4.0.0",
-        "user-approval@3.0.0"
+        "user-approval@3.0.0",
+        "blob-storage@4.0.0"
       ],
       "testIds": [
         "REQ-3"

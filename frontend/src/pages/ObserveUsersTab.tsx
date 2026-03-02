@@ -19,11 +19,11 @@ export function ObserveUsersTab() {
 
   const filteredUsers = useMemo(() => {
     if (!searchFilter.trim()) return users;
-    
+
     const lowerSearch = searchFilter.toLowerCase();
     return users.filter((user) => {
       const principalStr = user.principal.toString().toLowerCase();
-      const profileName = user.profile?.name?.toLowerCase() || '';
+      const profileName = user.profile?.displayName?.toLowerCase() || '';
       return principalStr.includes(lowerSearch) || profileName.includes(lowerSearch);
     });
   }, [users, searchFilter]);
@@ -196,10 +196,10 @@ export function ObserveUsersTab() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {user.profile?.name ? (
+                          {user.profile?.displayName ? (
                             <span className="flex items-center gap-2">
                               <CheckCircle className="h-4 w-4 text-green-500" />
-                              {user.profile.name}
+                              {user.profile.displayName}
                             </span>
                           ) : (
                             <span className="text-muted-foreground italic">Not set</span>

@@ -1,111 +1,81 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Clock, Calendar as CalendarIcon } from 'lucide-react';
 
-export function ClockCalendarWidget() {
-  const [currentTime, setCurrentTime] = useState(new Date());
+const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
+export default function ClockCalendarWidget() {
+  const [now, setNow] = useState(new Date());
 
   useEffect(() => {
-    const timer = setInterval(() => {
-      setCurrentTime(new Date());
-    }, 1000);
-
-    return () => clearInterval(timer);
+    const interval = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(interval);
   }, []);
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-      hour12: true,
-    });
-  };
+  const pad = (n: number) => String(n).padStart(2, '0');
+  const hours = pad(now.getHours());
+  const minutes = pad(now.getMinutes());
+  const seconds = pad(now.getSeconds());
+  const dayName = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][now.getDay()];
+  const monthName = MONTHS[now.getMonth()];
+  const dateStr = `${dayName}, ${monthName} ${now.getDate()}, ${now.getFullYear()}`;
 
-  const formatDate = (date: Date) => {
-    return date.toLocaleDateString('en-US', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric',
-    });
-  };
+  // Calendar
+  const year = now.getFullYear();
+  const month = now.getMonth();
+  const today = now.getDate();
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
 
-  const getDaysInMonth = (date: Date) => {
-    const year = date.getFullYear();
-    const month = date.getMonth();
-    const firstDay = new Date(year, month, 1);
-    const lastDay = new Date(year, month + 1, 0);
-    const daysInMonth = lastDay.getDate();
-    const startingDayOfWeek = firstDay.getDay();
-    
-    return { daysInMonth, startingDayOfWeek };
-  };
-
-  const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentTime);
-  const currentDay = currentTime.getDate();
-  const monthName = currentTime.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-
-  const days: (number | null)[] = [];
-  for (let i = 0; i < startingDayOfWeek; i++) {
-    days.push(null);
-  }
-  for (let i = 1; i <= daysInMonth; i++) {
-    days.push(i);
-  }
+  const cells: (number | null)[] = [];
+  for (let i = 0; i < firstDay; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+  while (cells.length % 7 !== 0) cells.push(null);
 
   return (
-    <Card className="mac-card mac-clock-calendar">
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Clock className="w-5 h-5" />
-          Time & Calendar
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid md:grid-cols-2 gap-6">
-          {/* Clock Section */}
-          <div className="flex flex-col items-center justify-center p-6 border rounded-xl mac-clock-display">
-            <div className="text-4xl font-semibold mb-2 font-mono tracking-tight">
-              {formatTime(currentTime)}
-            </div>
-            <div className="text-sm text-muted-foreground">
-              {formatDate(currentTime)}
-            </div>
+    <div className="flex flex-col gap-4 w-full">
+      {/* Clock */}
+      <div className="rounded-2xl bg-gradient-to-br from-sidebar-bg to-card border border-border/40 p-5 shadow-mac-soft">
+        <div className="text-center">
+          <div className="font-mono text-5xl font-bold tracking-tight text-primary">
+            {hours}:{minutes}
+            <span className="text-3xl text-primary/60 ml-1">{seconds}</span>
           </div>
-
-          {/* Calendar Section */}
-          <div className="p-4 border rounded-xl mac-calendar-display">
-            <div className="text-center mb-3">
-              <div className="flex items-center justify-center gap-2 text-sm font-medium mb-2">
-                <CalendarIcon className="w-4 h-4" />
-                {monthName}
-              </div>
-            </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs">
-              {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((day) => (
-                <div key={day} className="font-semibold text-muted-foreground py-1">
-                  {day}
-                </div>
-              ))}
-              {days.map((day, index) => (
-                <div
-                  key={index}
-                  className={`py-1.5 rounded ${
-                    day === currentDay
-                      ? 'bg-primary text-primary-foreground font-semibold'
-                      : day
-                      ? 'hover:bg-muted/50'
-                      : ''
-                  }`}
-                >
-                  {day || ''}
-                </div>
-              ))}
-            </div>
-          </div>
+          <div className="mt-2 text-sm text-muted-foreground font-medium">{dateStr}</div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      {/* Calendar */}
+      <div className="rounded-2xl bg-gradient-to-br from-sidebar-bg to-card border border-border/40 p-4 shadow-mac-soft">
+        <div className="text-center mb-3">
+          <span className="text-sm font-semibold text-foreground">{monthName} {year}</span>
+        </div>
+        <div className="grid grid-cols-7 gap-0.5 mb-1">
+          {DAYS.map(d => (
+            <div key={d} className="text-center text-xs font-semibold text-muted-foreground py-1">{d}</div>
+          ))}
+        </div>
+        <div className="grid grid-cols-7 gap-0.5">
+          {cells.map((day, idx) => (
+            <div
+              key={idx}
+              className={`
+                text-center text-xs py-1.5 rounded-lg font-medium transition-colors
+                ${day === null ? '' : 'cursor-default'}
+                ${day === today
+                  ? 'bg-primary text-primary-foreground font-bold shadow-sm'
+                  : day !== null
+                    ? 'text-foreground hover:bg-accent/30'
+                    : ''}
+              `}
+            >
+              {day ?? ''}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
   );
 }

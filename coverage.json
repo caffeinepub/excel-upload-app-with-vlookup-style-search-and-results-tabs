@@ -1,61 +1,51 @@
 {
   "kind": "coverage_report",
   "version": "1.0",
-  "generatedAt": "2026-02-25T08:33:29.587Z",
+  "generatedAt": "2026-02-28T08:12:08.096Z",
   "sources": {
     "buildRequest": true,
     "implementationPlan": true
   },
   "requirements": {
     "total": 4,
-    "implemented": 3,
+    "implemented": 1,
     "items": [
       {
         "id": "REQ-1",
-        "summary": "Add a 'Repeat Daily Until' date field to the reminder creation/edit form. When this field is set, the reminder should be stored with a repeat-until date and generate daily occurrences from the reminder's start date up to and including the specified end date.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/pages/RemindersTab.tsx",
-          "frontend/src/hooks/useProductivityMutations.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/pages/RemindersTab.tsx",
-          "frontend/src/hooks/useProductivityMutations.ts"
-        ]
+        "summary": "Ensure user profile display names are fully persisted in stable backend storage so they survive canister upgrades and are consistently returned for the authenticated principal across all sessions.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-2",
-        "summary": "On app startup, display a dismissible modal popup that shows all pending and upcoming reminders for the current day, including any reminders that are active due to the daily-repeat feature. The popup must have a visible close/dismiss button and must not reappear until the next app session.",
-        "status": "implemented",
-        "plannedFiles": [
-          "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/hooks/useProductivityQueries.ts"
-        ],
-        "matchedFiles": [
-          "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
-          "frontend/src/App.tsx",
-          "frontend/src/hooks/useProductivityQueries.ts"
-        ]
+        "summary": "Ensure user profile pictures (avatars) are fully persisted in stable backend storage so they survive canister upgrades and are consistently returned for the authenticated principal across all sessions.",
+        "status": "unknown",
+        "plannedFiles": [],
+        "matchedFiles": []
       },
       {
         "id": "REQ-3",
-        "summary": "Add an import button in the Customers tab that allows users to upload a PDF or Excel file. The app should parse the uploaded file and extract customer fields (name, phone, email, and any other detectable fields such as address or company) and insert them as new customer records. Display a preview of parsed rows before confirming the import.",
+        "summary": "Update the frontend profile hooks (useUserProfile) and ProfileEditorDialog to correctly read and write display name and avatar from/to the backend, ensuring the UI reflects the persisted values immediately after login and after saving changes.",
         "status": "implemented",
         "plannedFiles": [
-          "frontend/src/components/customers/CustomerImportDialog.tsx",
-          "frontend/src/pages/CustomersTab.tsx",
-          "frontend/src/hooks/useCustomers.ts"
+          "frontend/src/hooks/useUserProfile.ts",
+          "frontend/src/components/team/ProfileEditorDialog.tsx",
+          "frontend/src/components/team/MessageFeed.tsx",
+          "frontend/src/components/team/TeamSidebar.tsx",
+          "frontend/src/components/auth/UserProfileSetup.tsx"
         ],
         "matchedFiles": [
-          "frontend/src/components/customers/CustomerImportDialog.tsx",
-          "frontend/src/pages/CustomersTab.tsx",
-          "frontend/src/hooks/useCustomers.ts"
+          "frontend/src/hooks/useUserProfile.ts",
+          "frontend/src/components/team/ProfileEditorDialog.tsx",
+          "frontend/src/components/team/MessageFeed.tsx",
+          "frontend/src/components/team/TeamSidebar.tsx",
+          "frontend/src/components/auth/UserProfileSetup.tsx"
         ]
       },
       {
         "id": "REQ-4",
-        "summary": "Update the backend Reminder data model to include an optional repeatUntilDate field (stored as ?Int or ?Text timestamp). Update the createReminder and related query functions to handle this field. Add a query function that returns all reminders active on a given date, accounting for daily-repeat reminders.",
+        "summary": "Run a migration (migration.mo) if the existing userProfiles stable map uses a schema that does not include displayName or profilePicture fields, converting any legacy entries to the new schema so no profile data is lost on upgrade.",
         "status": "unknown",
         "plannedFiles": [],
         "matchedFiles": []
@@ -66,35 +56,22 @@
     "backend/main.mo",
     "backend/migration.mo",
     "build-request.json",
-    "caffeine.lock.json",
     "feature_evidence.json",
     "frontend-file-summaries.txt",
     "frontend-implementation-plan.json",
     "frontend/src/App.tsx",
-    "frontend/src/backend.d.ts",
-    "frontend/src/backend.ts",
-    "frontend/src/components/customers/CustomerFormDialog.tsx",
-    "frontend/src/components/customers/CustomerImportDialog.tsx",
-    "frontend/src/components/reminders/DailyRemindersStartupModal.tsx",
-    "frontend/src/components/reminders/InAppReminderNotifier.tsx",
-    "frontend/src/config.ts",
-    "frontend/src/context/ReminderEventsContext.tsx",
-    "frontend/src/declarations/backend.did.d.ts",
-    "frontend/src/declarations/backend.did.js",
-    "frontend/src/hooks/useAttendance.ts",
-    "frontend/src/hooks/useAttendanceCalendarOverlay.ts",
-    "frontend/src/hooks/useCustomers.ts",
-    "frontend/src/hooks/useHolidays.ts",
-    "frontend/src/hooks/useInAppReminderNotifications.ts",
-    "frontend/src/hooks/useProductivityMutations.ts",
-    "frontend/src/hooks/useProductivityQueries.ts",
-    "frontend/src/hooks/useQueries.ts",
-    "frontend/src/hooks/useRegularExpense.ts",
-    "frontend/src/pages/AttendanceTab.tsx",
-    "frontend/src/pages/CustomersTab.tsx",
-    "frontend/src/pages/DeskboardTab.tsx",
-    "frontend/src/pages/RemindersTab.tsx",
-    "frontend/src/pages/TodoTab.tsx",
+    "frontend/src/components/auth/UserProfileSetup.tsx",
+    "frontend/src/components/team/CallPlaceholderModal.tsx",
+    "frontend/src/components/team/ChannelView.tsx",
+    "frontend/src/components/team/DirectMessageView.tsx",
+    "frontend/src/components/team/MessageFeed.tsx",
+    "frontend/src/components/team/ProfileEditorDialog.tsx",
+    "frontend/src/components/team/TeamSidebar.tsx",
+    "frontend/src/hooks/useAvatarUrl.ts",
+    "frontend/src/hooks/useTeamMessaging.ts",
+    "frontend/src/hooks/useUserProfile.ts",
+    "frontend/src/lib/avatarUtils.ts",
+    "frontend/src/pages/TeamTab.tsx",
     "project_state.json",
     "scratch/component-selection.json",
     "spec.md",

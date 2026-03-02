@@ -1,32 +1,19 @@
 {
   "schemaVersion": "1.0.0",
   "projectStateVersion": 3,
-  "summary": "App with daily reminder enhancements and customer import features. Includes repeat-daily-until-date reminders, dismissible app-start popup showing pending reminders, and PDF/Excel import for customer records with field parsing.",
+  "summary": "Microsoft Teams-inspired collaboration app with auto-polling messaging, direct messaging, multiple teams/workspaces, Internet Identity authentication with profiles/avatars, Teams-inspired UI/UX, member invitations (join code + user search), and channel management.",
   "architectural_notes": [
-    "New features (daily reminder enhancement, customer import) must not disrupt existing functionality"
+    "Messages update via polling (auto-refresh every few seconds) — WebSockets not supported on platform",
+    "Member invitations support both join code/link and user search by display name"
   ],
-  "known_issues": [],
-  "isFixRequest": false,
+  "known_issues": [
+    "Profile display names and avatars not fully persisting across sessions — fix in progress"
+  ],
+  "isFixRequest": true,
   "existing_features": [
     {
-      "id": "feature-add-a-repeat-daily-until-date-field-to-the-reminder-creation-edit-form-when-this-field-is-set-the-reminder-should-be-stored-with-a-repeat-until-date-and-generate-daily-occurrences-from-the-reminder-s-start-date-up-to-and-including-the-specified-end-date",
-      "title": "Add a 'Repeat Daily Until' date field to the reminder creation/edit form. When this field is set, the reminder should be stored with a repeat-until date and generate daily occurrences from the reminder's start date up to and including the specified end date.",
-      "reqIds": [
-        "REQ-1"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-on-app-startup-display-a-dismissible-modal-popup-that-shows-all-pending-and-upcoming-reminders-for-the-current-day-including-any-reminders-that-are-active-due-to-the-daily-repeat-feature-the-popup-must-have-a-visible-close-dismiss-button-and-must-not-reappear-until-the-next-app-session",
-      "title": "On app startup, display a dismissible modal popup that shows all pending and upcoming reminders for the current day, including any reminders that are active due to the daily-repeat feature. The popup must have a visible close/dismiss button and must not reappear until the next app session.",
-      "reqIds": [
-        "REQ-2"
-      ],
-      "version": 1
-    },
-    {
-      "id": "feature-add-an-import-button-in-the-customers-tab-that-allows-users-to-upload-a-pdf-or-excel-file-the-app-should-parse-the-uploaded-file-and-extract-customer-fields-name-phone-email-and-any-other-detectable-fields-such-as-address-or-company-and-insert-them-as-new-customer-records-display-a-preview-of-parsed-rows-before-confirming-the-import",
-      "title": "Add an import button in the Customers tab that allows users to upload a PDF or Excel file. The app should parse the uploaded file and extract customer fields (name, phone, email, and any other detectable fields such as address or company) and insert them as new customer records. Display a preview of parsed rows before confirming the import.",
+      "id": "feature-update-the-frontend-profile-hooks-useuserprofile-and-profileeditordialog-to-correctly-read-and-write-display-name-and-avatar-from-to-the-backend-ensuring-the-ui-reflects-the-persisted-values-immediately-after-login-and-after-saving-changes",
+      "title": "Update the frontend profile hooks (useUserProfile) and ProfileEditorDialog to correctly read and write display name and avatar from/to the backend, ensuring the UI reflects the persisted values immediately after login and after saving changes.",
       "reqIds": [
         "REQ-3"
       ],
@@ -36,19 +23,71 @@
   "new_feature_requests": [
     {
       "id": "AR-1",
-      "summary": "Daily Reminder: add 'Repeat Daily Until [date]' option and dismissible app-start popup showing all pending/upcoming reminders for the day",
+      "summary": "Auto-polling for real-time-like message updates every few seconds",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-2",
-      "summary": "Customer Tab: import customer details via PDF and Excel, parsing and extracting fields (name, phone, email, etc.) into customer records",
+      "summary": "Direct Messaging — search and initiate DMs with any registered user",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-3",
+      "summary": "Multiple Teams/Workspaces — create or join teams, each with their own channels",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-4",
+      "summary": "Internet Identity Auth with display name, custom avatar upload, and online/away/busy status",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-5",
+      "summary": "Teams-inspired UI — left sidebar (teams, channels, DMs), top navigation, message threads, member lists",
       "reqIds": [],
       "status": "pending"
     },
     {
       "id": "AR-6",
-      "summary": "Update the backend Reminder data model to include an optional repeatUntilDate field (stored as ?Int or ?Text timestamp). Update the createReminder and related query functions to handle this field. Add a query function that returns all reminders active on a given date, accounting for daily-repeat reminders.",
+      "summary": "Member Invitations — both join code/link AND user search by display name",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-7",
+      "summary": "Channel Management — create channels, manage members, send messages",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-8",
+      "summary": "Fix profile display names and avatars to fully persist across sessions",
+      "reqIds": [],
+      "status": "pending"
+    },
+    {
+      "id": "AR-9",
+      "summary": "Ensure user profile display names are fully persisted in stable backend storage so they survive canister upgrades and are consistently returned for the authenticated principal across all sessions.",
+      "reqIds": [
+        "REQ-1"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-10",
+      "summary": "Ensure user profile pictures (avatars) are fully persisted in stable backend storage so they survive canister upgrades and are consistently returned for the authenticated principal across all sessions.",
+      "reqIds": [
+        "REQ-2"
+      ],
+      "status": "pending"
+    },
+    {
+      "id": "AR-12",
+      "summary": "Run a migration (migration.mo) if the existing userProfiles stable map uses a schema that does not include displayName or profilePicture fields, converting any legacy entries to the new schema so no profile data is lost on upgrade.",
       "reqIds": [
         "REQ-4"
       ],
@@ -56,7 +95,7 @@
     }
   ],
   "gameProjectType": "none",
-  "projectName": "WorkDesk Pro",
+  "projectName": "Microsoft Teams-inspired Collaboration App",
   "clarification_mode": "instant",
   "clarification_rounds": 0
 }

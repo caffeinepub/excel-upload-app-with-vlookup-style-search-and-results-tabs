@@ -1,17 +1,24 @@
 import Map "mo:core/Map";
-import Iter "mo:core/Iter";
+import Time "mo:core/Time";
 import Text "mo:core/Text";
+import Array "mo:core/Array";
 import Nat "mo:core/Nat";
 import Runtime "mo:core/Runtime";
-import Time "mo:core/Time";
+import Blob "mo:core/Blob";
 import Principal "mo:core/Principal";
+import Iter "mo:core/Iter";
+import Migration "migration";
+
 import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
-import Migration "migration";
+import MixinStorage "blob-storage/Mixin";
 
+// === Migration ===
 (with migration = Migration.run)
 actor {
+  include MixinStorage();
+
   public type AttendanceDayEntry = {
     checkIn : ?Time.Time;
     checkOut : ?Time.Time;
@@ -20,7 +27,17 @@ actor {
     workingTime : Nat;
   };
 
-  public type UserProfile = { name : Text };
+  public type UserRole = {
+    #admin;
+    #user;
+    #guest;
+  };
+
+  public type UserProfile = {
+    displayName : Text;
+    profilePicture : ?Blob;
+  };
+
   public type Budget = {
     monthlyLimit : Nat;
     dayLimit : Nat;
@@ -131,6 +148,75 @@ actor {
     createdAt : Time.Time;
   };
 
+  // ── New Types ─────────────────────────────────────────────────────────────
+
+  public type CalendarEvent = {
+    id : Nat;
+    title : Text;
+    dateTime : Nat;
+    description : Text;
+    isAdminOnly : Bool;
+    createdBy : Principal;
+  };
+
+  public type BroadcastMessage = {
+    id : Nat;
+    text : Text;
+    createdAt : Time.Time;
+    createdBy : Principal;
+  };
+
+  public type Channel = {
+    id : Nat;
+    name : Text;
+    createdBy : Principal;
+    createdAt : Time.Time;
+  };
+
+  public type ChannelMessage = {
+    id : Nat;
+    channelId : Nat;
+    senderId : Principal;
+    senderName : Text;
+    text : Text;
+    fileUrl : ?Text;
+    fileName : ?Text;
+    createdAt : Time.Time;
+  };
+
+  public type DirectMessage = {
+    id : Nat;
+    fromPrincipal : Principal;
+    toPrincipal : Principal;
+    text : Text;
+    fileUrl : ?Text;
+    fileName : ?Text;
+    createdAt : Time.Time;
+  };
+
+  public type FileData = {
+    id : Nat;
+    uploader : Principal;
+    filename : Text;
+    content : Blob;
+    uploadedAt : Time.Time;
+  };
+
+  public type UserStatusKind = {
+    #online;
+    #away;
+    #busy;
+    #offline;
+  };
+
+  public type UserStatusEntry = {
+    principal : Principal;
+    status : UserStatusKind;
+    updatedAt : Time.Time;
+  };
+
+  // ── State ─────────────────────────────────────────────────────────────────
+
   var nextCustomerId = 0;
 
   let budgets = Map.empty<Principal, Budget>();
@@ -154,12 +240,41 @@ actor {
   var nextTodoId = 0;
   var nextNoteId = 0;
 
+  // New state for calendar events
+  let calendarEvents = Map.empty<Nat, CalendarEvent>();
+  var nextEventId = 0;
+
+  // New state for broadcasts
+  let broadcasts = Map.empty<Nat, BroadcastMessage>();
+  var nextBroadcastId = 0;
+  let dismissedBroadcasts = Map.empty<Principal, [Nat]>();
+
+  // New state for channels
+  let channels = Map.empty<Nat, Channel>();
+  var nextChannelId = 0;
+
+  // New state for channel messages
+  let channelMessages = Map.empty<Nat, ChannelMessage>();
+  var nextMessageId = 0;
+
+  // New state for direct messages
+  let directMessages = Map.empty<Nat, DirectMessage>();
+  var nextDirectMessageId = 0;
+
+  // New state for files
+  let files = Map.empty<Nat, FileData>();
+  var nextFileId = 0;
+
+  // New state for user statuses
+  let userStatuses = Map.empty<Principal, UserStatusEntry>();
+
   // Use Authorization & Approval mixins
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
   let approvalState = UserApproval.initState(accessControlState);
 
-  // Helper: get or init user customers map
+  // ── Helpers ───────────────────────────────────────────────────────────────
+
   func getUserCustomersOrInit(user : Principal) : Map.Map<Nat, Customer> {
     switch (customers.get(user)) {
       case (?m) { m };
@@ -178,7 +293,6 @@ actor {
     };
   };
 
-  // Helper: get or init user reminders map
   func getUserRemindersOrInit(user : Principal) : Map.Map<Nat, Reminder> {
     switch (reminders.get(user)) {
       case (?m) { m };
@@ -190,7 +304,6 @@ actor {
     };
   };
 
-  // Helper: get or init user expenses map
   func getUserExpensesOrInit(user : Principal) : Map.Map<Nat, ExpenseEntry> {
     switch (expenses.get(user)) {
       case (?m) { m };
@@ -202,7 +315,6 @@ actor {
     };
   };
 
-  // Helper: get or init user todos map
   func getUserTodosOrInit(user : Principal) : Map.Map<Nat, TodoItem> {
     switch (todos.get(user)) {
       case (?m) { m };
@@ -214,7 +326,6 @@ actor {
     };
   };
 
-  // Helper: get or init user notes map
   func getUserNotesOrInit(user : Principal) : Map.Map<Nat, Note> {
     switch (notes.get(user)) {
       case (?m) { m };
@@ -226,7 +337,6 @@ actor {
     };
   };
 
-  // Helper: get or init user histories map
   func getUserHistoriesOrInit(user : Principal) : Map.Map<Nat, HistoryEntry> {
     switch (histories.get(user)) {
       case (?m) { m };
@@ -238,7 +348,7 @@ actor {
     };
   };
 
-  // ── User Profile ──────────────────────────────────────────────────────────
+  // --- User Profile (Persist Display Name) ----
 
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -261,9 +371,8 @@ actor {
     userProfiles.add(caller, profile);
   };
 
-  // ── Custom Date Permissions ───────────────────────────────────────────────
+  // === Custom Date Permissions ===
 
-  // Requires #user permission: guests should not be able to query permissions
   public query ({ caller }) func hasCustomDatePermission() : async Bool {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can check custom date permissions");
@@ -288,22 +397,14 @@ actor {
     customDatePermissions.remove(user);
   };
 
-  // ── Approval ──────────────────────────────────────────────────────────────
+  // === Approval ===
 
   public query ({ caller }) func isCallerApproved() : async Bool {
     AccessControl.hasPermission(accessControlState, caller, #admin) or UserApproval.isApproved(approvalState, caller);
   };
 
   public shared ({ caller }) func requestApproval() : async () {
-    // Any caller (including guests) can request approval — no auth check needed
     UserApproval.requestApproval(approvalState, caller);
-  };
-
-  public shared ({ caller }) func setApproval(user : Principal, status : UserApproval.ApprovalStatus) : async () {
-    if (not AccessControl.isAdmin(accessControlState, caller)) {
-      Runtime.trap("Unauthorized: Only admins can set approval status");
-    };
-    UserApproval.setApproval(approvalState, user, status);
   };
 
   public query ({ caller }) func listApprovals() : async [UserApproval.UserApprovalInfo] {
@@ -313,7 +414,14 @@ actor {
     UserApproval.listApprovals(approvalState);
   };
 
-  // ── Customer Management ───────────────────────────────────────────────────
+  public shared ({ caller }) func setApproval(user : Principal, status : UserApproval.ApprovalStatus) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can set approval status");
+    };
+    UserApproval.setApproval(approvalState, user, status);
+  };
+
+  // === Customer Management ===
 
   public shared ({ caller }) func addCustomer(name : Text, email : Text, phoneNumber : Text, address : Text, company : Text, workDetails : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -386,7 +494,7 @@ actor {
     };
   };
 
-  // ── Reminder Management ───────────────────────────────────────────────────
+  // === Reminder Management ===
 
   public shared ({ caller }) func createReminder(message : Text, date : Text, time : Text, repeatUntilDate : ?Int) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -464,40 +572,25 @@ actor {
     };
   };
 
-  // Returns all reminders active on a given date (including daily-repeat reminders).
-  // dateMs: the target date as milliseconds since epoch (Int).
   public query ({ caller }) func getRemindersForDate(dateMs : Int) : async [Reminder] {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
       Runtime.trap("Unauthorized: Only users can view reminders");
     };
 
-    let dayMs : Int = 86_400_000; // milliseconds in a day
+    let dayMs : Int = 86_400_000;
 
     switch (reminders.get(caller)) {
       case (null) { [] };
       case (?userReminders) {
-        // We need to compare dates. Reminders store date as Text (ISO date string).
-        // We use the repeatUntilDate (Int, ms) for range comparison.
-        // For non-repeating reminders, only include if reminder date matches exactly.
-        // For repeating reminders, include if startDate <= dateMs <= repeatUntilDate.
-        // Since date is stored as Text, we rely on repeatUntilDate for range logic.
-        // We'll filter by checking if the reminder's createdAt day aligns or
-        // if repeatUntilDate covers the requested date.
-        // NOTE: For full date-string comparison we'd need a date parser.
-        // We use repeatUntilDate (ms) and createdAt as the range boundaries.
         let result = userReminders.values().filter(
           func(r : Reminder) : Bool {
             switch (r.repeatUntilDate) {
               case (null) {
-                // Non-repeating: check if reminder date (ms from createdAt rounded to day)
-                // matches the requested date day.
-                // We compare by day boundary: same calendar day.
-                let reminderDay = r.createdAt / (dayMs * 1_000_000); // createdAt is nanoseconds
+                let reminderDay = r.createdAt / (dayMs * 1_000_000);
                 let targetDay = dateMs / dayMs;
                 reminderDay == targetDay;
               };
               case (?untilMs) {
-                // Repeating daily: active if startDay <= targetDay <= untilDay
                 let startDay = r.createdAt / (dayMs * 1_000_000);
                 let untilDay = untilMs / dayMs;
                 let targetDay = dateMs / dayMs;
@@ -511,7 +604,7 @@ actor {
     };
   };
 
-  // ── Budget Management ─────────────────────────────────────────────────────
+  // === Budget Management ===
 
   public shared ({ caller }) func saveBudget(budget : Budget) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -527,7 +620,7 @@ actor {
     budgets.get(caller);
   };
 
-  // ── Expense Management ────────────────────────────────────────────────────
+  // === Expense Management ===
 
   public shared ({ caller }) func addExpense(amount : Nat, category : Text, description : Text, date : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -574,7 +667,7 @@ actor {
     };
   };
 
-  // ── Todo Management ───────────────────────────────────────────────────────
+  // === Todo Management ===
 
   public shared ({ caller }) func addTodo(text : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -637,7 +730,7 @@ actor {
     };
   };
 
-  // ── Notes Management ──────────────────────────────────────────────────────
+  // === Notes Management ===
 
   public shared ({ caller }) func saveNote(id : Nat, text : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -689,7 +782,7 @@ actor {
     };
   };
 
-  // ── History Management ────────────────────────────────────────────────────
+  // === History Management ===
 
   public shared ({ caller }) func addHistory(entryType : HistoryType, details : Text) : async Nat {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -721,7 +814,7 @@ actor {
     };
   };
 
-  // ── Attendance Management ─────────────────────────────────────────────────
+  // === Attendance Management ===
 
   public shared ({ caller }) func saveAttendanceConfig(config : AttendanceConfig) : async () {
     if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
@@ -769,7 +862,19 @@ actor {
     };
 
     let userEntries = switch (attendanceEntries.get(caller)) {
-      case (null) { return { totalDays = 0; presentDays = 0; leaveDays = 0; halfDays = 0; festivalDays = 0; companyLeaveDays = 0; weeklyOffDays = 0; totalWorkingTime = 0; breakdown = [] } };
+      case (null) {
+        return {
+          totalDays = 0;
+          presentDays = 0;
+          leaveDays = 0;
+          halfDays = 0;
+          festivalDays = 0;
+          companyLeaveDays = 0;
+          weeklyOffDays = 0;
+          totalWorkingTime = 0;
+          breakdown = [];
+        };
+      };
       case (?m) { m };
     };
 
@@ -815,7 +920,7 @@ actor {
     };
   };
 
-  // ── Holiday Management ────────────────────────────────────────────────────
+  // === Holiday Management ===
 
   public shared ({ caller }) func addGlobalHoliday(date : Text, holidayType : HolidayType) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
@@ -836,5 +941,364 @@ actor {
       Runtime.trap("Unauthorized: Only users can view holidays");
     };
     globalHolidays.values().toArray();
+  };
+
+  // === Calendar Events ===
+
+  // Create a calendar event. If isAdminOnly is true, the caller must be an admin.
+  // All authenticated users can create non-admin-only events.
+  public shared ({ caller }) func createCalendarEvent(title : Text, dateTime : Nat, description : Text, isAdminOnly : Bool) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can create calendar events");
+    };
+    if (isAdminOnly and not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can create admin-only events");
+    };
+
+    if (title.size() == 0) {
+      Runtime.trap("Event title cannot be empty");
+    };
+
+    let event : CalendarEvent = {
+      id = nextEventId;
+      title;
+      dateTime;
+      description;
+      isAdminOnly;
+      createdBy = caller;
+    };
+
+    calendarEvents.add(event.id, event);
+    nextEventId += 1;
+    event.id;
+  };
+
+  // Returns public events (isAdminOnly = false) visible to all authenticated users.
+  public query ({ caller }) func getCalendarEvents() : async [CalendarEvent] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view calendar events");
+    };
+    calendarEvents.values().filter(
+      func(e : CalendarEvent) : Bool { not e.isAdminOnly }
+    ).toArray();
+  };
+
+  // Returns all events including admin-only ones. Admins only.
+  public query ({ caller }) func getAllCalendarEvents() : async [CalendarEvent] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view all calendar events");
+    };
+    calendarEvents.values().toArray();
+  };
+
+  // Delete a calendar event. Creator or admin may delete.
+  public shared ({ caller }) func deleteCalendarEvent(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can delete calendar events");
+    };
+
+    switch (calendarEvents.get(id)) {
+      case (null) { Runtime.trap("Calendar event not found") };
+      case (?event) {
+        if (event.createdBy != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Only the creator or an admin can delete this event");
+        };
+        calendarEvents.remove(id);
+      };
+    };
+  };
+
+  // === Broadcast Messages ===
+
+  // Create a broadcast message. Admin only.
+  public shared ({ caller }) func createBroadcast(text : Text) : async Nat {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can create broadcasts");
+    };
+
+    if (text.size() == 0) {
+      Runtime.trap("Broadcast text cannot be empty");
+    };
+
+    let msg : BroadcastMessage = {
+      id = nextBroadcastId;
+      text;
+      createdAt = Time.now();
+      createdBy = caller;
+    };
+
+    broadcasts.add(msg.id, msg);
+    nextBroadcastId += 1;
+    msg.id;
+  };
+
+  // Returns all broadcasts that the caller has not yet dismissed.
+  // Authenticated users only.
+  public query ({ caller }) func getActiveBroadcasts() : async [BroadcastMessage] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view broadcasts");
+    };
+
+    let dismissed : [Nat] = switch (dismissedBroadcasts.get(caller)) {
+      case (?ids) { ids };
+      case (null) { [] };
+    };
+
+    broadcasts.values().filter(
+      func(msg : BroadcastMessage) : Bool {
+        var found = false;
+        for (dismissedId in dismissed.vals()) {
+          if (dismissedId == msg.id) { found := true };
+        };
+        not found;
+      }
+    ).toArray();
+  };
+
+  // Dismiss a broadcast for the calling user.
+  // Authenticated users only.
+  public shared ({ caller }) func dismissBroadcast(id : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can dismiss broadcasts");
+    };
+
+    switch (broadcasts.get(id)) {
+      case (null) { Runtime.trap("Broadcast not found") };
+      case (?_) {};
+    };
+
+    let current : [Nat] = switch (dismissedBroadcasts.get(caller)) {
+      case (?ids) { ids };
+      case (null) { [] };
+    };
+
+    var alreadyDismissed = false;
+    for (dismissedId in current.vals()) {
+      if (dismissedId == id) { alreadyDismissed := true };
+    };
+
+    if (not alreadyDismissed) {
+      let updated = current.concat([id]);
+      dismissedBroadcasts.add(caller, updated);
+    };
+  };
+
+  // Returns all broadcasts (history view). Authenticated users only.
+  public query ({ caller }) func getBroadcastHistory() : async [BroadcastMessage] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view broadcast history");
+    };
+    broadcasts.values().toArray();
+  };
+
+  // === Channels ===
+
+  // Create a channel. Authenticated users only.
+  public shared ({ caller }) func createChannel(name : Text) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can create channels");
+    };
+
+    if (name.size() == 0) {
+      Runtime.trap("Channel name cannot be empty");
+    };
+
+    let channel : Channel = {
+      id = nextChannelId;
+      name;
+      createdBy = caller;
+      createdAt = Time.now();
+    };
+
+    channels.add(channel.id, channel);
+    nextChannelId += 1;
+    channel.id;
+  };
+
+  // List all channels. Authenticated users only.
+  public query ({ caller }) func listChannels() : async [Channel] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can list channels");
+    };
+    channels.values().toArray();
+  };
+
+  // Delete a channel. Admin only.
+  public shared ({ caller }) func deleteChannel(id : Nat) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can delete channels");
+    };
+
+    switch (channels.get(id)) {
+      case (null) { Runtime.trap("Channel not found") };
+      case (?_) { channels.remove(id) };
+    };
+  };
+
+  // === Channel Messages ===
+
+  // Post a message to a channel. Authenticated users only.
+  public shared ({ caller }) func postChannelMessage(channelId : Nat, senderName : Text, text : Text, fileUrl : ?Text, fileName : ?Text) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can post channel messages");
+    };
+
+    switch (channels.get(channelId)) {
+      case (null) { Runtime.trap("Channel not found") };
+      case (?_) {};
+    };
+
+    if (text.size() == 0 and fileUrl == null) {
+      Runtime.trap("Message must have text or a file attachment");
+    };
+
+    let msg : ChannelMessage = {
+      id = nextMessageId;
+      channelId;
+      senderId = caller;
+      senderName;
+      text;
+      fileUrl;
+      fileName;
+      createdAt = Time.now();
+    };
+
+    channelMessages.add(msg.id, msg);
+    nextMessageId += 1;
+    msg.id;
+  };
+
+  // Get recent messages for a channel (up to 50). Authenticated users only.
+  public query ({ caller }) func getChannelMessages(channelId : Nat) : async [ChannelMessage] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view channel messages");
+    };
+
+    switch (channels.get(channelId)) {
+      case (null) { Runtime.trap("Channel not found") };
+      case (?_) {};
+    };
+
+    let all = channelMessages.values().filter(
+      func(m : ChannelMessage) : Bool { m.channelId == channelId }
+    ).toArray();
+
+    let size = all.size();
+    if (size <= 50) {
+      all;
+    } else {
+      let start = if (size > 50) { size - 50 } else { 0 };
+      all.sliceToArray(start, size);
+    };
+  };
+
+  // === Direct Messages ===
+
+  // Send a direct message. Authenticated users only.
+  // Caller can only send as themselves.
+  public shared ({ caller }) func sendDirectMessage(toPrincipal : Principal, text : Text, fileUrl : ?Text, fileName : ?Text) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can send direct messages");
+    };
+
+    if (text.size() == 0 and fileUrl == null) {
+      Runtime.trap("Message must have text or a file attachment");
+    };
+
+    let msg : DirectMessage = {
+      id = nextDirectMessageId;
+      fromPrincipal = caller;
+      toPrincipal;
+      text;
+      fileUrl;
+      fileName;
+      createdAt = Time.now();
+    };
+
+    directMessages.add(msg.id, msg);
+    nextDirectMessageId += 1;
+    msg.id;
+  };
+
+  // Get direct messages between the caller and another principal (recent 50).
+  // Authenticated users only. Users can only view their own DM threads.
+  public query ({ caller }) func getDirectMessages(otherPrincipal : Principal) : async [DirectMessage] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view direct messages");
+    };
+
+    let all = directMessages.values().filter(
+      func(m : DirectMessage) : Bool {
+        (m.fromPrincipal == caller and m.toPrincipal == otherPrincipal) or
+        (m.fromPrincipal == otherPrincipal and m.toPrincipal == caller)
+      }
+    ).toArray();
+
+    let size = all.size();
+    if (size <= 50) {
+      all;
+    } else {
+      let start = if (size > 50) { size - 50 } else { 0 };
+      all.sliceToArray(start, size);
+    };
+  };
+
+  // === User Status ===
+
+  // Set the calling user's status. Authenticated users only.
+  public shared ({ caller }) func setUserStatus(status : UserStatusKind) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can set their status");
+    };
+
+    let entry : UserStatusEntry = {
+      principal = caller;
+      status;
+      updatedAt = Time.now();
+    };
+
+    userStatuses.add(caller, entry);
+  };
+
+  // Get all users' statuses. Authenticated users only.
+  public query ({ caller }) func getUserStatuses() : async [UserStatusEntry] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view user statuses");
+    };
+    userStatuses.values().toArray();
+  };
+
+  // === File Sharing (Expand to Store Images) ===
+
+  // Upload a file. Authenticated users only.
+  // Returns a fileId that can be referenced in messages.
+  public shared ({ caller }) func uploadFile(filename : Text, content : Blob) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can upload files");
+    };
+
+    if (filename.size() == 0) {
+      Runtime.trap("Filename cannot be empty");
+    };
+
+    let fileData : FileData = {
+      id = nextFileId;
+      uploader = caller;
+      filename;
+      content;
+      uploadedAt = Time.now();
+    };
+
+    files.add(fileData.id, fileData);
+    nextFileId += 1;
+    fileData.id;
+  };
+
+  // Get a file by id. Authenticated users only.
+  public query ({ caller }) func getFile(id : Nat) : async ?FileData {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can download files");
+    };
+    files.get(id);
   };
 };
