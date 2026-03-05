@@ -1,11 +1,17 @@
-import { ReactNode } from 'react';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { useIsCallerApproved, useIsCallerAdmin } from '../../hooks/useApproval';
-import { useRequestApproval } from '../../hooks/useApprovalMutations';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { AlertCircle, Clock, CheckCircle } from 'lucide-react';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { AlertCircle, CheckCircle, Clock } from "lucide-react";
+import type { ReactNode } from "react";
+import { useIsCallerAdmin, useIsCallerApproved } from "../../hooks/useApproval";
+import { useRequestApproval } from "../../hooks/useApprovalMutations";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 
 interface ApprovalGateProps {
   children: ReactNode;
@@ -14,7 +20,8 @@ interface ApprovalGateProps {
 
 export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
   const { identity } = useInternetIdentity();
-  const { data: isApproved, isLoading: approvalLoading } = useIsCallerApproved();
+  const { data: isApproved, isLoading: approvalLoading } =
+    useIsCallerApproved();
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const requestApprovalMutation = useRequestApproval();
 
@@ -31,7 +38,9 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
     return (
       <Card className="max-w-2xl mx-auto mt-8">
         <CardContent className="py-8">
-          <p className="text-center text-muted-foreground">Checking access permissions...</p>
+          <p className="text-center text-muted-foreground">
+            Checking access permissions...
+          </p>
         </CardContent>
       </Card>
     );
@@ -48,7 +57,8 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
       <Alert>
         <Clock className="h-4 w-4" />
         <AlertDescription>
-          Your account is pending approval. Please request access to use this application.
+          Your account is pending approval. Please request access to use this
+          application.
         </AlertDescription>
       </Alert>
 
@@ -56,19 +66,22 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
         <CardHeader>
           <CardTitle>Access Request Required</CardTitle>
           <CardDescription>
-            This application requires admin approval before you can access its features.
+            This application requires admin approval before you can access its
+            features.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Click the button below to submit an access request. An administrator will review your request and approve or reject it.
+            Click the button below to submit an access request. An administrator
+            will review your request and approve or reject it.
           </p>
 
           {requestApprovalMutation.isSuccess && (
             <Alert>
               <CheckCircle className="h-4 w-4" />
               <AlertDescription>
-                Your access request has been submitted successfully. Please wait for admin approval.
+                Your access request has been submitted successfully. Please wait
+                for admin approval.
               </AlertDescription>
             </Alert>
           )}
@@ -79,21 +92,24 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
               <AlertDescription>
                 {requestApprovalMutation.error instanceof Error
                   ? requestApprovalMutation.error.message
-                  : 'Failed to submit access request. Please try again.'}
+                  : "Failed to submit access request. Please try again."}
               </AlertDescription>
             </Alert>
           )}
 
           <Button
             onClick={() => requestApprovalMutation.mutate()}
-            disabled={requestApprovalMutation.isPending || requestApprovalMutation.isSuccess}
+            disabled={
+              requestApprovalMutation.isPending ||
+              requestApprovalMutation.isSuccess
+            }
             className="w-full"
           >
             {requestApprovalMutation.isPending
-              ? 'Submitting Request...'
+              ? "Submitting Request..."
               : requestApprovalMutation.isSuccess
-              ? 'Request Submitted'
-              : 'Request Access'}
+                ? "Request Submitted"
+                : "Request Access"}
           </Button>
         </CardContent>
       </Card>

@@ -1,33 +1,57 @@
-import { ReactNode } from 'react';
-import { AppHeader } from './AppHeader';
-import { InAppReminderNotifier } from '../reminders/InAppReminderNotifier';
-import { CharacterDock } from '../character/CharacterDock';
+import type { ReactNode } from "react";
+import type { TabDef, TabId } from "../../App";
+import { CharacterDock } from "../character/CharacterDock";
+import { InAppReminderNotifier } from "../reminders/InAppReminderNotifier";
+import { AppHeader } from "./AppHeader";
+import DesktopSidebarNav from "./DesktopSidebarNav";
 
 interface AppLayoutProps {
   children: ReactNode;
-  onNavigate?: (tab: string) => void;
-  activeTab: string;
+  onNavigate?: (tab: TabId) => void;
+  activeTab: TabId;
+  isAdmin: boolean;
+  tabs: TabDef[];
 }
 
-export function AppLayout({ children, onNavigate, activeTab }: AppLayoutProps) {
+export function AppLayout({
+  children,
+  onNavigate,
+  activeTab,
+  isAdmin,
+}: AppLayoutProps) {
   return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
-      <AppHeader onNavigate={onNavigate} />
-      <main className="container mx-auto px-4 py-8 max-w-7xl">
-        <div className="flex gap-6">
-          <div className="flex-1 min-w-0">
-            {children}
-          </div>
-          <div className="hidden xl:block flex-shrink-0">
-            <CharacterDock activeTab={activeTab} />
-          </div>
+    <div className="min-h-screen bg-background overflow-x-hidden flex flex-col">
+      <AppHeader
+        onNavigate={onNavigate as ((tab: string) => void) | undefined}
+      />
+      <div className="flex flex-1 overflow-hidden">
+        {/* Desktop sidebar */}
+        <div className="hidden lg:flex flex-col w-52 shrink-0 border-r border-border bg-background overflow-y-auto">
+          <DesktopSidebarNav
+            activeTab={activeTab}
+            onTabChange={onNavigate ?? (() => {})}
+            isAdmin={isAdmin}
+          />
         </div>
-      </main>
-      <footer className="border-t mt-16 py-6">
+
+        {/* Main content */}
+        <main className="flex-1 overflow-y-auto">
+          <div className="container mx-auto px-4 py-6 max-w-6xl">
+            <div className="flex gap-6">
+              <div className="flex-1 min-w-0">{children}</div>
+              <div className="hidden xl:block flex-shrink-0">
+                <CharacterDock activeTab={activeTab} />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+
+      <footer className="border-t py-4 shrink-0">
         <div className="container mx-auto px-4 text-center text-sm text-muted-foreground">
-          © 2026. Built with ❤️ using{' '}
+          © {new Date().getFullYear()} Built with ❤️ using{" "}
           <a
-            href="https://caffeine.ai"
+            href={`https://caffeine.ai/?utm_source=Caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(typeof window !== "undefined" ? window.location.hostname : "crystal-atlas")}`}
             target="_blank"
             rel="noopener noreferrer"
             className="text-primary hover:underline"

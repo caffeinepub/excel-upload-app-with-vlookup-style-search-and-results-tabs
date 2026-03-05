@@ -1,20 +1,50 @@
-import { useState } from 'react';
-import { useAppState } from '../state/appState';
-import { useAddHistoryEntry } from '../hooks/useQueries';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { HorizontalTableScroll } from '../components/table/HorizontalTableScroll';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../components/ui/table';
-import { Badge } from '../components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { FileText, Download, AlertCircle, Edit2, FileSpreadsheet, X } from 'lucide-react';
-import { exportToExcel } from '../lib/export/exportXlsx';
-import { exportToPdf } from '../lib/export/exportPdf';
-import { HistoryType } from '../backend';
-import { ResultRowEditModal } from '../components/results/ResultRowEditModal';
-import { applyRowEdits } from '../lib/results/applyRowEdits';
-import { filterExportRows, getAvailableFilterColumns, getAvailableFilterValues } from '../lib/results/exportFilters';
+import {
+  AlertCircle,
+  Download,
+  Edit2,
+  FileSpreadsheet,
+  FileText,
+  X,
+} from "lucide-react";
+import { useState } from "react";
+import { HistoryType } from "../backend";
+import { ResultRowEditModal } from "../components/results/ResultRowEditModal";
+import { HorizontalTableScroll } from "../components/table/HorizontalTableScroll";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Badge } from "../components/ui/badge";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../components/ui/table";
+import { useAddHistoryEntry } from "../hooks/useQueries";
+import { exportToPdf } from "../lib/export/exportPdf";
+import { exportToExcel } from "../lib/export/exportXlsx";
+import { applyRowEdits } from "../lib/results/applyRowEdits";
+import {
+  filterExportRows,
+  getAvailableFilterColumns,
+  getAvailableFilterValues,
+} from "../lib/results/exportFilters";
+import { useAppState } from "../state/appState";
 
 interface ResultsTabProps {
   onNavigateToUpdateChecking?: () => void;
@@ -22,27 +52,38 @@ interface ResultsTabProps {
 
 type EditedRowsMap = Map<number, (string | number | boolean | null)[]>;
 
-export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
-  const { vlookupResults, filterResults, updateCheckingResults, workbook } = useAppState();
+export function ResultsTab({
+  onNavigateToUpdateChecking: _onNavigateToUpdateChecking,
+}: ResultsTabProps) {
+  const { vlookupResults, filterResults, updateCheckingResults, workbook } =
+    useAppState();
   const addHistory = useAddHistoryEntry();
   const [exporting, setExporting] = useState(false);
 
   // Edit modal state
   const [editModalOpen, setEditModalOpen] = useState(false);
   const [editingRowIndex, setEditingRowIndex] = useState<number | null>(null);
-  const [editingRowData, setEditingRowData] = useState<(string | number | boolean | null)[]>([]);
+  const [editingRowData, setEditingRowData] = useState<
+    (string | number | boolean | null)[]
+  >([]);
   const [editingRowHeaders, setEditingRowHeaders] = useState<string[]>([]);
   const [editedRows, setEditedRows] = useState<EditedRowsMap>(new Map());
 
   // Export filter state
-  const [filterColumn, setFilterColumn] = useState<string>('');
-  const [filterValue, setFilterValue] = useState<string>('');
+  const [filterColumn, setFilterColumn] = useState<string>("");
+  const [filterValue, setFilterValue] = useState<string>("");
 
   const hasVlookupResults = vlookupResults && vlookupResults.length > 0;
-  const hasFilterResults = filterResults && filterResults.filteredRows.length > 0;
-  const hasUpdateCheckingResults = updateCheckingResults && updateCheckingResults.rows.length > 0;
+  const hasFilterResults =
+    filterResults && filterResults.filteredRows.length > 0;
+  const hasUpdateCheckingResults =
+    updateCheckingResults && updateCheckingResults.rows.length > 0;
 
-  const handleOpenEditModal = (rowIndex: number, currentData: (string | number | boolean | null)[], headers: string[]) => {
+  const handleOpenEditModal = (
+    rowIndex: number,
+    currentData: (string | number | boolean | null)[],
+    headers: string[],
+  ) => {
     setEditingRowIndex(rowIndex);
     setEditingRowData([...currentData]);
     setEditingRowHeaders(headers);
@@ -51,11 +92,11 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
 
   const handleSaveEdit = (editedData: (string | number | boolean | null)[]) => {
     if (editingRowIndex === null) return;
-    
+
     const newEditedRows = new Map(editedRows);
     newEditedRows.set(editingRowIndex, editedData);
     setEditedRows(newEditedRows);
-    
+
     setEditModalOpen(false);
     setEditingRowIndex(null);
     setEditingRowData([]);
@@ -70,7 +111,13 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   };
 
   const handleExportVlookupExcel = async () => {
-    if (!hasVlookupResults || !vlookupResults || !workbook || !workbook.sheetData) return;
+    if (
+      !hasVlookupResults ||
+      !vlookupResults ||
+      !workbook ||
+      !workbook.sheetData
+    )
+      return;
 
     setExporting(true);
     try {
@@ -81,9 +128,9 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
 
       // Apply edits
       const exportRows = applyRowEdits(
-        allRows.map(r => r.data),
+        allRows.map((r) => r.data),
         editedRows,
-        allRows.map(r => r.index)
+        allRows.map((r) => r.index),
       );
 
       // Apply export filter
@@ -91,7 +138,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         exportRows,
         workbook.sheetData.headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToExcel(
@@ -99,7 +146,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers: workbook.sheetData.headers,
           rows: filteredRows,
         },
-        'crystal-atlas-vlookup-results.xlsx'
+        "crystal-atlas-vlookup-results.xlsx",
       );
 
       addHistory.mutate({
@@ -107,15 +154,21 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} VLOOKUP result(s) to Excel`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to Excel. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to Excel. Please try again.");
     } finally {
       setExporting(false);
     }
   };
 
   const handleExportVlookupPdf = async () => {
-    if (!hasVlookupResults || !vlookupResults || !workbook || !workbook.sheetData) return;
+    if (
+      !hasVlookupResults ||
+      !vlookupResults ||
+      !workbook ||
+      !workbook.sheetData
+    )
+      return;
 
     setExporting(true);
     try {
@@ -124,16 +177,16 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         .map((r) => r.result.fullRow!);
 
       const exportRows = applyRowEdits(
-        allRows.map(r => r.data),
+        allRows.map((r) => r.data),
         editedRows,
-        allRows.map(r => r.index)
+        allRows.map((r) => r.index),
       );
 
       const filteredRows = filterExportRows(
         exportRows,
         workbook.sheetData.headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToPdf(
@@ -141,7 +194,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers: workbook.sheetData.headers,
           rows: filteredRows,
         },
-        'crystal-atlas-vlookup-results.pdf'
+        "crystal-atlas-vlookup-results.pdf",
       );
 
       addHistory.mutate({
@@ -149,8 +202,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} VLOOKUP result(s) to PDF`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to PDF. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -162,16 +215,16 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     setExporting(true);
     try {
       const exportRows = applyRowEdits(
-        filterResults.filteredRows.map(r => r.data),
+        filterResults.filteredRows.map((r) => r.data),
         editedRows,
-        filterResults.filteredRows.map(r => r.index)
+        filterResults.filteredRows.map((r) => r.index),
       );
 
       const filteredRows = filterExportRows(
         exportRows,
         filterResults.headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToExcel(
@@ -179,7 +232,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers: filterResults.headers,
           rows: filteredRows,
         },
-        'crystal-atlas-filter-results.xlsx'
+        "crystal-atlas-filter-results.xlsx",
       );
 
       addHistory.mutate({
@@ -187,8 +240,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} filter result(s) to Excel`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to Excel. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to Excel. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -200,16 +253,16 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
     setExporting(true);
     try {
       const exportRows = applyRowEdits(
-        filterResults.filteredRows.map(r => r.data),
+        filterResults.filteredRows.map((r) => r.data),
         editedRows,
-        filterResults.filteredRows.map(r => r.index)
+        filterResults.filteredRows.map((r) => r.index),
       );
 
       const filteredRows = filterExportRows(
         exportRows,
         filterResults.headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToPdf(
@@ -217,7 +270,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers: filterResults.headers,
           rows: filteredRows,
         },
-        'crystal-atlas-filter-results.pdf'
+        "crystal-atlas-filter-results.pdf",
       );
 
       addHistory.mutate({
@@ -225,8 +278,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} filter result(s) to PDF`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to PDF. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -237,15 +290,17 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
 
     setExporting(true);
     try {
-      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
-      
-      const exportRows = applyRowEdits(
-        newRows.map(r => r.newData),
-        editedRows,
-        newRows.map((_, idx) => idx)
+      const newRows = updateCheckingResults.rows.filter(
+        (row) => row.status === "new",
       );
 
-      const headers = ['Key', ...updateCheckingResults.headers];
+      const exportRows = applyRowEdits(
+        newRows.map((r) => r.newData),
+        editedRows,
+        newRows.map((_, idx) => idx),
+      );
+
+      const headers = ["Key", ...updateCheckingResults.headers];
       const rowsWithKey = exportRows.map((row, idx) => [
         String(newRows[idx].keyValue),
         ...row,
@@ -255,7 +310,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         rowsWithKey,
         headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToExcel(
@@ -263,7 +318,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers,
           rows: filteredRows,
         },
-        'crystal-atlas-update-checking-results.xlsx'
+        "crystal-atlas-update-checking-results.xlsx",
       );
 
       addHistory.mutate({
@@ -271,8 +326,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} update checking result(s) to Excel`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to Excel. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to Excel. Please try again.");
     } finally {
       setExporting(false);
     }
@@ -283,15 +338,17 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
 
     setExporting(true);
     try {
-      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
-      
-      const exportRows = applyRowEdits(
-        newRows.map(r => r.newData),
-        editedRows,
-        newRows.map((_, idx) => idx)
+      const newRows = updateCheckingResults.rows.filter(
+        (row) => row.status === "new",
       );
 
-      const headers = ['Key', ...updateCheckingResults.headers];
+      const exportRows = applyRowEdits(
+        newRows.map((r) => r.newData),
+        editedRows,
+        newRows.map((_, idx) => idx),
+      );
+
+      const headers = ["Key", ...updateCheckingResults.headers];
       const rowsWithKey = exportRows.map((row, idx) => [
         String(newRows[idx].keyValue),
         ...row,
@@ -301,7 +358,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         rowsWithKey,
         headers,
         filterColumn,
-        filterValue
+        filterValue,
       );
 
       await exportToPdf(
@@ -309,7 +366,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
           headers,
           rows: filteredRows,
         },
-        'crystal-atlas-update-checking-results.pdf'
+        "crystal-atlas-update-checking-results.pdf",
       );
 
       addHistory.mutate({
@@ -317,20 +374,23 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         details: `Exported ${filteredRows.length} update checking result(s) to PDF`,
       });
     } catch (error) {
-      console.error('Export failed:', error);
-      alert('Failed to export to PDF. Please try again.');
+      console.error("Export failed:", error);
+      alert("Failed to export to PDF. Please try again.");
     } finally {
       setExporting(false);
     }
   };
 
   const handleResetFilters = () => {
-    setFilterColumn('');
-    setFilterValue('');
+    setFilterColumn("");
+    setFilterValue("");
   };
 
   // Get current dataset for filter options
-  const getCurrentDataset = (): { headers: string[]; rows: (string | number | boolean | null)[][] } | null => {
+  const getCurrentDataset = (): {
+    headers: string[];
+    rows: (string | number | boolean | null)[][];
+  } | null => {
     if (hasVlookupResults && vlookupResults && workbook?.sheetData) {
       const allRows = vlookupResults
         .filter((r) => r.result.found && r.result.fullRow)
@@ -338,22 +398,34 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
       return { headers: workbook.sheetData.headers, rows: allRows };
     }
     if (hasFilterResults && filterResults) {
-      return { headers: filterResults.headers, rows: filterResults.filteredRows.map(r => r.data) };
+      return {
+        headers: filterResults.headers,
+        rows: filterResults.filteredRows.map((r) => r.data),
+      };
     }
     if (hasUpdateCheckingResults && updateCheckingResults) {
-      const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
-      const headers = ['Key', ...updateCheckingResults.headers];
-      const rows = newRows.map(row => [row.keyValue, ...row.newData]);
+      const newRows = updateCheckingResults.rows.filter(
+        (row) => row.status === "new",
+      );
+      const headers = ["Key", ...updateCheckingResults.headers];
+      const rows = newRows.map((row) => [row.keyValue, ...row.newData]);
       return { headers, rows };
     }
     return null;
   };
 
   const currentDataset = getCurrentDataset();
-  const availableColumns = currentDataset ? getAvailableFilterColumns(currentDataset.headers) : [];
-  const availableValues = currentDataset && filterColumn
-    ? getAvailableFilterValues(currentDataset.rows, currentDataset.headers, filterColumn)
+  const availableColumns = currentDataset
+    ? getAvailableFilterColumns(currentDataset.headers)
     : [];
+  const availableValues =
+    currentDataset && filterColumn
+      ? getAvailableFilterValues(
+          currentDataset.rows,
+          currentDataset.headers,
+          filterColumn,
+        )
+      : [];
 
   if (!hasVlookupResults && !hasFilterResults && !hasUpdateCheckingResults) {
     return (
@@ -361,7 +433,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            No results to display. Please perform a search, filter, or update checking operation first.
+            No results to display. Please perform a search, filter, or update
+            checking operation first.
           </AlertDescription>
         </Alert>
       </div>
@@ -369,7 +442,9 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
   }
 
   if (hasUpdateCheckingResults && updateCheckingResults) {
-    const newRows = updateCheckingResults.rows.filter((row) => row.status === 'new');
+    const newRows = updateCheckingResults.rows.filter(
+      (row) => row.status === "new",
+    );
 
     return (
       <div className="space-y-6">
@@ -399,7 +474,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Column</label>
+                  <span className="text-xs font-medium">Filter by Column</span>
                   <Select value={filterColumn} onValueChange={setFilterColumn}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select column..." />
@@ -414,8 +489,12 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Value</label>
-                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                  <span className="text-xs font-medium">Filter by Value</span>
+                  <Select
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    disabled={!filterColumn}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select value..." />
                     </SelectTrigger>
@@ -431,20 +510,30 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               {filterColumn && filterValue && (
                 <p className="text-xs text-muted-foreground">
-                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                  Export will include rows where <strong>{filterColumn}</strong>{" "}
+                  = <strong>{filterValue}</strong>
                 </p>
               )}
             </div>
 
             {/* Export Actions */}
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={handleExportUpdateCheckingExcel} disabled={exporting || newRows.length === 0} variant="outline" size="sm">
+              <Button
+                onClick={handleExportUpdateCheckingExcel}
+                disabled={exporting || newRows.length === 0}
+                variant="outline"
+                size="sm"
+              >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download Excel'}
+                {exporting ? "Exporting..." : "Download Excel"}
               </Button>
-              <Button onClick={handleExportUpdateCheckingPdf} disabled={exporting || newRows.length === 0} size="sm">
+              <Button
+                onClick={handleExportUpdateCheckingPdf}
+                disabled={exporting || newRows.length === 0}
+                size="sm"
+              >
                 <Download className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download PDF'}
+                {exporting ? "Exporting..." : "Download PDF"}
               </Button>
             </div>
 
@@ -452,7 +541,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               <Alert>
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>
-                  No new items found. All keys in the new file exist in the old file.
+                  No new items found. All keys in the new file exist in the old
+                  file.
                 </AlertDescription>
               </Alert>
             ) : (
@@ -462,31 +552,54 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                     <TableRow>
                       <TableHead className="whitespace-nowrap">Key</TableHead>
                       {updateCheckingResults.headers.map((header, idx) => (
-                        <TableHead key={idx} className="whitespace-nowrap">
+                        <TableHead
+                          // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                          key={idx}
+                          className="whitespace-nowrap"
+                        >
                           {header}
                         </TableHead>
                       ))}
-                      <TableHead className="whitespace-nowrap">Actions</TableHead>
+                      <TableHead className="whitespace-nowrap">
+                        Actions
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {newRows.map((row, idx) => {
-                      const displayData = editedRows.has(idx) ? editedRows.get(idx)! : row.newData;
+                      const displayData = editedRows.has(idx)
+                        ? editedRows.get(idx)!
+                        : row.newData;
                       return (
-                        <TableRow key={idx}>
+                        <TableRow
+                          // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                          key={idx}
+                        >
                           <TableCell className="font-medium whitespace-nowrap">
                             {String(row.keyValue)}
                           </TableCell>
                           {displayData.map((cell, cellIdx) => (
-                            <TableCell key={cellIdx} className="whitespace-nowrap">
-                              {cell === null || cell === undefined ? '' : String(cell)}
+                            <TableCell
+                              // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                              key={cellIdx}
+                              className="whitespace-nowrap"
+                            >
+                              {cell === null || cell === undefined
+                                ? ""
+                                : String(cell)}
                             </TableCell>
                           ))}
                           <TableCell className="whitespace-nowrap">
                             <Button
                               size="sm"
                               variant="ghost"
-                              onClick={() => handleOpenEditModal(idx, row.newData, updateCheckingResults.headers)}
+                              onClick={() =>
+                                handleOpenEditModal(
+                                  idx,
+                                  row.newData,
+                                  updateCheckingResults.headers,
+                                )
+                              }
                             >
                               <Edit2 className="w-4 h-4" />
                             </Button>
@@ -543,7 +656,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Column</label>
+                  <span className="text-xs font-medium">Filter by Column</span>
                   <Select value={filterColumn} onValueChange={setFilterColumn}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select column..." />
@@ -558,8 +671,12 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Value</label>
-                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                  <span className="text-xs font-medium">Filter by Value</span>
+                  <Select
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    disabled={!filterColumn}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select value..." />
                     </SelectTrigger>
@@ -575,20 +692,30 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               {filterColumn && filterValue && (
                 <p className="text-xs text-muted-foreground">
-                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                  Export will include rows where <strong>{filterColumn}</strong>{" "}
+                  = <strong>{filterValue}</strong>
                 </p>
               )}
             </div>
 
             {/* Export Actions */}
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={handleExportVlookupExcel} disabled={exporting || matchedCount === 0} variant="outline" size="sm">
+              <Button
+                onClick={handleExportVlookupExcel}
+                disabled={exporting || matchedCount === 0}
+                variant="outline"
+                size="sm"
+              >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download Excel'}
+                {exporting ? "Exporting..." : "Download Excel"}
               </Button>
-              <Button onClick={handleExportVlookupPdf} disabled={exporting || matchedCount === 0} size="sm">
+              <Button
+                onClick={handleExportVlookupPdf}
+                disabled={exporting || matchedCount === 0}
+                size="sm"
+              >
                 <Download className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download PDF'}
+                {exporting ? "Exporting..." : "Download PDF"}
               </Button>
             </div>
 
@@ -596,10 +723,16 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="whitespace-nowrap">Lookup Value</TableHead>
+                    <TableHead className="whitespace-nowrap">
+                      Lookup Value
+                    </TableHead>
                     <TableHead className="whitespace-nowrap">Status</TableHead>
-                    {workbook && workbook.sheetData && workbook.sheetData.headers.map((header, idx) => (
-                      <TableHead key={idx} className="whitespace-nowrap">
+                    {workbook?.sheetData?.headers.map((header, idx) => (
+                      <TableHead
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                        key={idx}
+                        className="whitespace-nowrap"
+                      >
                         {header}
                       </TableHead>
                     ))}
@@ -609,12 +742,16 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 <TableBody>
                   {vlookupResults.map((result, idx) => {
                     const rowIndex = result.result.fullRow?.index;
-                    const displayData = rowIndex !== undefined && editedRows.has(rowIndex)
-                      ? editedRows.get(rowIndex)!
-                      : result.result.fullRow?.data;
+                    const displayData =
+                      rowIndex !== undefined && editedRows.has(rowIndex)
+                        ? editedRows.get(rowIndex)!
+                        : result.result.fullRow?.data;
 
                     return (
-                      <TableRow key={idx}>
+                      <TableRow
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                        key={idx}
+                      >
                         <TableCell className="font-medium whitespace-nowrap">
                           {result.lookupValue}
                         </TableCell>
@@ -628,8 +765,14 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                         {result.result.found && displayData ? (
                           <>
                             {displayData.map((cell, cellIdx) => (
-                              <TableCell key={cellIdx} className="whitespace-nowrap">
-                                {cell === null || cell === undefined ? '' : String(cell)}
+                              <TableCell
+                                // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                                key={cellIdx}
+                                className="whitespace-nowrap"
+                              >
+                                {cell === null || cell === undefined
+                                  ? ""
+                                  : String(cell)}
                               </TableCell>
                             ))}
                             <TableCell className="whitespace-nowrap">
@@ -640,7 +783,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                                   handleOpenEditModal(
                                     result.result.fullRow!.index,
                                     result.result.fullRow!.data,
-                                    workbook?.sheetData?.headers || []
+                                    workbook?.sheetData?.headers || [],
                                   )
                                 }
                               >
@@ -650,13 +793,18 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                           </>
                         ) : (
                           <>
-                            {workbook && workbook.sheetData &&
-                              workbook.sheetData.headers.map((_, cellIdx) => (
-                                <TableCell key={cellIdx} className="text-muted-foreground whitespace-nowrap">
-                                  -
-                                </TableCell>
-                              ))}
-                            <TableCell className="whitespace-nowrap">-</TableCell>
+                            {workbook?.sheetData?.headers.map((_, cellIdx) => (
+                              <TableCell
+                                // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                                key={cellIdx}
+                                className="text-muted-foreground whitespace-nowrap"
+                              >
+                                -
+                              </TableCell>
+                            ))}
+                            <TableCell className="whitespace-nowrap">
+                              -
+                            </TableCell>
                           </>
                         )}
                       </TableRow>
@@ -690,7 +838,8 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 <div>
                   <CardTitle>Filter Results</CardTitle>
                   <CardDescription>
-                    {filterResults.filteredRows.length} row(s) match your filter criteria
+                    {filterResults.filteredRows.length} row(s) match your filter
+                    criteria
                   </CardDescription>
                 </div>
               </div>
@@ -708,7 +857,7 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               <div className="grid sm:grid-cols-2 gap-3">
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Column</label>
+                  <span className="text-xs font-medium">Filter by Column</span>
                   <Select value={filterColumn} onValueChange={setFilterColumn}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select column..." />
@@ -723,8 +872,12 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <label className="text-xs font-medium">Filter by Value</label>
-                  <Select value={filterValue} onValueChange={setFilterValue} disabled={!filterColumn}>
+                  <span className="text-xs font-medium">Filter by Value</span>
+                  <Select
+                    value={filterValue}
+                    onValueChange={setFilterValue}
+                    disabled={!filterColumn}
+                  >
                     <SelectTrigger>
                       <SelectValue placeholder="Select value..." />
                     </SelectTrigger>
@@ -740,20 +893,30 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
               </div>
               {filterColumn && filterValue && (
                 <p className="text-xs text-muted-foreground">
-                  Export will include rows where <strong>{filterColumn}</strong> = <strong>{filterValue}</strong>
+                  Export will include rows where <strong>{filterColumn}</strong>{" "}
+                  = <strong>{filterValue}</strong>
                 </p>
               )}
             </div>
 
             {/* Export Actions */}
             <div className="flex gap-2 flex-wrap">
-              <Button onClick={handleExportFilterExcel} disabled={exporting || filterResults.filteredRows.length === 0} variant="outline" size="sm">
+              <Button
+                onClick={handleExportFilterExcel}
+                disabled={exporting || filterResults.filteredRows.length === 0}
+                variant="outline"
+                size="sm"
+              >
                 <FileSpreadsheet className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download Excel'}
+                {exporting ? "Exporting..." : "Download Excel"}
               </Button>
-              <Button onClick={handleExportFilterPdf} disabled={exporting || filterResults.filteredRows.length === 0} size="sm">
+              <Button
+                onClick={handleExportFilterPdf}
+                disabled={exporting || filterResults.filteredRows.length === 0}
+                size="sm"
+              >
                 <Download className="w-4 h-4 mr-2" />
-                {exporting ? 'Exporting...' : 'Download PDF'}
+                {exporting ? "Exporting..." : "Download PDF"}
               </Button>
             </div>
 
@@ -762,7 +925,11 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 <TableHeader>
                   <TableRow>
                     {filterResults.headers.map((header, idx) => (
-                      <TableHead key={idx} className="whitespace-nowrap">
+                      <TableHead
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                        key={idx}
+                        className="whitespace-nowrap"
+                      >
                         {header}
                       </TableHead>
                     ))}
@@ -771,19 +938,36 @@ export function ResultsTab({ onNavigateToUpdateChecking }: ResultsTabProps) {
                 </TableHeader>
                 <TableBody>
                   {filterResults.filteredRows.map((row, idx) => {
-                    const displayData = editedRows.has(row.index) ? editedRows.get(row.index)! : row.data;
+                    const displayData = editedRows.has(row.index)
+                      ? editedRows.get(row.index)!
+                      : row.data;
                     return (
-                      <TableRow key={idx}>
+                      <TableRow
+                        // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                        key={idx}
+                      >
                         {displayData.map((cell, cellIdx) => (
-                          <TableCell key={cellIdx} className="whitespace-nowrap">
-                            {cell === null || cell === undefined ? '' : String(cell)}
+                          <TableCell
+                            // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                            key={cellIdx}
+                            className="whitespace-nowrap"
+                          >
+                            {cell === null || cell === undefined
+                              ? ""
+                              : String(cell)}
                           </TableCell>
                         ))}
                         <TableCell className="whitespace-nowrap">
                           <Button
                             size="sm"
                             variant="ghost"
-                            onClick={() => handleOpenEditModal(row.index, row.data, filterResults.headers)}
+                            onClick={() =>
+                              handleOpenEditModal(
+                                row.index,
+                                row.data,
+                                filterResults.headers,
+                              )
+                            }
                           >
                             <Edit2 className="w-4 h-4" />
                           </Button>

@@ -25,12 +25,20 @@ export interface AttendanceDayEntry {
   'checkOut' : [] | [Time],
   'workingTime' : bigint,
 }
+export interface AttendanceRecord {
+  'breaks' : Array<BreakPeriod>,
+  'shifts' : Array<Shift>,
+  'date' : string,
+  'employeePrincipal' : Principal,
+  'notes' : [] | [string],
+}
 export type AttendanceStatus = { 'halfDay' : null } |
   { 'present' : null } |
   { 'festival' : null } |
   { 'weeklyOff' : null } |
   { 'companyLeave' : null } |
-  { 'leave' : null };
+  { 'leave' : null } |
+  { 'holiday' : null };
 export interface AttendanceSummary {
   'halfDays' : bigint,
   'weeklyOffDays' : bigint,
@@ -42,11 +50,66 @@ export interface AttendanceSummary {
   'totalWorkingTime' : bigint,
   'leaveDays' : bigint,
 }
+export interface BreakPeriod { 'end' : Time, 'start' : Time }
+export interface BroadcastMessage {
+  'id' : bigint,
+  'createdAt' : Time,
+  'createdBy' : Principal,
+  'text' : string,
+}
 export interface Budget {
   'monthlyLimit' : bigint,
   'lastUpdated' : string,
   'dayLimit' : bigint,
   'savingsGoal' : bigint,
+}
+export interface CalendarEvent {
+  'id' : bigint,
+  'title' : string,
+  'createdBy' : Principal,
+  'isAdminOnly' : boolean,
+  'description' : string,
+  'dateTime' : bigint,
+}
+export interface Channel {
+  'id' : bigint,
+  'name' : string,
+  'createdAt' : Time,
+  'createdBy' : Principal,
+}
+export interface ChannelMessage {
+  'id' : bigint,
+  'channelId' : bigint,
+  'createdAt' : Time,
+  'text' : string,
+  'fileName' : [] | [string],
+  'senderName' : string,
+  'senderId' : Principal,
+  'fileUrl' : [] | [string],
+}
+export interface Customer {
+  'id' : bigint,
+  'name' : string,
+  'createdAt' : Time,
+  'email' : string,
+  'company' : string,
+  'workDetails' : string,
+  'address' : string,
+  'phoneNumber' : string,
+}
+export interface Department {
+  'id' : bigint,
+  'name' : string,
+  'createdBy' : Principal,
+}
+export interface DirectMessage {
+  'id' : bigint,
+  'createdAt' : Time,
+  'text' : string,
+  'fileName' : [] | [string],
+  'toPrincipal' : Principal,
+  'fromPrincipal' : Principal,
+  'fileUrl' : [] | [string],
 }
 export interface ExpenseEntry {
   'id' : bigint,
@@ -55,6 +118,13 @@ export interface ExpenseEntry {
   'description' : string,
   'category' : string,
   'amount' : bigint,
+}
+export interface FileData {
+  'id' : bigint,
+  'content' : Uint8Array,
+  'filename' : string,
+  'uploader' : Principal,
+  'uploadedAt' : Time,
 }
 export interface HistoryEntry {
   'id' : bigint,
@@ -69,6 +139,14 @@ export type HistoryType = { 'expenseChange' : null } |
   { 'results' : null } |
   { 'upload' : null } |
   { 'updateChecking' : null };
+export interface Holiday {
+  'id' : bigint,
+  'holidayType' : string,
+  'date' : bigint,
+  'name' : string,
+  'description' : string,
+  'applicableDepartments' : Array<bigint>,
+}
 export interface HolidayEntry { 'holidayType' : HolidayType, 'date' : string }
 export type HolidayType = { 'festival' : null } |
   { 'companyLeave' : null };
@@ -78,8 +156,11 @@ export interface Reminder {
   'date' : string,
   'createdAt' : Time,
   'time' : string,
+  'repeatUntilDate' : [] | [bigint],
+  'updatedAt' : [] | [Time],
   'message' : string,
 }
+export interface Shift { 'clockOut' : [] | [Time], 'clockIn' : Time }
 export type Time = bigint;
 export interface TodoItem {
   'id' : bigint,
@@ -91,66 +172,162 @@ export interface UserApprovalInfo {
   'status' : ApprovalStatus,
   'principal' : Principal,
 }
-export interface UserProfile { 'name' : string }
+export interface UserProfile {
+  'displayName' : string,
+  'profilePicture' : [] | [Uint8Array],
+  'departmentId' : [] | [bigint],
+}
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
   { 'guest' : null };
+export interface UserStatusEntry {
+  'status' : UserStatusKind,
+  'principal' : Principal,
+  'updatedAt' : Time,
+}
+export type UserStatusKind = { 'away' : null } |
+  { 'busy' : null } |
+  { 'offline' : null } |
+  { 'online' : null };
+export interface _CaffeineStorageCreateCertificateResult {
+  'method' : string,
+  'blob_hash' : string,
+}
+export interface _CaffeineStorageRefillInformation {
+  'proposed_top_up_amount' : [] | [bigint],
+}
+export interface _CaffeineStorageRefillResult {
+  'success' : [] | [boolean],
+  'topped_up_amount' : [] | [bigint],
+}
 export interface _SERVICE {
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
-  'addExpense' : ActorMethod<[bigint, string, string, string], bigint>,
-  'addHistory' : ActorMethod<[HistoryType, string], bigint>,
-  'addNote' : ActorMethod<[string], Note>,
-  'addReminder' : ActorMethod<[string, string, string], bigint>,
-  'addTodo' : ActorMethod<[string], TodoItem>,
-  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
-  'checkIn' : ActorMethod<[string, AttendanceStatus], undefined>,
-  'checkOut' : ActorMethod<[string], undefined>,
-  'clearAllData' : ActorMethod<[], undefined>,
-  'clearHistory' : ActorMethod<[], undefined>,
-  'createHoliday' : ActorMethod<[string, HolidayType], undefined>,
-  'deleteAttendanceEntry' : ActorMethod<[string], undefined>,
-  'deleteExpense' : ActorMethod<[bigint], undefined>,
-  'deleteHoliday' : ActorMethod<[string], undefined>,
-  'deleteNote' : ActorMethod<[bigint], undefined>,
-  'deleteReminder' : ActorMethod<[bigint], undefined>,
-  'editAttendanceEntry' : ActorMethod<[string, AttendanceDayEntry], undefined>,
-  'editExpense' : ActorMethod<
-    [bigint, bigint, string, string, string],
+  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
+  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+    [Array<Uint8Array>],
     undefined
   >,
-  'filterByDate' : ActorMethod<[string], Array<ExpenseEntry>>,
-  'filterByType' : ActorMethod<[string], Array<ExpenseEntry>>,
-  'getAllAttendanceEntries' : ActorMethod<
-    [],
-    Array<[string, AttendanceDayEntry]>
+  '_caffeineStorageCreateCertificate' : ActorMethod<
+    [string],
+    _CaffeineStorageCreateCertificateResult
   >,
-  'getAllHolidays' : ActorMethod<[], Array<HolidayEntry>>,
+  '_caffeineStorageRefillCashier' : ActorMethod<
+    [[] | [_CaffeineStorageRefillInformation]],
+    _CaffeineStorageRefillResult
+  >,
+  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
+  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  'addBreakToRecord' : ActorMethod<[string, BreakPeriod], undefined>,
+  'addCustomer' : ActorMethod<
+    [string, string, string, string, string, string],
+    bigint
+  >,
+  'addExpense' : ActorMethod<[bigint, string, string, string], bigint>,
+  'addGlobalHoliday' : ActorMethod<[string, HolidayType], undefined>,
+  'addHistory' : ActorMethod<[HistoryType, string], bigint>,
+  'addTodo' : ActorMethod<[string], bigint>,
+  'adminAssignUserToDepartment' : ActorMethod<[Principal, bigint], undefined>,
+  'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'assignToDepartment' : ActorMethod<[bigint], undefined>,
+  'createBroadcast' : ActorMethod<[string], bigint>,
+  'createCalendarEvent' : ActorMethod<
+    [string, bigint, string, boolean],
+    bigint
+  >,
+  'createChannel' : ActorMethod<[string], bigint>,
+  'createDepartment' : ActorMethod<[string], bigint>,
+  'createHoliday' : ActorMethod<
+    [string, bigint, string, Array<bigint>, string],
+    bigint
+  >,
+  'createOrUpdateAttendanceRecord' : ActorMethod<
+    [string, Shift, Array<BreakPeriod>, [] | [string]],
+    undefined
+  >,
+  'createReminder' : ActorMethod<
+    [string, string, string, [] | [bigint]],
+    bigint
+  >,
+  'deleteCalendarEvent' : ActorMethod<[bigint], undefined>,
+  'deleteChannel' : ActorMethod<[bigint], undefined>,
+  'deleteCustomer' : ActorMethod<[bigint], undefined>,
+  'deleteDepartment' : ActorMethod<[bigint], undefined>,
+  'deleteExpense' : ActorMethod<[bigint], undefined>,
+  'deleteHoliday' : ActorMethod<[bigint], undefined>,
+  'deleteNote' : ActorMethod<[bigint], undefined>,
+  'deleteReminder' : ActorMethod<[bigint], undefined>,
+  'deleteTodo' : ActorMethod<[bigint], undefined>,
+  'dismissBroadcast' : ActorMethod<[bigint], undefined>,
+  'getActiveBroadcasts' : ActorMethod<[], Array<BroadcastMessage>>,
+  'getAllCalendarEvents' : ActorMethod<[], Array<CalendarEvent>>,
   'getAttendanceConfig' : ActorMethod<[], [] | [AttendanceConfig]>,
-  'getAttendanceEntry' : ActorMethod<[string], [] | [AttendanceDayEntry]>,
-  'getAttendanceSummary' : ActorMethod<[[string, string]], AttendanceSummary>,
+  'getAttendanceEntries' : ActorMethod<[], Array<[string, AttendanceDayEntry]>>,
+  'getAttendanceRecords' : ActorMethod<[], Array<[string, AttendanceRecord]>>,
+  'getAttendanceSummary' : ActorMethod<[string], AttendanceSummary>,
+  'getBroadcastHistory' : ActorMethod<[], Array<BroadcastMessage>>,
   'getBudget' : ActorMethod<[], [] | [Budget]>,
+  'getCalendarEvents' : ActorMethod<[], Array<CalendarEvent>>,
   'getCallerUserProfile' : ActorMethod<[], [] | [UserProfile]>,
   'getCallerUserRole' : ActorMethod<[], UserRole>,
-  'getExpensesForCaller' : ActorMethod<[], Array<ExpenseEntry>>,
-  'getFilteredHistory' : ActorMethod<[HistoryType], Array<HistoryEntry>>,
+  'getChannelMessages' : ActorMethod<[bigint], Array<ChannelMessage>>,
+  'getCustomers' : ActorMethod<[], Array<Customer>>,
+  'getDepartment' : ActorMethod<[bigint], [] | [Department]>,
+  'getDirectMessages' : ActorMethod<[Principal], Array<DirectMessage>>,
+  'getEmployeeAttendanceRecords' : ActorMethod<
+    [Principal],
+    Array<[string, AttendanceRecord]>
+  >,
+  'getExpenses' : ActorMethod<[], Array<ExpenseEntry>>,
+  'getFile' : ActorMethod<[bigint], [] | [FileData]>,
+  'getGlobalHolidays' : ActorMethod<[], Array<HolidayEntry>>,
   'getHistory' : ActorMethod<[], Array<HistoryEntry>>,
-  'getHoliday' : ActorMethod<[string], [] | [HolidayEntry]>,
+  'getHolidays' : ActorMethod<[], Array<Holiday>>,
   'getNotes' : ActorMethod<[], Array<Note>>,
-  'getRemindersForCaller' : ActorMethod<[], Array<Reminder>>,
+  'getReminders' : ActorMethod<[], Array<Reminder>>,
+  'getRemindersForDate' : ActorMethod<[bigint], Array<Reminder>>,
   'getTodos' : ActorMethod<[], Array<TodoItem>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
-  'getVersion' : ActorMethod<[], string>,
-  'getWorkingTime' : ActorMethod<[string], bigint>,
+  'getUserStatuses' : ActorMethod<[], Array<UserStatusEntry>>,
+  'grantCustomDatePermission' : ActorMethod<[Principal], undefined>,
+  'hasCustomDatePermission' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerApproved' : ActorMethod<[], boolean>,
   'listApprovals' : ActorMethod<[], Array<UserApprovalInfo>>,
+  'listChannels' : ActorMethod<[], Array<Channel>>,
+  'listDepartments' : ActorMethod<[], Array<Department>>,
+  'postChannelMessage' : ActorMethod<
+    [bigint, string, string, [] | [string], [] | [string]],
+    bigint
+  >,
+  'removeGlobalHoliday' : ActorMethod<[string], undefined>,
   'requestApproval' : ActorMethod<[], undefined>,
-  'saveBudget' : ActorMethod<[bigint, bigint, bigint, string], undefined>,
+  'revokeCustomDatePermission' : ActorMethod<[Principal], undefined>,
+  'saveAttendanceConfig' : ActorMethod<[AttendanceConfig], undefined>,
+  'saveAttendanceEntry' : ActorMethod<[string, AttendanceDayEntry], undefined>,
+  'saveBudget' : ActorMethod<[Budget], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'saveNote' : ActorMethod<[bigint, string], bigint>,
+  'sendDirectMessage' : ActorMethod<
+    [Principal, string, [] | [string], [] | [string]],
+    bigint
+  >,
   'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
-  'setAttendanceConfig' : ActorMethod<[AttendanceConfig], undefined>,
+  'setUserStatus' : ActorMethod<[UserStatusKind], undefined>,
   'toggleTodo' : ActorMethod<[bigint], undefined>,
-  'updateHoliday' : ActorMethod<[string, HolidayType], undefined>,
+  'updateCustomer' : ActorMethod<
+    [bigint, string, string, string, string, string, string],
+    undefined
+  >,
+  'updateDepartment' : ActorMethod<[bigint, string], undefined>,
+  'updateHoliday' : ActorMethod<
+    [bigint, string, bigint, string, Array<bigint>, string],
+    undefined
+  >,
+  'updateReminder' : ActorMethod<
+    [bigint, string, string, string, [] | [bigint]],
+    undefined
+  >,
+  'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

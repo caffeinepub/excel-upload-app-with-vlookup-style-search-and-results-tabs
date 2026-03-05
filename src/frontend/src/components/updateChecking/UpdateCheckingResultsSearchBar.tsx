@@ -1,9 +1,15 @@
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, X } from 'lucide-react';
-import { MatchType } from '@/lib/compare/filterComparisonRows';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { MatchType } from "@/lib/compare/filterComparisonRows";
+import { Search, X } from "lucide-react";
 
 interface UpdateCheckingResultsSearchBarProps {
   keyword: string;
@@ -36,7 +42,10 @@ export function UpdateCheckingResultsSearchBar({
           />
         </div>
         <div className="w-[140px]">
-          <Select value={matchType} onValueChange={(value) => onMatchTypeChange(value as MatchType)}>
+          <Select
+            value={matchType}
+            onValueChange={(value) => onMatchTypeChange(value as MatchType)}
+          >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
@@ -58,7 +67,8 @@ export function UpdateCheckingResultsSearchBar({
       </div>
       {keyword && (
         <p className="text-xs text-muted-foreground">
-          Searching for "{keyword}" using {matchType === 'exact' ? 'exact match' : 'partial match'}
+          Searching for "{keyword}" using{" "}
+          {matchType === "exact" ? "exact match" : "partial match"}
         </p>
       )}
     </div>

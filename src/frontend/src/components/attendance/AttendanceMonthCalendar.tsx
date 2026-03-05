@@ -1,8 +1,8 @@
-import { ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
-import { cn } from '@/lib/utils';
-import type { AttendanceDayEntry, HolidayEntry } from '../../backend';
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import type { AttendanceDayEntry, Holiday } from "../../backend";
 
 interface AttendanceMonthCalendarProps {
   year: number;
@@ -11,14 +11,43 @@ interface AttendanceMonthCalendarProps {
   onDateSelect: (date: string) => void;
   selectedDate: string | null;
   attendanceEntries: Map<string, AttendanceDayEntry>;
-  holidays: HolidayEntry[];
+  holidays: Holiday[];
+  userDepartmentId?: bigint | null;
 }
 
-const WEEKDAY_LABELS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const WEEKDAY_LABELS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
 ];
+
+function timestampToDateString(ts: bigint): string {
+  const ms = Number(ts) / 1_000_000;
+  const d = new Date(ms);
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function isHolidayApplicable(
+  holiday: Holiday,
+  userDepartmentId?: bigint | null,
+): boolean {
+  if (holiday.applicableDepartments.length === 0) return true;
+  if (userDepartmentId == null) return false;
+  return holiday.applicableDepartments.some((id) => id === userDepartmentId);
+}
 
 export function AttendanceMonthCalendar({
   year,
@@ -28,13 +57,19 @@ export function AttendanceMonthCalendar({
   selectedDate,
   attendanceEntries,
   holidays,
+  userDepartmentId,
 }: AttendanceMonthCalendarProps) {
   const today = new Date();
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
 
-  // Build holiday map for quick lookup
-  const holidayMap = new Map<string, HolidayEntry>();
-  holidays.forEach(h => holidayMap.set(h.date, h));
+  // Build holiday map for quick lookup (only applicable holidays)
+  const holidayMap = new Map<string, Holiday>();
+  for (const h of holidays) {
+    if (isHolidayApplicable(h, userDepartmentId)) {
+      const dateStr = timestampToDateString(h.date);
+      holidayMap.set(dateStr, h);
+    }
+  }
 
   // Calculate calendar grid
   const firstDay = new Date(year, month, 1);
@@ -44,14 +79,12 @@ export function AttendanceMonthCalendar({
 
   const calendarDays: Array<{ date: number; dateStr: string } | null> = [];
 
-  // Add empty cells for days before the first of the month
   for (let i = 0; i < startWeekday; i++) {
     calendarDays.push(null);
   }
 
-  // Add all days of the month
   for (let day = 1; day <= daysInMonth; day++) {
-    const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
     calendarDays.push({ date: day, dateStr });
   }
 
@@ -77,31 +110,65 @@ export function AttendanceMonthCalendar({
     const hasEntry = attendanceEntries.has(dateStr);
     const holiday = holidayMap.get(dateStr);
 
-    let bgClass = 'bg-background hover:bg-muted';
-    let textClass = 'text-foreground';
-    let borderClass = '';
+    let bgClass = "bg-background hover:bg-muted";
+    let textClass = "text-foreground";
+    let borderClass = "";
+    let dotColor = "";
+    let holidayTitle = "";
 
     if (isSelected) {
-      bgClass = 'bg-primary text-primary-foreground hover:bg-primary/90';
-      textClass = 'text-primary-foreground';
+      bgClass = "bg-primary text-primary-foreground hover:bg-primary/90";
+      textClass = "text-primary-foreground";
     } else if (isToday) {
-      borderClass = 'ring-2 ring-primary';
+      borderClass = "ring-2 ring-primary";
     }
 
-    if (holiday) {
-      if (holiday.holidayType === 'festival') {
-        bgClass = isSelected ? bgClass : 'bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50';
-        textClass = isSelected ? textClass : 'text-purple-900 dark:text-purple-100';
-      } else if (holiday.holidayType === 'companyLeave') {
-        bgClass = isSelected ? bgClass : 'bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200 dark:hover:bg-orange-900/50';
-        textClass = isSelected ? textClass : 'text-orange-900 dark:text-orange-100';
+    if (holiday && !isSelected) {
+      holidayTitle = `${holiday.name} (${holiday.holidayType})`;
+      const type = holiday.holidayType;
+      if (type === "Festival" || type === "festival") {
+        bgClass =
+          "bg-purple-100 dark:bg-purple-900/30 hover:bg-purple-200 dark:hover:bg-purple-900/50";
+        textClass = "text-purple-900 dark:text-purple-100";
+        dotColor = "bg-purple-500";
+      } else if (type === "Company" || type === "companyLeave") {
+        bgClass =
+          "bg-orange-100 dark:bg-orange-900/30 hover:bg-orange-200 dark:hover:bg-orange-900/50";
+        textClass = "text-orange-900 dark:text-orange-100";
+        dotColor = "bg-orange-500";
+      } else {
+        // Public or other
+        bgClass =
+          "bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50";
+        textClass = "text-blue-900 dark:text-blue-100";
+        dotColor = "bg-blue-500";
       }
     } else if (hasEntry && !isSelected) {
-      bgClass = 'bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50';
-      textClass = 'text-green-900 dark:text-green-100';
+      const entry = attendanceEntries.get(dateStr);
+      if (entry?.status === "present") {
+        bgClass =
+          "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50";
+        textClass = "text-green-900 dark:text-green-100";
+      } else if (entry?.status === "leave") {
+        bgClass =
+          "bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50";
+        textClass = "text-red-900 dark:text-red-100";
+      } else if (entry?.status === "halfDay") {
+        bgClass =
+          "bg-yellow-100 dark:bg-yellow-900/30 hover:bg-yellow-200 dark:hover:bg-yellow-900/50";
+        textClass = "text-yellow-900 dark:text-yellow-100";
+      } else if (entry?.status === "weeklyOff") {
+        bgClass =
+          "bg-gray-100 dark:bg-gray-800/50 hover:bg-gray-200 dark:hover:bg-gray-800/70";
+        textClass = "text-gray-600 dark:text-gray-400";
+      } else {
+        bgClass =
+          "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50";
+        textClass = "text-green-900 dark:text-green-100";
+      }
     }
 
-    return { bgClass, textClass, borderClass };
+    return { bgClass, textClass, borderClass, dotColor, holidayTitle };
   };
 
   return (
@@ -121,8 +188,11 @@ export function AttendanceMonthCalendar({
 
       {/* Weekday labels */}
       <div className="grid grid-cols-7 gap-1 mb-2">
-        {WEEKDAY_LABELS.map(label => (
-          <div key={label} className="text-center text-sm font-medium text-muted-foreground py-2">
+        {WEEKDAY_LABELS.map((label) => (
+          <div
+            key={label}
+            className="text-center text-sm font-medium text-muted-foreground py-2"
+          >
             {label}
           </div>
         ))}
@@ -132,53 +202,61 @@ export function AttendanceMonthCalendar({
       <div className="grid grid-cols-7 gap-1">
         {calendarDays.map((day, index) => {
           if (!day) {
+            // biome-ignore lint/suspicious/noArrayIndexKey: empty placeholder cells have no stable id
             return <div key={`empty-${index}`} className="aspect-square" />;
           }
 
-          const { bgClass, textClass, borderClass } = getDayStyle(day.dateStr);
+          const { bgClass, textClass, borderClass, dotColor, holidayTitle } =
+            getDayStyle(day.dateStr);
 
           return (
             <button
+              type="button"
               key={day.dateStr}
               onClick={() => onDateSelect(day.dateStr)}
+              title={holidayTitle || undefined}
               className={cn(
-                'aspect-square rounded-md flex items-center justify-center text-sm font-medium transition-colors',
+                "aspect-square rounded-md flex flex-col items-center justify-center text-sm font-medium transition-colors relative",
                 bgClass,
                 textClass,
-                borderClass
+                borderClass,
               )}
             >
-              {day.date}
+              <span>{day.date}</span>
+              {dotColor && (
+                <span className={cn("w-1 h-1 rounded-full mt-0.5", dotColor)} />
+              )}
             </button>
           );
         })}
       </div>
 
       {/* Legend */}
-      <div className="mt-4 pt-4 border-t space-y-2">
-        <p className="text-xs font-semibold text-muted-foreground mb-2">Legend:</p>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded border-2 border-primary" />
-            <span>Today</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-green-100 dark:bg-green-900/30" />
-            <span>Has Entry</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-purple-100 dark:bg-purple-900/30" />
-            <span>Festival</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-orange-100 dark:bg-orange-900/30" />
-            <span>Company Leave</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-4 h-4 rounded bg-primary" />
-            <span>Selected</span>
-          </div>
-        </div>
+      <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5 text-xs text-muted-foreground border-t pt-3">
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-green-200 dark:bg-green-900/50 inline-block" />
+          Present
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-red-200 dark:bg-red-900/50 inline-block" />
+          Leave
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-yellow-200 dark:bg-yellow-900/50 inline-block" />
+          Half Day
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-blue-200 dark:bg-blue-900/50 inline-block" />
+          Public Holiday
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-purple-200 dark:bg-purple-900/50 inline-block" />
+          Festival
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="w-3 h-3 rounded bg-orange-200 dark:bg-orange-900/50 inline-block" />
+          Company Leave
+        </span>
       </div>
     </Card>
   );

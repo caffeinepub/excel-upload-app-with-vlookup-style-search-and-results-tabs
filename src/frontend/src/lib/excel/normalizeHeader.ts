@@ -2,9 +2,11 @@
  * Normalize Excel header text for consistent matching across files.
  * Trims whitespace and ensures consistent comparison.
  */
-export function normalizeHeader(header: string | number | boolean | null | undefined): string {
+export function normalizeHeader(
+  header: string | number | boolean | null | undefined,
+): string {
   if (header === null || header === undefined) {
-    return '';
+    return "";
   }
   return String(header).trim();
 }
@@ -12,10 +14,10 @@ export function normalizeHeader(header: string | number | boolean | null | undef
 /**
  * Normalize an array of headers, removing empty/whitespace-only values.
  */
-export function normalizeHeaders(headers: (string | number | boolean | null)[]): string[] {
-  return headers
-    .map(normalizeHeader)
-    .filter(header => header.length > 0);
+export function normalizeHeaders(
+  headers: (string | number | boolean | null)[],
+): string[] {
+  return headers.map(normalizeHeader).filter((header) => header.length > 0);
 }
 
 /**
@@ -24,10 +26,12 @@ export function normalizeHeaders(headers: (string | number | boolean | null)[]):
  */
 export function findHeaderIndex(
   headers: (string | number | boolean | null)[],
-  targetHeader: string
+  targetHeader: string,
 ): number {
   const normalizedTarget = normalizeHeader(targetHeader);
-  return headers.findIndex(header => normalizeHeader(header) === normalizedTarget);
+  return headers.findIndex(
+    (header) => normalizeHeader(header) === normalizedTarget,
+  );
 }
 
 /**
@@ -37,7 +41,9 @@ export function findHeaderIndex(
  * - Disambiguates duplicate headers by appending " (2)", " (3)", etc.
  * - Preserves original column count and order for proper row alignment
  */
-export function sanitizeHeaders(headers: (string | number | boolean | null)[]): string[] {
+export function sanitizeHeaders(
+  headers: (string | number | boolean | null)[],
+): string[] {
   // Step 1: Trim all headers and replace empty ones with placeholder names
   const trimmedHeaders = headers.map((header, index) => {
     const trimmed = normalizeHeader(header);
@@ -49,12 +55,11 @@ export function sanitizeHeaders(headers: (string | number | boolean | null)[]): 
   const sanitized = trimmedHeaders.map((header) => {
     const count = seen.get(header) || 0;
     seen.set(header, count + 1);
-    
+
     if (count === 0) {
       return header;
-    } else {
-      return `${header} (${count + 1})`;
     }
+    return `${header} (${count + 1})`;
   });
 
   return sanitized;

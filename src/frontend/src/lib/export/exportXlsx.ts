@@ -1,4 +1,4 @@
-import { loadLogoAsBase64, CRYSTAL_ATLAS_BRANDING } from './branding';
+import { CRYSTAL_ATLAS_BRANDING, loadLogoAsBase64 } from "./branding";
 
 // Define minimal XLSX types we need for export
 interface WorkSheet {
@@ -13,7 +13,11 @@ interface WorkBook {
 interface XLSXUtils {
   aoa_to_sheet: (data: any[][], opts?: any) => WorkSheet;
   book_new: () => WorkBook;
-  book_append_sheet: (workbook: WorkBook, worksheet: WorkSheet, name: string) => void;
+  book_append_sheet: (
+    workbook: WorkBook,
+    worksheet: WorkSheet,
+    name: string,
+  ) => void;
 }
 
 interface XLSXStatic {
@@ -28,17 +32,18 @@ async function loadXLSX(): Promise<XLSXStatic> {
   if (XLSX) return XLSX;
 
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
     script.onload = () => {
       XLSX = (window as any).XLSX;
       if (XLSX) {
         resolve(XLSX);
       } else {
-        reject(new Error('Failed to load XLSX library'));
+        reject(new Error("Failed to load XLSX library"));
       }
     };
-    script.onerror = () => reject(new Error('Failed to load XLSX library'));
+    script.onerror = () => reject(new Error("Failed to load XLSX library"));
     document.head.appendChild(script);
   });
 }
@@ -51,7 +56,10 @@ export interface ExportData {
 /**
  * Export data to Excel with Crystal Atlas branding
  */
-export async function exportToExcel(data: ExportData, filename: string = 'export.xlsx') {
+export async function exportToExcel(
+  data: ExportData,
+  filename = "export.xlsx",
+) {
   try {
     const XLSX = await loadXLSX();
 
@@ -70,21 +78,23 @@ export async function exportToExcel(data: ExportData, filename: string = 'export
     const ws = XLSX.utils.aoa_to_sheet(exportData);
 
     // Add worksheet to workbook
-    XLSX.utils.book_append_sheet(wb, ws, 'Data');
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
 
     // Generate Excel file
-    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
 
     // Download file
-    const blob = new Blob([wbout], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const blob = new Blob([wbout], {
+      type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
+    const a = document.createElement("a");
     a.href = url;
     a.download = filename;
     a.click();
     URL.revokeObjectURL(url);
   } catch (error) {
-    console.error('Failed to export to Excel:', error);
-    throw new Error('Failed to export to Excel. Please try again.');
+    console.error("Failed to export to Excel:", error);
+    throw new Error("Failed to export to Excel. Please try again.");
   }
 }

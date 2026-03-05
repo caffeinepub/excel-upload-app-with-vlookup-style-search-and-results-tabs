@@ -1,4 +1,6 @@
-import { useState, useEffect } from 'react';
+import { Save, X } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Button } from "../ui/button";
 import {
   Dialog,
   DialogContent,
@@ -6,12 +8,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '../ui/dialog';
-import { Button } from '../ui/button';
-import { Input } from '../ui/input';
-import { Label } from '../ui/label';
-import { ScrollArea } from '../ui/scroll-area';
-import { Save, X } from 'lucide-react';
+} from "../ui/dialog";
+import { Input } from "../ui/input";
+import { Label } from "../ui/label";
+import { ScrollArea } from "../ui/scroll-area";
 
 interface ResultRowEditModalProps {
   open: boolean;
@@ -28,7 +28,9 @@ export function ResultRowEditModal({
   rowData,
   headers,
 }: ResultRowEditModalProps) {
-  const [editedData, setEditedData] = useState<(string | number | boolean | null)[]>([]);
+  const [editedData, setEditedData] = useState<
+    (string | number | boolean | null)[]
+  >([]);
 
   useEffect(() => {
     if (open) {
@@ -52,18 +54,24 @@ export function ResultRowEditModal({
         <DialogHeader>
           <DialogTitle>Edit Row Data</DialogTitle>
           <DialogDescription>
-            Make changes to the row data. These changes will only affect the exported file.
+            Make changes to the row data. These changes will only affect the
+            exported file.
           </DialogDescription>
         </DialogHeader>
 
         <ScrollArea className="max-h-[50vh] pr-4">
           <div className="space-y-4">
             {headers.map((header, idx) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
               <div key={idx} className="space-y-2">
                 <Label htmlFor={`field-${idx}`}>{header}</Label>
                 <Input
                   id={`field-${idx}`}
-                  value={editedData[idx] === null || editedData[idx] === undefined ? '' : String(editedData[idx])}
+                  value={
+                    editedData[idx] === null || editedData[idx] === undefined
+                      ? ""
+                      : String(editedData[idx])
+                  }
                   onChange={(e) => handleCellChange(idx, e.target.value)}
                   placeholder={`Enter ${header}...`}
                 />

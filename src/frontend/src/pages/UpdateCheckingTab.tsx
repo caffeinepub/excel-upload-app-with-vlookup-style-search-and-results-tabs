@@ -1,30 +1,46 @@
-import { useState, useRef } from 'react';
-import { useAppState } from '../state/appState';
-import { useAddHistoryEntry } from '../hooks/useQueries';
-import { parseWorkbook } from '../lib/excel/parseWorkbook';
-import { compareWorkbooks } from '../lib/compare/compareWorkbooks';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { GitCompare, Upload, AlertCircle, Loader2 } from 'lucide-react';
-import { HistoryType } from '../backend';
+import { AlertCircle, GitCompare, Loader2, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { HistoryType } from "../backend";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { useAddHistoryEntry } from "../hooks/useQueries";
+import { compareWorkbooks } from "../lib/compare/compareWorkbooks";
+import { parseWorkbook } from "../lib/excel/parseWorkbook";
+import { useAppState } from "../state/appState";
 
 interface UpdateCheckingTabProps {
   onComparisonComplete?: () => void;
 }
 
-export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabProps) {
+export function UpdateCheckingTab({
+  onComparisonComplete,
+}: UpdateCheckingTabProps) {
   const { workbook, setUpdateCheckingResults } = useAppState();
   const addHistory = useAddHistoryEntry();
   const [newFile, setNewFile] = useState<any>(null);
-  const [keyColumn, setKeyColumn] = useState('');
+  const [keyColumn, setKeyColumn] = useState("");
   const [isComparing, setIsComparing] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleNewFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleNewFileUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -34,14 +50,14 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
       const parsed = await parseWorkbook(file);
 
       if (!parsed.sheetNames || parsed.sheetNames.length === 0) {
-        throw new Error('Excel file contains no sheets.');
+        throw new Error("Excel file contains no sheets.");
       }
 
       const firstSheet = parsed.sheetNames[0];
       const firstSheetData = parsed.sheets.get(firstSheet);
 
       if (!firstSheetData) {
-        throw new Error('Failed to read sheet data.');
+        throw new Error("Failed to read sheet data.");
       }
 
       setNewFile({
@@ -49,7 +65,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
         sheetData: firstSheetData,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to parse Excel file.';
+      const errorMessage =
+        err instanceof Error ? err.message : "Failed to parse Excel file.";
       setUploadError(errorMessage);
       setNewFile(null);
     }
@@ -57,18 +74,23 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
 
   const handleCompare = async () => {
     if (!workbook || !workbook.sheetData || !newFile || !keyColumn) {
-      alert('Please select a key column');
+      alert("Please select a key column");
       return;
     }
 
     setIsComparing(true);
 
     try {
-      const result = compareWorkbooks(workbook.sheetData, newFile.sheetData, keyColumn, 'key-presence');
+      const result = compareWorkbooks(
+        workbook.sheetData,
+        newFile.sheetData,
+        keyColumn,
+        "key-presence",
+      );
 
       setUpdateCheckingResults(result);
 
-      const newCount = result.rows.filter((r) => r.status === 'new').length;
+      const newCount = result.rows.filter((r) => r.status === "new").length;
 
       // Record history entry
       addHistory.mutate({
@@ -78,8 +100,8 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
 
       onComparisonComplete?.();
     } catch (error) {
-      console.error('Comparison error:', error);
-      alert('An error occurred during comparison. Please try again.');
+      console.error("Comparison error:", error);
+      alert("An error occurred during comparison. Please try again.");
     } finally {
       setIsComparing(false);
     }
@@ -132,7 +154,7 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
               className="w-full"
             >
               <Upload className="w-4 h-4 mr-2" />
-              {newFile ? newFile.fileName : 'Choose New File'}
+              {newFile ? newFile.fileName : "Choose New File"}
             </Button>
             {uploadError && (
               <Alert variant="destructive">
@@ -151,7 +173,10 @@ export function UpdateCheckingTab({ onComparisonComplete }: UpdateCheckingTabPro
                 </SelectTrigger>
                 <SelectContent>
                   {workbook.sheetData.headers.map((header, index) => (
-                    <SelectItem key={`update-key-col-${index}-${header}`} value={header}>
+                    <SelectItem
+                      key={`update-key-col-${index}-${header}`}
+                      value={header}
+                    >
                       {header}
                     </SelectItem>
                   ))}

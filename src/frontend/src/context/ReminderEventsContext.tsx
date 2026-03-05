@@ -1,19 +1,29 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
-import type { Reminder } from '../hooks/useProductivityQueries';
+import React, {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  type ReactNode,
+} from "react";
+import type { UIReminder } from "../hooks/useProductivityQueries";
 
 interface ReminderEventState {
-  activeReminder: Reminder | null;
+  activeReminder: UIReminder | null;
   isReminderActive: boolean;
-  setActiveReminder: (reminder: Reminder | null) => void;
+  setActiveReminder: (reminder: UIReminder | null) => void;
   dismissReminder: () => void;
 }
 
-const ReminderEventsContext = createContext<ReminderEventState | undefined>(undefined);
+const ReminderEventsContext = createContext<ReminderEventState | undefined>(
+  undefined,
+);
 
 export function ReminderEventsProvider({ children }: { children: ReactNode }) {
-  const [activeReminder, setActiveReminderState] = useState<Reminder | null>(null);
+  const [activeReminder, setActiveReminderState] = useState<UIReminder | null>(
+    null,
+  );
 
-  const setActiveReminder = useCallback((reminder: Reminder | null) => {
+  const setActiveReminder = useCallback((reminder: UIReminder | null) => {
     setActiveReminderState(reminder);
   }, []);
 
@@ -38,7 +48,9 @@ export function ReminderEventsProvider({ children }: { children: ReactNode }) {
 export function useReminderEvents() {
   const context = useContext(ReminderEventsContext);
   if (context === undefined) {
-    throw new Error('useReminderEvents must be used within a ReminderEventsProvider');
+    throw new Error(
+      "useReminderEvents must be used within a ReminderEventsProvider",
+    );
   }
   return context;
 }

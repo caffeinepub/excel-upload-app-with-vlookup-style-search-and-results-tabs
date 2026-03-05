@@ -1,6 +1,6 @@
-import type { SheetData, SearchResult } from '../../state/appState';
+import type { SearchResult, SheetData } from "../../state/appState";
 
-export type MatchType = 'exact' | 'approximate';
+export type MatchType = "exact" | "approximate";
 
 /**
  * Perform VLOOKUP with support for multiple return columns
@@ -10,7 +10,7 @@ export function vlookup(
   sheetData: SheetData,
   keyColumn: string,
   returnColumns: string[],
-  matchType: MatchType = 'exact'
+  matchType: MatchType = "exact",
 ): SearchResult {
   // Find column indices
   const keyColIndex = sheetData.headers.indexOf(keyColumn);
@@ -24,44 +24,59 @@ export function vlookup(
   }
 
   // Validate return columns
-  const returnColIndices = returnColumns.map(col => sheetData.headers.indexOf(col));
-  const invalidColumns = returnColumns.filter((_, idx) => returnColIndices[idx] === -1);
-  
+  const returnColIndices = returnColumns.map((col) =>
+    sheetData.headers.indexOf(col),
+  );
+  const invalidColumns = returnColumns.filter(
+    (_, idx) => returnColIndices[idx] === -1,
+  );
+
   if (invalidColumns.length > 0) {
     return {
       found: false,
       value: null,
-      message: `Return column(s) not found: ${invalidColumns.join(', ')}`,
+      message: `Return column(s) not found: ${invalidColumns.join(", ")}`,
     };
   }
 
-  if (matchType === 'exact') {
-    return performExactMatch(sheetData, lookupValue, keyColIndex, returnColIndices);
-  } else {
-    return performApproximateMatch(sheetData, lookupValue, keyColIndex, returnColIndices);
+  if (matchType === "exact") {
+    return performExactMatch(
+      sheetData,
+      lookupValue,
+      keyColIndex,
+      returnColIndices,
+    );
   }
+  return performApproximateMatch(
+    sheetData,
+    lookupValue,
+    keyColIndex,
+    returnColIndices,
+  );
 }
 
 function performExactMatch(
   sheetData: SheetData,
   lookupValue: string,
   keyColIndex: number,
-  returnColIndices: number[]
+  returnColIndices: number[],
 ): SearchResult {
   const normalizedLookup = String(lookupValue).toLowerCase().trim();
 
   for (let i = 0; i < sheetData.rows.length; i++) {
     const row = sheetData.rows[i];
     const keyValue = row[keyColIndex];
-    const normalizedKey = keyValue === null || keyValue === undefined 
-      ? '' 
-      : String(keyValue).toLowerCase().trim();
+    const normalizedKey =
+      keyValue === null || keyValue === undefined
+        ? ""
+        : String(keyValue).toLowerCase().trim();
 
     if (normalizedKey === normalizedLookup) {
       // Return first column value if single column, or array if multiple
-      const returnValue = returnColIndices.length === 1
-        ? row[returnColIndices[0]]
-        : returnColIndices.map(idx => row[idx]);
+      const returnValue =
+        returnColIndices.length === 1
+          ? row[returnColIndices[0]]
+          : returnColIndices.map((idx) => row[idx]);
 
       return {
         found: true,
@@ -83,19 +98,23 @@ function performApproximateMatch(
   sheetData: SheetData,
   lookupValue: string,
   keyColIndex: number,
-  returnColIndices: number[]
+  returnColIndices: number[],
 ): SearchResult {
   const normalizedLookup = String(lookupValue).toLowerCase().trim();
 
   // Find rows that contain the lookup value
-  const matches: Array<{ index: number; row: (string | number | boolean | null)[] }> = [];
+  const matches: Array<{
+    index: number;
+    row: (string | number | boolean | null)[];
+  }> = [];
 
   for (let i = 0; i < sheetData.rows.length; i++) {
     const row = sheetData.rows[i];
     const keyValue = row[keyColIndex];
-    const normalizedKey = keyValue === null || keyValue === undefined 
-      ? '' 
-      : String(keyValue).toLowerCase().trim();
+    const normalizedKey =
+      keyValue === null || keyValue === undefined
+        ? ""
+        : String(keyValue).toLowerCase().trim();
 
     if (normalizedKey.includes(normalizedLookup)) {
       matches.push({ index: i, row });
@@ -112,15 +131,19 @@ function performApproximateMatch(
 
   // Return first match
   const firstMatch = matches[0];
-  const returnValue = returnColIndices.length === 1
-    ? firstMatch.row[returnColIndices[0]]
-    : returnColIndices.map(idx => firstMatch.row[idx]);
+  const returnValue =
+    returnColIndices.length === 1
+      ? firstMatch.row[returnColIndices[0]]
+      : returnColIndices.map((idx) => firstMatch.row[idx]);
 
   return {
     found: true,
     value: returnValue,
     rowIndex: firstMatch.index,
     fullRow: { index: firstMatch.index, data: firstMatch.row },
-    message: matches.length > 1 ? `Found ${matches.length} approximate matches. Showing first match.` : undefined,
+    message:
+      matches.length > 1
+        ? `Found ${matches.length} approximate matches. Showing first match.`
+        : undefined,
   };
 }

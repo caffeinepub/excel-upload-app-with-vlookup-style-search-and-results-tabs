@@ -27,7 +27,7 @@
     --chart-1: 60% 0.15 12;
     --chart-2: 65% 0.18 142;
     --chart-3: 55% 0.18 264;
-    --chart-4: 60% 0.20 290;
+    --chart-4: 60% 0.2 290;
     --chart-5: 55% 0.22 25;
     --sidebar: 98% 0.01 264;
     --sidebar-foreground: 20% 0.01 264;
@@ -37,13 +37,13 @@
     --sidebar-accent-foreground: 20% 0.01 264;
     --sidebar-border: 88% 0.02 264;
     --sidebar-ring: 55% 0.18 264;
-    
+
     /* Emerald accent for History and Budget/Expense */
     --history-accent: 65% 0.18 160;
     --expense-accent: 65% 0.18 160;
-    
+
     /* Character dock accent */
-    --character-accent: 60% 0.20 25;
+    --character-accent: 60% 0.2 25;
   }
 
   .dark {
@@ -69,7 +69,7 @@
     --chart-1: 70% 0.15 25;
     --chart-2: 75% 0.18 142;
     --chart-3: 65% 0.18 264;
-    --chart-4: 70% 0.20 290;
+    --chart-4: 70% 0.2 290;
     --chart-5: 60% 0.22 25;
     --sidebar: 18% 0.01 264;
     --sidebar-foreground: 98% 0.01 264;
@@ -79,13 +79,13 @@
     --sidebar-accent-foreground: 98% 0.01 264;
     --sidebar-border: 25% 0.02 264;
     --sidebar-ring: 65% 0.18 264;
-    
+
     /* Emerald accent for History and Budget/Expense (dark mode) */
     --history-accent: 70% 0.18 160;
     --expense-accent: 70% 0.18 160;
-    
+
     /* Character dock accent (dark mode) */
-    --character-accent: 65% 0.20 25;
+    --character-accent: 65% 0.2 25;
   }
 }
 
@@ -143,7 +143,7 @@
 /* Deskboard wallpaper background */
 .deskboard-container {
   @apply relative min-h-[calc(100vh-12rem)];
-  background-image: url('/assets/generated/deskboard-wallpaper.dim_1920x1080.png');
+  background-image: url("/assets/generated/deskboard-wallpaper.dim_1920x1080.png");
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -154,7 +154,7 @@
 }
 
 .deskboard-container::before {
-  content: '';
+  content: "";
   @apply absolute inset-0;
   background-color: oklch(var(--background) / 0.6);
   backdrop-filter: blur(4px);
@@ -297,7 +297,8 @@
 }
 
 @keyframes reminder-bell-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
     transform: scale(1);
   }
@@ -317,12 +318,40 @@
   }
 }
 
+/* Mini Astronaut Float Animation */
+@keyframes float-astronaut {
+  0%,
+  100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-8px) rotate(1.5deg);
+  }
+  50% {
+    transform: translateY(-12px) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-6px) rotate(-1.5deg);
+  }
+}
+
+.astronaut-float {
+  animation: float-astronaut 3.5s ease-in-out infinite;
+  filter: drop-shadow(0 8px 16px oklch(var(--primary) / 0.25));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .astronaut-float {
+    animation: none;
+  }
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .deskboard-container {
     background-attachment: scroll;
   }
-  
+
   .reminder-notification-toast {
     @apply w-[calc(100vw-2rem)];
   }

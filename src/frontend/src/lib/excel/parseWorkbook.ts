@@ -1,5 +1,5 @@
-import { SheetData } from '../../state/appState';
-import { sanitizeHeaders } from './normalizeHeader';
+import type { SheetData } from "../../state/appState";
+import { sanitizeHeaders } from "./normalizeHeader";
 
 // Define minimal XLSX types we need
 interface WorkSheet {
@@ -40,7 +40,11 @@ async function loadXLSX(): Promise<XLSXStatic> {
   // Start new load with timeout
   loadingPromise = new Promise<XLSXStatic>((resolve, reject) => {
     const timeout = setTimeout(() => {
-      reject(new Error('SheetJS library loading timed out. Please check your internet connection and try again.'));
+      reject(
+        new Error(
+          "SheetJS library loading timed out. Please check your internet connection and try again.",
+        ),
+      );
     }, 15000); // 15 second timeout
 
     // Check if script already exists
@@ -55,38 +59,47 @@ async function loadXLSX(): Promise<XLSXStatic> {
           if (XLSX) {
             resolve(XLSX);
           } else {
-            reject(new Error('SheetJS library loaded but XLSX global not found.'));
+            reject(
+              new Error("SheetJS library loaded but XLSX global not found."),
+            );
           }
         }
       }, 100);
       setTimeout(() => {
         clearInterval(checkInterval);
         if (!XLSX) {
-          reject(new Error('SheetJS library failed to load from existing script.'));
+          reject(
+            new Error("SheetJS library failed to load from existing script."),
+          );
         }
       }, 5000);
       return;
     }
 
-    const script = document.createElement('script');
-    script.src = 'https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js';
+    const script = document.createElement("script");
+    script.src =
+      "https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js";
     script.async = true;
-    
+
     script.onload = () => {
       clearTimeout(timeout);
       XLSX = (window as any).XLSX;
       if (XLSX) {
         resolve(XLSX);
       } else {
-        reject(new Error('SheetJS library loaded but XLSX global not found.'));
+        reject(new Error("SheetJS library loaded but XLSX global not found."));
       }
     };
-    
+
     script.onerror = () => {
       clearTimeout(timeout);
-      reject(new Error('Failed to load SheetJS library from CDN. Please check your internet connection.'));
+      reject(
+        new Error(
+          "Failed to load SheetJS library from CDN. Please check your internet connection.",
+        ),
+      );
     };
-    
+
     document.head.appendChild(script);
   });
 
@@ -109,11 +122,13 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
   try {
     const XLSX = await loadXLSX();
     const arrayBuffer = await file.arrayBuffer();
-    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+    const workbook = XLSX.read(arrayBuffer, { type: "array" });
 
     // Validate workbook has sheets
     if (!workbook.SheetNames || workbook.SheetNames.length === 0) {
-      throw new Error('Excel file contains no sheets. Please upload a valid Excel file.');
+      throw new Error(
+        "Excel file contains no sheets. Please upload a valid Excel file.",
+      );
     }
 
     const sheets = new Map<string, SheetData>();
@@ -121,7 +136,7 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
 
     for (const sheetName of workbook.SheetNames) {
       const worksheet = workbook.Sheets[sheetName];
-      
+
       // Validate worksheet exists
       if (!worksheet) {
         console.warn(`Sheet "${sheetName}" not found in workbook, skipping.`);
@@ -129,7 +144,10 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
       }
 
       try {
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: null });
+        const jsonData = XLSX.utils.sheet_to_json(worksheet, {
+          header: 1,
+          defval: null,
+        });
 
         if (jsonData.length === 0) {
           sheets.set(sheetName, { headers: [], rows: [] });
@@ -138,17 +156,19 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
         }
 
         // Parse raw headers and sanitize them
-        const rawHeaders = (jsonData[0] as any[]).map((h) => (h === null ? '' : String(h)));
+        const rawHeaders = (jsonData[0] as any[]).map((h) =>
+          h === null ? "" : String(h),
+        );
         const headers = sanitizeHeaders(rawHeaders);
-        
+
         const rows = jsonData.slice(1).map((row: any) =>
           (row as any[]).map((cell) => {
             if (cell === null || cell === undefined) return null;
-            if (typeof cell === 'string') return cell;
-            if (typeof cell === 'number') return cell;
-            if (typeof cell === 'boolean') return cell;
+            if (typeof cell === "string") return cell;
+            if (typeof cell === "number") return cell;
+            if (typeof cell === "boolean") return cell;
             return String(cell);
-          })
+          }),
         );
 
         sheets.set(sheetName, { headers, rows });
@@ -161,7 +181,9 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
 
     // Final validation: ensure at least one sheet was successfully parsed
     if (sheets.size === 0 || validSheetNames.length === 0) {
-      throw new Error('No valid sheets found in Excel file. Please ensure the file contains readable data.');
+      throw new Error(
+        "No valid sheets found in Excel file. Please ensure the file contains readable data.",
+      );
     }
 
     return {
@@ -173,11 +195,13 @@ export async function parseWorkbook(file: File): Promise<ParsedWorkbook> {
       // Pass through our custom error messages
       throw error;
     }
-    throw new Error('Failed to parse Excel file. Please ensure it is a valid .xlsx file.');
+    throw new Error(
+      "Failed to parse Excel file. Please ensure it is a valid .xlsx file.",
+    );
   }
 }
 
-export function getSheetPreview(sheetData: SheetData, maxRows: number = 20): SheetData {
+export function getSheetPreview(sheetData: SheetData, maxRows = 20): SheetData {
   return {
     headers: sheetData.headers,
     rows: sheetData.rows.slice(0, maxRows),

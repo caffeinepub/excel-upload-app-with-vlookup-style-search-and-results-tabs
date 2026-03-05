@@ -1,107 +1,232 @@
-import type { AttendanceSummary, AttendanceDayEntry, AttendanceStatus } from '../../backend';
-import { formatDuration } from './dateRanges';
+import { type AttendanceDayEntry, AttendanceStatus } from "../../backend";
+import type { ExportData } from "../export/exportPdf";
 
-export interface ExportData {
-  title: string;
-  headers: string[];
-  rows: string[][];
-}
+const STATUS_LABELS: Record<AttendanceStatus, string> = {
+  [AttendanceStatus.present]: "Present",
+  [AttendanceStatus.leave]: "Leave",
+  [AttendanceStatus.halfDay]: "Half Day",
+  [AttendanceStatus.weeklyOff]: "Week Off",
+  [AttendanceStatus.festival]: "Festival Leave",
+  [AttendanceStatus.companyLeave]: "Company Leave",
+  [AttendanceStatus.holiday]: "Holiday",
+};
 
-/**
- * Get day of week name from date string (YYYY-MM-DD)
- */
-function getDayOfWeek(dateStr: string): string {
-  const date = new Date(dateStr);
-  const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  return days[date.getDay()];
-}
-
-/**
- * Format attendance status for display
- */
-function formatStatus(status: AttendanceStatus): string {
-  const statusMap: Record<string, string> = {
-    present: 'Present',
-    leave: 'Leave',
-    halfDay: 'Half Day',
-    festival: 'Festival',
-    companyLeave: 'Company Leave',
-    weeklyOff: 'Weekly Off',
-  };
-  return statusMap[status] || status;
-}
-
-/**
- * Format time from nanoseconds timestamp
- */
-function formatTimeFromNano(timestamp: bigint | undefined): string {
-  if (!timestamp) return '-';
-  const milliseconds = Number(timestamp) / 1_000_000;
-  const date = new Date(milliseconds);
-  return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-}
-
-/**
- * Map attendance summary to PDF export data with detailed report style
- */
-export function mapAttendanceSummaryToExportData(
-  summary: AttendanceSummary,
-  rangeType: 'week' | 'month' | 'year',
-  startDate: string,
-  endDate: string
-): ExportData {
-  const title = `Attendance Report - ${rangeType.charAt(0).toUpperCase() + rangeType.slice(1)}`;
-  
-  // Build summary section
-  const summaryRows: string[][] = [
-    ['ATTENDANCE SUMMARY', '', '', '', '', ''],
-    ['Period', `${startDate} to ${endDate}`, '', '', '', ''],
-    ['', '', '', '', '', ''],
-    ['Total Days', String(summary.totalDays), 'Present Days', String(summary.presentDays), '', ''],
-    ['Leave Days', String(summary.leaveDays), 'Half Days', String(summary.halfDays), '', ''],
-    ['Festival Days', String(summary.festivalDays), 'Company Leave', String(summary.companyLeaveDays), '', ''],
-    ['Weekly Off Days', String(summary.weeklyOffDays), 'Total Working Time', formatDuration(Number(summary.totalWorkingTime)), '', ''],
-    ['', '', '', '', '', ''],
-    ['', '', '', '', '', ''],
-  ];
-
-  // Build breakdown section header
-  const breakdownHeader: string[][] = [
-    ['DAILY BREAKDOWN', '', '', '', '', ''],
-  ];
-
-  // Build breakdown rows
-  const breakdownRows: string[][] = summary.breakdown.map(([date, entry]) => {
-    return [
-      date,
-      getDayOfWeek(date),
-      formatStatus(entry.status),
-      formatTimeFromNano(entry.checkIn),
-      formatTimeFromNano(entry.checkOut),
-      entry.workingTime > BigInt(0) ? formatDuration(Number(entry.workingTime)) : '-',
-    ];
+function formatNsTime(ns: bigint | undefined): string {
+  if (!ns) return "--";
+  const ms = Number(ns) / 1_000_000;
+  const date = new Date(ms);
+  return date.toLocaleTimeString("en-US", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: true,
   });
+}
 
-  // Combine all rows
-  const allRows = [
-    ...summaryRows,
-    ...breakdownHeader,
-    ['Date', 'Day', 'Status', 'Check-in', 'Check-out', 'Working Time'],
-    ...breakdownRows,
+function formatWorkingTime(seconds: bigint): string {
+  const totalMinutes = Number(seconds) / 60;
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.floor(totalMinutes % 60);
+  if (hours === 0 && minutes === 0) return "0h 0m";
+  if (hours === 0) return `${minutes}m`;
+  return `${hours}h ${minutes}m`;
+}
+
+function buildPersonalRows(
+  entries: [string, AttendanceDayEntry][],
+): (string | number | boolean | null)[][] {
+  const sorted = [...entries].sort(([a], [b]) => a.localeCompare(b));
+  return sorted.map(([date, entry]) => {
+    const checkIn = formatNsTime(entry.checkIn);
+    const checkOut = entry.checkOut
+      ? formatNsTime(entry.checkOut)
+      : "Not checked out";
+    const workingTime =
+      entry.workingTime > BigInt(0)
+        ? formatWorkingTime(entry.workingTime)
+        : "--";
+    const status = STATUS_LABELS[entry.status] ?? entry.status;
+    const note = entry.note?.trim() || "--";
+
+    return [date, status, checkIn, checkOut, workingTime, note];
+  });
+}
+
+function buildAdminRows(
+  entries: [
+    string,
+    AttendanceDayEntry & { employeeName?: string; employeePrincipal?: string },
+  ][],
+): (string | number | boolean | null)[][] {
+  const sorted = [...entries].sort(([a], [b]) => a.localeCompare(b));
+  return sorted.map(([date, entry]) => {
+    const checkIn = formatNsTime(entry.checkIn);
+    const checkOut = entry.checkOut
+      ? formatNsTime(entry.checkOut)
+      : "Not checked out";
+    const workingTime =
+      entry.workingTime > BigInt(0)
+        ? formatWorkingTime(entry.workingTime)
+        : "--";
+    const status = STATUS_LABELS[entry.status] ?? entry.status;
+    const note = entry.note?.trim() || "--";
+    const empName =
+      entry.employeeName ||
+      (entry.employeePrincipal
+        ? `${entry.employeePrincipal.slice(0, 14)}...`
+        : "--");
+
+    return [date, empName, status, checkIn, checkOut, workingTime, note];
+  });
+}
+
+function countByStatus(
+  entries: [string, AttendanceDayEntry][],
+): Record<string, number> {
+  const counts: Record<string, number> = {};
+  for (const [, entry] of entries) {
+    const label = STATUS_LABELS[entry.status] ?? entry.status;
+    counts[label] = (counts[label] ?? 0) + 1;
+  }
+  return counts;
+}
+
+function totalWorkingTimeSeconds(
+  entries: [string, AttendanceDayEntry][],
+): bigint {
+  return entries.reduce((sum, [, e]) => sum + e.workingTime, BigInt(0));
+}
+
+/**
+ * Map attendance entries to ExportData for personal (non-admin) PDF export.
+ * Includes attendance status (Present/Leave/Festival Leave/Company Leave/Week Off etc.)
+ */
+export function mapAttendanceDayEntriesToPdfData(
+  entries: [string, AttendanceDayEntry][],
+  title: string,
+  rangeLabel: string,
+): ExportData {
+  const sorted = [...entries].sort(([a], [b]) => a.localeCompare(b));
+  const counts = countByStatus(sorted);
+  const totalWorked = totalWorkingTimeSeconds(sorted);
+
+  // Summary rows
+  const summaryRows: (string | number | boolean | null)[][] = [
+    ["Report Title", title, "", "", "", ""],
+    ["Period", rangeLabel, "", "", "", ""],
+    ["Total Records", String(sorted.length), "", "", "", ""],
+    ["Total Working Time", formatWorkingTime(totalWorked), "", "", "", ""],
+    ...Object.entries(counts).map(([status, count]) => [
+      status,
+      String(count),
+      "",
+      "",
+      "",
+      "",
+    ]),
+    ["", "", "", "", "", ""],
   ];
 
   return {
-    title,
-    headers: ['Date', 'Day', 'Status', 'Check-in', 'Check-out', 'Working Time'],
-    rows: allRows,
+    headers: [
+      "Date",
+      "Status",
+      "Check In",
+      "Check Out",
+      "Working Time",
+      "Work Details",
+    ],
+    rows: [...summaryRows, ...buildPersonalRows(sorted)],
   };
 }
 
 /**
- * Generate filename for attendance PDF export
+ * Map attendance entries to ExportData for admin (all-employees) PDF export.
  */
-export function generateAttendanceFilename(rangeType: 'week' | 'month' | 'year', startDate: string, endDate: string): string {
-  const rangeLabel = rangeType.charAt(0).toUpperCase() + rangeType.slice(1);
-  const dateLabel = startDate === endDate ? startDate : `${startDate}_to_${endDate}`;
-  return `Attendance_${rangeLabel}_${dateLabel}.pdf`;
+export function mapAttendanceDayEntriesToPdfDataFull(
+  entries: [
+    string,
+    AttendanceDayEntry & { employeeName?: string; employeePrincipal?: string },
+  ][],
+  title: string,
+  rangeLabel: string,
+): ExportData {
+  const sorted = [...entries].sort(([a], [b]) => a.localeCompare(b));
+  const counts = countByStatus(sorted);
+  const totalWorked = totalWorkingTimeSeconds(sorted);
+
+  const summaryRows: (string | number | boolean | null)[][] = [
+    ["Report Title", title, "", "", "", "", ""],
+    ["Period", rangeLabel, "", "", "", "", ""],
+    ["Total Records", String(sorted.length), "", "", "", "", ""],
+    ["Total Working Time", formatWorkingTime(totalWorked), "", "", "", "", ""],
+    ...Object.entries(counts).map(([status, count]) => [
+      status,
+      String(count),
+      "",
+      "",
+      "",
+      "",
+      "",
+    ]),
+    ["", "", "", "", "", "", ""],
+  ];
+
+  return {
+    headers: [
+      "Date",
+      "Employee",
+      "Status",
+      "Check In",
+      "Check Out",
+      "Working Time",
+      "Work Details",
+    ],
+    rows: [...summaryRows, ...buildAdminRows(sorted)],
+  };
+}
+
+// Keep old functions for backward compatibility (used in old AttendancePdfExportSection)
+export function mapAttendanceRecordsToPdfData(
+  _records: unknown[],
+  title: string,
+  rangeLabel: string,
+): ExportData {
+  return {
+    headers: [
+      "Date",
+      "Status",
+      "Check In",
+      "Check Out",
+      "Working Time",
+      "Work Details",
+    ],
+    rows: [
+      ["Report Title", title, "", "", "", ""],
+      ["Period", rangeLabel, "", "", "", ""],
+      ["No data available", "", "", "", "", ""],
+    ],
+  };
+}
+
+export function mapAttendanceRecordsToPdfDataFull(
+  _records: unknown[],
+  title: string,
+  rangeLabel: string,
+): ExportData {
+  return {
+    headers: [
+      "Date",
+      "Employee",
+      "Status",
+      "Check In",
+      "Check Out",
+      "Working Time",
+      "Work Details",
+    ],
+    rows: [
+      ["Report Title", title, "", "", "", "", ""],
+      ["Period", rangeLabel, "", "", "", "", ""],
+      ["No data available", "", "", "", "", "", ""],
+    ],
+  };
 }

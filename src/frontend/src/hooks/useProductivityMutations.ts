@@ -1,45 +1,88 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
-import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
-import { encodeNoteText } from '../lib/notes/noteEncoding';
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
+
+// ── Reminders ─────────────────────────────────────────────────────────────────
+
+interface CreateReminderInput {
+  message: string;
+  date: string; // YYYY-MM-DD
+  time: string; // HH:MM
+  repeatUntilDate?: string | null; // YYYY-MM-DD or null/undefined
+}
+
+interface UpdateReminderInput {
+  id: bigint;
+  message: string;
+  date: string;
+  time: string;
+  repeatUntilDate?: string | null;
+}
+
+function dateStringToEndOfDayMs(dateStr: string): bigint {
+  // Parse YYYY-MM-DD as local date end-of-day
+  const [year, month, day] = dateStr.split("-").map(Number);
+  const d = new Date(year, month - 1, day, 23, 59, 59, 999);
+  return BigInt(d.getTime());
+}
 
 export function useCreateReminder() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ message, date, time }: { message: string; date: string; time: string }) => {
-      // Check authentication first
-      if (!identity) {
-        throw new Error('Please log in to create reminders');
-      }
-      
-      // Check actor readiness
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
+    mutationFn: async (input: CreateReminderInput) => {
+      if (!actor || !identity) throw new Error("Not authenticated");
+      if (!input.message.trim())
+        throw new Error("Reminder message cannot be empty");
+      if (!input.date) throw new Error("Date is required");
+      if (!input.time) throw new Error("Time is required");
 
-      // Validate date format (YYYY-MM-DD)
-      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
-        throw new Error('Invalid date format. Please use YYYY-MM-DD format.');
-      }
+      const repeatUntilDate: bigint | null = input.repeatUntilDate?.trim()
+        ? dateStringToEndOfDayMs(input.repeatUntilDate)
+        : null;
 
-      // Validate time format (HH:MM)
-      if (!/^\d{2}:\d{2}$/.test(time)) {
-        throw new Error('Invalid time format. Please use HH:MM format.');
-      }
-
-      // Call backend with local date and time strings
-      const reminderId = await actor.addReminder(message, date, time);
-      return reminderId;
+      return actor.createReminder(
+        input.message.trim(),
+        input.date,
+        input.time,
+        repeatUntilDate,
+      );
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reminders'] });
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      queryClient.invalidateQueries({ queryKey: ["remindersForDate"] });
     },
-    onError: (error) => {
-      console.error('Create reminder error:', error);
+  });
+}
+
+export function useUpdateReminder() {
+  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (input: UpdateReminderInput) => {
+      if (!actor || !identity) throw new Error("Not authenticated");
+      if (!input.message.trim())
+        throw new Error("Reminder message cannot be empty");
+
+      const repeatUntilDate: bigint | null = input.repeatUntilDate?.trim()
+        ? dateStringToEndOfDayMs(input.repeatUntilDate)
+        : null;
+
+      return actor.updateReminder(
+        input.id,
+        input.message.trim(),
+        input.date,
+        input.time,
+        repeatUntilDate,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      queryClient.invalidateQueries({ queryKey: ["remindersForDate"] });
     },
   });
 }
@@ -51,24 +94,17 @@ export function useDeleteReminder() {
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      if (!identity) {
-        throw new Error('Please log in to delete reminders');
-      }
-      
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      await actor.deleteReminder(id);
+      if (!actor || !identity) throw new Error("Not authenticated");
+      return actor.deleteReminder(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reminders'] });
-    },
-    onError: (error) => {
-      console.error('Delete reminder error:', error);
+      queryClient.invalidateQueries({ queryKey: ["reminders"] });
+      queryClient.invalidateQueries({ queryKey: ["remindersForDate"] });
     },
   });
 }
+
+// ── Todos ─────────────────────────────────────────────────────────────────────
 
 export function useCreateTodo() {
   const { actor } = useActor();
@@ -77,22 +113,12 @@ export function useCreateTodo() {
 
   return useMutation({
     mutationFn: async (text: string) => {
-      if (!identity) {
-        throw new Error('Please log in to create to-dos');
-      }
-      
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      const todo = await actor.addTodo(text);
-      return todo;
+      if (!actor || !identity) throw new Error("Not authenticated");
+      if (!text.trim()) throw new Error("Todo text cannot be empty");
+      return actor.addTodo(text.trim());
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todoItems'] });
-    },
-    onError: (error) => {
-      console.error('Create todo error:', error);
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
   });
 }
@@ -104,24 +130,32 @@ export function useToggleTodo() {
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      if (!identity) {
-        throw new Error('Please log in to update to-dos');
-      }
-      
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      await actor.toggleTodo(id);
+      if (!actor || !identity) throw new Error("Not authenticated");
+      return actor.toggleTodo(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['todoItems'] });
-    },
-    onError: (error) => {
-      console.error('Toggle todo error:', error);
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
     },
   });
 }
+
+export function useDeleteTodo() {
+  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: bigint) => {
+      if (!actor || !identity) throw new Error("Not authenticated");
+      return actor.deleteTodo(id);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["todos"] });
+    },
+  });
+}
+
+// ── Notes ─────────────────────────────────────────────────────────────────────
 
 export function useCreateNote() {
   const { actor } = useActor();
@@ -129,24 +163,18 @@ export function useCreateNote() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ title, content }: { title: string; content: string }) => {
-      if (!identity) {
-        throw new Error('Please log in to create notes');
-      }
-      
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      const encodedText = encodeNoteText(title, content);
-      const note = await actor.addNote(encodedText);
-      return note;
+    mutationFn: async ({
+      title,
+      content,
+    }: { title: string; content: string }) => {
+      if (!actor || !identity) throw new Error("Not authenticated");
+      const sep = "||TITLE||";
+      const text = `${title}${sep}${content}`;
+      // Pass 0 as id to create a new note (backend assigns new id when not found)
+      return actor.saveNote(BigInt(0), text);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-    onError: (error) => {
-      console.error('Create note error:', error);
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
   });
 }
@@ -158,21 +186,11 @@ export function useDeleteNote() {
 
   return useMutation({
     mutationFn: async (id: bigint) => {
-      if (!identity) {
-        throw new Error('Please log in to delete notes');
-      }
-      
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      await actor.deleteNote(id);
+      if (!actor || !identity) throw new Error("Not authenticated");
+      return actor.deleteNote(id);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['notes'] });
-    },
-    onError: (error) => {
-      console.error('Delete note error:', error);
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
     },
   });
 }

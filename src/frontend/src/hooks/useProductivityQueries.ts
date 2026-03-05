@@ -1,122 +1,83 @@
-import { useQuery } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import type { Reminder as BackendReminder, TodoItem as BackendTodoItem, Note as BackendNote } from '../backend';
-import { decodeNoteText } from '../lib/notes/noteEncoding';
+import { useQuery } from "@tanstack/react-query";
+import type { Note, Reminder, TodoItem } from "../backend";
+import { useActor } from "./useActor";
 
-// Frontend Reminder type that matches UI expectations
-export interface Reminder {
+export interface UIReminder {
   id: bigint;
-  title: string;
-  description: string;
-  time: bigint;
-  repeatInterval: bigint | null;
-  priority: bigint | null;
-  isActive: boolean;
+  message: string;
+  date: string;
+  time: string;
+  repeatUntilDate?: bigint;
+  createdAt: bigint;
 }
 
-export interface CalendarEvent {
-  id: bigint;
-  title: string;
-  description: string;
-  startTime: bigint;
-  endTime: bigint | null;
-  location: string | null;
-  participants: string[];
-}
-
-export interface ToDoItem {
+export interface UITodo {
   id: bigint;
   text: string;
   completed: boolean;
   timestamp: bigint;
 }
 
-export interface Note {
+export interface UINote {
   id: bigint;
   title: string;
   content: string;
   lastUpdated: bigint;
 }
 
-// Convert backend Reminder to frontend Reminder
-function mapBackendReminder(backendReminder: BackendReminder): Reminder {
-  // Combine date (YYYY-MM-DD) and time (HH:MM) into a local timestamp
-  // Parse as local time to avoid timezone shifts
-  const dateTimeString = `${backendReminder.date}T${backendReminder.time}:00`;
-  const localDate = new Date(dateTimeString);
-  
-  // Ensure we have a valid date
-  const timestamp = isNaN(localDate.getTime()) ? 0 : localDate.getTime();
-  
+function mapReminder(r: Reminder): UIReminder {
   return {
-    id: backendReminder.id,
-    title: backendReminder.message,
-    description: '', // Backend doesn't have separate description
-    time: BigInt(timestamp),
-    repeatInterval: null,
-    priority: null,
-    isActive: true,
-  };
-}
-
-// Convert backend TodoItem to frontend ToDoItem
-function mapBackendTodoItem(backendTodo: BackendTodoItem): ToDoItem {
-  return {
-    id: backendTodo.id,
-    text: backendTodo.text,
-    completed: backendTodo.completed,
-    timestamp: backendTodo.timestamp,
-  };
-}
-
-// Convert backend Note to frontend Note
-function mapBackendNote(backendNote: BackendNote): Note {
-  const { title, content } = decodeNoteText(backendNote.text);
-  
-  return {
-    id: backendNote.id,
-    title,
-    content,
-    lastUpdated: backendNote.lastUpdated,
+    id: r.id,
+    message: r.message,
+    date: r.date,
+    time: r.time,
+    repeatUntilDate: r.repeatUntilDate,
+    createdAt: r.createdAt,
   };
 }
 
 export function useGetReminders() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Reminder[]>({
-    queryKey: ['reminders'],
+  return useQuery<UIReminder[]>({
+    queryKey: ["reminders"],
     queryFn: async () => {
       if (!actor) return [];
-      const backendReminders = await actor.getRemindersForCaller();
-      return backendReminders.map(mapBackendReminder);
+      const result = await actor.getReminders();
+      return result.map(mapReminder);
     },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useGetCalendarEvents() {
+export function useGetRemindersForDate(dateMs: bigint) {
   const { actor, isFetching } = useActor();
 
-  return useQuery<CalendarEvent[]>({
-    queryKey: ['calendarEvents'],
+  return useQuery<UIReminder[]>({
+    queryKey: ["remindersForDate", dateMs.toString()],
     queryFn: async () => {
-      // Backend no longer supports calendar events
-      return [];
+      if (!actor) return [];
+      const result = await actor.getRemindersForDate(dateMs);
+      return result.map(mapReminder);
     },
     enabled: !!actor && !isFetching,
   });
 }
 
-export function useGetToDoItems() {
+export function useGetTodos() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<ToDoItem[]>({
-    queryKey: ['todoItems'],
+  return useQuery<UITodo[]>({
+    queryKey: ["todos"],
     queryFn: async () => {
       if (!actor) return [];
-      const backendTodos = await actor.getTodos();
-      return backendTodos.map(mapBackendTodoItem);
+      const result = await actor.getTodos();
+      return result.map((t: TodoItem) => ({
+        id: t.id,
+        text: t.text,
+        completed: t.completed,
+        timestamp: t.timestamp,
+      }));
     },
     enabled: !!actor && !isFetching,
   });
@@ -125,12 +86,27 @@ export function useGetToDoItems() {
 export function useGetNotes() {
   const { actor, isFetching } = useActor();
 
-  return useQuery<Note[]>({
-    queryKey: ['notes'],
+  return useQuery<UINote[]>({
+    queryKey: ["notes"],
     queryFn: async () => {
       if (!actor) return [];
-      const backendNotes = await actor.getNotes();
-      return backendNotes.map(mapBackendNote);
+      const result = await actor.getNotes();
+      return result.map((n: Note) => {
+        const sep = "||TITLE||";
+        const idx = n.text.indexOf(sep);
+        let title = "";
+        let content = n.text;
+        if (idx !== -1) {
+          title = n.text.substring(0, idx);
+          content = n.text.substring(idx + sep.length);
+        }
+        return {
+          id: n.id,
+          title,
+          content,
+          lastUpdated: n.lastUpdated,
+        };
+      });
     },
     enabled: !!actor && !isFetching,
   });

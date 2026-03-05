@@ -1,21 +1,66 @@
-import { useState, useEffect } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Separator } from '@/components/ui/separator';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useActor } from '../hooks/useActor';
-import { useGetBudget, useSaveBudget, useGetExpenses, useAddExpense, useEditExpense, useDeleteExpense } from '../hooks/useRegularExpense';
-import { buildExpenseReportData, generateReportFilename, type ReportType } from '../lib/expenses/expenseReport';
-import { exportToPdf } from '../lib/export/exportPdf';
-import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
-import { validateNatInput } from '../utils/number/parseNatBigInt';
-import { AlertCircle, DollarSign, Download, Plus, Loader2, Edit, Trash2 } from 'lucide-react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  AlertCircle,
+  DollarSign,
+  Download,
+  Edit,
+  Loader2,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import { useEffect, useState } from "react";
+import { useActor } from "../hooks/useActor";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useAddExpense,
+  useDeleteExpense,
+  useEditExpense,
+  useGetBudget,
+  useGetExpenses,
+  useSaveBudget,
+} from "../hooks/useRegularExpense";
+import {
+  type ReportType,
+  buildExpenseReportData,
+  generateReportFilename,
+} from "../lib/expenses/expenseReport";
+import { exportToPdf } from "../lib/export/exportPdf";
+import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
+import { validateNatInput } from "../utils/number/parseNatBigInt";
 
 export function RegularExpenseTab() {
   const { identity } = useInternetIdentity();
@@ -24,29 +69,29 @@ export function RegularExpenseTab() {
   const isActorReady = !!actor && !actorFetching;
 
   // Budget state
-  const [monthlyLimit, setMonthlyLimit] = useState('');
-  const [dayLimit, setDayLimit] = useState('');
-  const [savingsGoal, setSavingsGoal] = useState('');
-  const [budgetError, setBudgetError] = useState('');
+  const [monthlyLimit, setMonthlyLimit] = useState("");
+  const [dayLimit, setDayLimit] = useState("");
+  const [savingsGoal, setSavingsGoal] = useState("");
+  const [budgetError, setBudgetError] = useState("");
 
   // Expense form state
-  const [expenseDate, setExpenseDate] = useState('');
-  const [expenseCategory, setExpenseCategory] = useState('');
-  const [expenseAmount, setExpenseAmount] = useState('');
-  const [expenseDescription, setExpenseDescription] = useState('');
-  const [expenseError, setExpenseError] = useState('');
+  const [expenseDate, setExpenseDate] = useState("");
+  const [expenseCategory, setExpenseCategory] = useState("");
+  const [expenseAmount, setExpenseAmount] = useState("");
+  const [expenseDescription, setExpenseDescription] = useState("");
+  const [expenseError, setExpenseError] = useState("");
 
   // Edit dialog state
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
-  const [editDate, setEditDate] = useState('');
-  const [editCategory, setEditCategory] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-  const [editDescription, setEditDescription] = useState('');
-  const [editError, setEditError] = useState('');
+  const [editDate, setEditDate] = useState("");
+  const [editCategory, setEditCategory] = useState("");
+  const [editAmount, setEditAmount] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editError, setEditError] = useState("");
 
   // Report state
-  const [reportType, setReportType] = useState<ReportType>('monthly');
+  const [reportType, setReportType] = useState<ReportType>("monthly");
   const [isExporting, setIsExporting] = useState(false);
 
   // Queries and mutations
@@ -85,14 +130,14 @@ export function RegularExpenseTab() {
       return false;
     }
 
-    setBudgetError('');
+    setBudgetError("");
     return true;
   };
 
   // Validate expense inputs
   const validateExpenseInputs = (): boolean => {
     if (!expenseDate || !expenseCategory || !expenseAmount) {
-      setExpenseError('Please fill in all required fields');
+      setExpenseError("Please fill in all required fields");
       return false;
     }
 
@@ -102,14 +147,14 @@ export function RegularExpenseTab() {
       return false;
     }
 
-    setExpenseError('');
+    setExpenseError("");
     return true;
   };
 
   // Validate edit inputs
   const validateEditInputs = (): boolean => {
     if (!editDate || !editCategory || !editAmount) {
-      setEditError('Please fill in all required fields');
+      setEditError("Please fill in all required fields");
       return false;
     }
 
@@ -119,7 +164,7 @@ export function RegularExpenseTab() {
       return false;
     }
 
-    setEditError('');
+    setEditError("");
     return true;
   };
 
@@ -127,7 +172,7 @@ export function RegularExpenseTab() {
     if (!validateBudgetInputs()) return;
 
     try {
-      setBudgetError('');
+      setBudgetError("");
       await saveBudgetMutation.mutateAsync({
         monthlyLimit,
         dayLimit,
@@ -144,7 +189,7 @@ export function RegularExpenseTab() {
     if (!validateExpenseInputs()) return;
 
     try {
-      setExpenseError('');
+      setExpenseError("");
       await addExpenseMutation.mutateAsync({
         date: expenseDate,
         category: expenseCategory,
@@ -152,10 +197,10 @@ export function RegularExpenseTab() {
         description: expenseDescription,
       });
       // Clear form
-      setExpenseDate('');
-      setExpenseCategory('');
-      setExpenseAmount('');
-      setExpenseDescription('');
+      setExpenseDate("");
+      setExpenseCategory("");
+      setExpenseAmount("");
+      setExpenseDescription("");
     } catch (error) {
       const friendlyError = getUserFriendlyError(error);
       setExpenseError(friendlyError);
@@ -168,7 +213,7 @@ export function RegularExpenseTab() {
     setEditCategory(expense.category);
     setEditAmount(expense.amount.toString());
     setEditDescription(expense.description);
-    setEditError('');
+    setEditError("");
     setEditDialogOpen(true);
   };
 
@@ -176,7 +221,7 @@ export function RegularExpenseTab() {
     if (!editingExpense || !validateEditInputs()) return;
 
     try {
-      setEditError('');
+      setEditError("");
       await editExpenseMutation.mutateAsync({
         id: editingExpense.id,
         date: editDate,
@@ -193,7 +238,7 @@ export function RegularExpenseTab() {
   };
 
   const handleDeleteExpense = async (expense: any) => {
-    if (!confirm('Delete this expense?')) return;
+    if (!confirm("Delete this expense?")) return;
 
     try {
       await deleteExpenseMutation.mutateAsync({
@@ -208,7 +253,7 @@ export function RegularExpenseTab() {
 
   const handleDownloadReport = async () => {
     if (expenses.length === 0) {
-      alert('No expenses to export');
+      alert("No expenses to export");
       return;
     }
 
@@ -217,17 +262,23 @@ export function RegularExpenseTab() {
       const reportData = buildExpenseReportData(expenses, reportType);
       const filename = generateReportFilename(reportType);
       // Pass data as a single object with headers and rows
-      await exportToPdf({ headers: reportData.headers, rows: reportData.rows }, filename);
+      await exportToPdf(
+        { headers: reportData.headers, rows: reportData.rows },
+        filename,
+      );
     } catch (error) {
-      console.error('Failed to export report:', error);
-      alert('Failed to export report. Please try again.');
+      console.error("Failed to export report:", error);
+      alert("Failed to export report. Please try again.");
     } finally {
       setIsExporting(false);
     }
   };
 
   // Calculate totals
-  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
+  const totalExpenses = expenses.reduce(
+    (sum, exp) => sum + Number(exp.amount),
+    0,
+  );
   const monthlyBudget = budget ? Number(budget.monthlyLimit) : 0;
   const remainingBudget = monthlyBudget - totalExpenses;
 
@@ -252,7 +303,9 @@ export function RegularExpenseTab() {
             <DollarSign className="w-8 h-8 text-emerald-600" />
             Budget & Expenses
           </h1>
-          <p className="text-muted-foreground mt-1">Track your spending and manage your budget</p>
+          <p className="text-muted-foreground mt-1">
+            Track your spending and manage your budget
+          </p>
         </div>
       </div>
 
@@ -267,7 +320,9 @@ export function RegularExpenseTab() {
       <Card>
         <CardHeader>
           <CardTitle>Budget Settings</CardTitle>
-          <CardDescription>Set your monthly and daily spending limits</CardDescription>
+          <CardDescription>
+            Set your monthly and daily spending limits
+          </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -317,9 +372,15 @@ export function RegularExpenseTab() {
               <AlertDescription>{budgetError}</AlertDescription>
             </Alert>
           )}
-          <Button 
-            onClick={handleSaveBudget} 
-            disabled={saveBudgetMutation.isPending || !isActorReady || !monthlyLimit || !dayLimit || !savingsGoal}
+          <Button
+            onClick={handleSaveBudget}
+            disabled={
+              saveBudgetMutation.isPending ||
+              !isActorReady ||
+              !monthlyLimit ||
+              !dayLimit ||
+              !savingsGoal
+            }
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {saveBudgetMutation.isPending ? (
@@ -328,7 +389,7 @@ export function RegularExpenseTab() {
                 Saving...
               </>
             ) : (
-              'Save Budget'
+              "Save Budget"
             )}
           </Button>
         </CardContent>
@@ -340,19 +401,25 @@ export function RegularExpenseTab() {
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Monthly Budget</CardDescription>
-              <CardTitle className="text-2xl text-emerald-600">${monthlyBudget.toLocaleString()}</CardTitle>
+              <CardTitle className="text-2xl text-emerald-600">
+                ${monthlyBudget.toLocaleString()}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Total Expenses</CardDescription>
-              <CardTitle className="text-2xl">${totalExpenses.toLocaleString()}</CardTitle>
+              <CardTitle className="text-2xl">
+                ${totalExpenses.toLocaleString()}
+              </CardTitle>
             </CardHeader>
           </Card>
           <Card>
             <CardHeader className="pb-3">
               <CardDescription>Remaining</CardDescription>
-              <CardTitle className={`text-2xl ${remainingBudget < 0 ? 'text-destructive' : 'text-emerald-600'}`}>
+              <CardTitle
+                className={`text-2xl ${remainingBudget < 0 ? "text-destructive" : "text-emerald-600"}`}
+              >
                 ${remainingBudget.toLocaleString()}
               </CardTitle>
             </CardHeader>
@@ -382,7 +449,11 @@ export function RegularExpenseTab() {
             </div>
             <div>
               <Label htmlFor="expenseCategory">Category *</Label>
-              <Select value={expenseCategory} onValueChange={setExpenseCategory} disabled={!isActorReady}>
+              <Select
+                value={expenseCategory}
+                onValueChange={setExpenseCategory}
+                disabled={!isActorReady}
+              >
                 <SelectTrigger id="expenseCategory">
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
@@ -427,9 +498,15 @@ export function RegularExpenseTab() {
               <AlertDescription>{expenseError}</AlertDescription>
             </Alert>
           )}
-          <Button 
-            onClick={handleAddExpense} 
-            disabled={addExpenseMutation.isPending || !isActorReady || !expenseDate || !expenseCategory || !expenseAmount}
+          <Button
+            onClick={handleAddExpense}
+            disabled={
+              addExpenseMutation.isPending ||
+              !isActorReady ||
+              !expenseDate ||
+              !expenseCategory ||
+              !expenseAmount
+            }
             className="bg-emerald-600 hover:bg-emerald-700"
           >
             {addExpenseMutation.isPending ? (
@@ -456,7 +533,10 @@ export function RegularExpenseTab() {
               <CardDescription>View and manage your expenses</CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Select value={reportType} onValueChange={(v) => setReportType(v as ReportType)}>
+              <Select
+                value={reportType}
+                onValueChange={(v) => setReportType(v as ReportType)}
+              >
                 <SelectTrigger className="w-32">
                   <SelectValue />
                 </SelectTrigger>
@@ -466,8 +546,8 @@ export function RegularExpenseTab() {
                   <SelectItem value="daily">Daily</SelectItem>
                 </SelectContent>
               </Select>
-              <Button 
-                onClick={handleDownloadReport} 
+              <Button
+                onClick={handleDownloadReport}
                 disabled={isExporting || expenses.length === 0}
                 variant="outline"
                 size="sm"
@@ -489,9 +569,13 @@ export function RegularExpenseTab() {
         </CardHeader>
         <CardContent>
           {expensesLoading ? (
-            <p className="text-center text-muted-foreground py-8">Loading expenses...</p>
+            <p className="text-center text-muted-foreground py-8">
+              Loading expenses...
+            </p>
           ) : expenses.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No expenses yet. Add your first expense above.</p>
+            <p className="text-center text-muted-foreground py-8">
+              No expenses yet. Add your first expense above.
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -506,13 +590,20 @@ export function RegularExpenseTab() {
                 </TableHeader>
                 <TableBody>
                   {expenses
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .sort(
+                      (a, b) =>
+                        new Date(b.date).getTime() - new Date(a.date).getTime(),
+                    )
                     .map((expense) => (
                       <TableRow key={Number(expense.id)}>
                         <TableCell>{expense.date}</TableCell>
                         <TableCell>{expense.category}</TableCell>
-                        <TableCell className="font-medium">${Number(expense.amount).toLocaleString()}</TableCell>
-                        <TableCell className="text-muted-foreground">{expense.description || '—'}</TableCell>
+                        <TableCell className="font-medium">
+                          ${Number(expense.amount).toLocaleString()}
+                        </TableCell>
+                        <TableCell className="text-muted-foreground">
+                          {expense.description || "—"}
+                        </TableCell>
                         <TableCell className="text-right">
                           <div className="flex items-center justify-end gap-2">
                             <Button
@@ -527,7 +618,9 @@ export function RegularExpenseTab() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteExpense(expense)}
-                              disabled={deleteExpenseMutation.isPending || !isActorReady}
+                              disabled={
+                                deleteExpenseMutation.isPending || !isActorReady
+                              }
                             >
                               <Trash2 className="w-4 h-4 text-destructive" />
                             </Button>
@@ -603,9 +696,14 @@ export function RegularExpenseTab() {
             )}
           </div>
           <DialogFooter>
-            <Button 
-              onClick={handleEditExpense} 
-              disabled={editExpenseMutation.isPending || !editDate || !editCategory || !editAmount}
+            <Button
+              onClick={handleEditExpense}
+              disabled={
+                editExpenseMutation.isPending ||
+                !editDate ||
+                !editCategory ||
+                !editAmount
+              }
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               {editExpenseMutation.isPending ? (
@@ -614,7 +712,7 @@ export function RegularExpenseTab() {
                   Saving...
                 </>
               ) : (
-                'Save Changes'
+                "Save Changes"
               )}
             </Button>
           </DialogFooter>

@@ -1,9 +1,15 @@
-import { useEffect, useState, Suspense, Component, ReactNode } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
-import type { AnimationType } from '../../lib/character/tabAnimationMapping';
-import { TripoCharacterModel } from './TripoCharacterModel';
-import { CharacterDockModelFallback } from './CharacterDockModelFallback';
+import { OrbitControls } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import {
+  Component,
+  type ReactNode,
+  Suspense,
+  useEffect,
+  useState,
+} from "react";
+import type { AnimationType } from "../../lib/character/tabAnimationMapping";
+import { CharacterDockModelFallback } from "./CharacterDockModelFallback";
+import { TripoCharacterModel } from "./TripoCharacterModel";
 
 interface ArmoredHero3DCanvasProps {
   animation: AnimationType;
@@ -19,7 +25,10 @@ interface ThreeErrorBoundaryState {
   error: Error | null;
 }
 
-class ThreeErrorBoundary extends Component<ThreeErrorBoundaryProps, ThreeErrorBoundaryState> {
+class ThreeErrorBoundary extends Component<
+  ThreeErrorBoundaryProps,
+  ThreeErrorBoundaryState
+> {
   constructor(props: ThreeErrorBoundaryProps) {
     super(props);
     this.state = { hasError: false, error: null };
@@ -30,7 +39,7 @@ class ThreeErrorBoundary extends Component<ThreeErrorBoundaryProps, ThreeErrorBo
   }
 
   componentDidCatch(error: Error, errorInfo: any) {
-    console.warn('3D Character render error (contained):', error, errorInfo);
+    console.warn("3D Character render error (contained):", error, errorInfo);
   }
 
   render() {
@@ -48,20 +57,21 @@ export function ArmoredHero3DCanvas({ animation }: ArmoredHero3DCanvasProps) {
 
   useEffect(() => {
     try {
-      const canvas = document.createElement('canvas');
-      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+      const canvas = document.createElement("canvas");
+      const gl =
+        canvas.getContext("webgl") || canvas.getContext("experimental-webgl");
       if (!gl) {
         setHasWebGL(false);
-        setWebGLError('WebGL not supported');
+        setWebGLError("WebGL not supported");
       }
-    } catch (e) {
+    } catch (_e) {
       setHasWebGL(false);
-      setWebGLError('WebGL initialization failed');
+      setWebGLError("WebGL initialization failed");
     }
   }, []);
 
   const handleModelError = (error: Error) => {
-    console.warn('Character model error (contained):', error);
+    console.warn("Character model error (contained):", error);
     setModelError(error.message);
   };
 
@@ -95,11 +105,14 @@ export function ArmoredHero3DCanvas({ animation }: ArmoredHero3DCanvasProps) {
         <directionalLight position={[5, 5, 5]} intensity={1} castShadow />
         <directionalLight position={[-5, 3, -5]} intensity={0.5} />
         <pointLight position={[0, 2, 2]} intensity={0.5} color="#ffffff" />
-        
+
         <Suspense fallback={null}>
-          <TripoCharacterModel animation={animation} onError={handleModelError} />
+          <TripoCharacterModel
+            animation={animation}
+            onError={handleModelError}
+          />
         </Suspense>
-        
+
         <OrbitControls
           enableZoom={false}
           enablePan={false}

@@ -1,8 +1,8 @@
-import { SheetData } from '../../state/appState';
-import { findHeaderIndex, normalizeHeader } from '../excel/normalizeHeader';
+import type { SheetData } from "../../state/appState";
+import { findHeaderIndex, normalizeHeader } from "../excel/normalizeHeader";
 
 export interface ComparisonRow {
-  status: 'new' | 'updated' | 'unchanged';
+  status: "new" | "updated" | "unchanged";
   keyValue: string | number | boolean | null;
   oldData?: (string | number | boolean | null)[];
   newData: (string | number | boolean | null)[];
@@ -17,7 +17,7 @@ export interface ComparisonResult {
     updatedCount: number;
     unchangedCount: number;
   };
-  mode: 'row' | 'column' | 'key-presence';
+  mode: "row" | "column" | "key-presence";
 }
 
 /**
@@ -30,7 +30,7 @@ export function compareWorkbooks(
   oldSheet: SheetData,
   newSheet: SheetData,
   keyColumn: string,
-  mode: 'row' | 'column' | 'key-presence' = 'key-presence'
+  mode: "row" | "column" | "key-presence" = "key-presence",
 ): ComparisonResult {
   // Find key column index in both sheets using normalized header matching
   const oldKeyIndex = findHeaderIndex(oldSheet.headers, keyColumn);
@@ -38,26 +38,44 @@ export function compareWorkbooks(
 
   if (oldKeyIndex === -1) {
     throw new Error(
-      `Key column "${keyColumn}" not found in the old sheet. Please select a valid key column that exists in both sheets.`
+      `Key column "${keyColumn}" not found in the old sheet. Please select a valid key column that exists in both sheets.`,
     );
   }
 
   if (newKeyIndex === -1) {
     throw new Error(
-      `Key column "${keyColumn}" not found in the new sheet. Please select a valid key column that exists in both sheets.`
+      `Key column "${keyColumn}" not found in the new sheet. Please select a valid key column that exists in both sheets.`,
     );
   }
 
   // Use new sheet headers as the reference
-  const headers = newSheet.headers.map(h => normalizeHeader(h));
+  const headers = newSheet.headers.map((h) => normalizeHeader(h));
 
-  if (mode === 'key-presence') {
-    return compareKeyPresence(oldSheet, newSheet, oldKeyIndex, newKeyIndex, headers);
-  } else if (mode === 'row') {
-    return compareRowDifferences(oldSheet, newSheet, oldKeyIndex, newKeyIndex, headers);
-  } else {
-    return compareColumnDifferences(oldSheet, newSheet, oldKeyIndex, newKeyIndex, headers);
+  if (mode === "key-presence") {
+    return compareKeyPresence(
+      oldSheet,
+      newSheet,
+      oldKeyIndex,
+      newKeyIndex,
+      headers,
+    );
   }
+  if (mode === "row") {
+    return compareRowDifferences(
+      oldSheet,
+      newSheet,
+      oldKeyIndex,
+      newKeyIndex,
+      headers,
+    );
+  }
+  return compareColumnDifferences(
+    oldSheet,
+    newSheet,
+    oldKeyIndex,
+    newKeyIndex,
+    headers,
+  );
 }
 
 /**
@@ -69,42 +87,42 @@ function compareKeyPresence(
   newSheet: SheetData,
   oldKeyIndex: number,
   newKeyIndex: number,
-  headers: string[]
+  headers: string[],
 ): ComparisonResult {
   // Build a set of key values from the old sheet
   const oldKeys = new Set<string>();
-  
-  oldSheet.rows.forEach((oldRow) => {
+
+  for (const oldRow of oldSheet.rows) {
     const keyValue = oldRow[oldKeyIndex];
     if (keyValue !== null && keyValue !== undefined) {
       oldKeys.add(String(keyValue));
     }
-  });
+  }
 
   const rows: ComparisonRow[] = [];
   let newCount = 0;
 
   // Process each row in the new sheet
-  newSheet.rows.forEach((newRow) => {
+  for (const newRow of newSheet.rows) {
     const keyValue = newRow[newKeyIndex];
-    
+
     // Skip rows without key value
     if (keyValue === null || keyValue === undefined) {
-      return;
+      continue;
     }
 
     const keyStr = String(keyValue);
-    
+
     // Only include if the key does NOT exist in old sheet
     if (!oldKeys.has(keyStr)) {
       rows.push({
-        status: 'new',
+        status: "new",
         keyValue,
         newData: newRow,
       });
       newCount++;
     }
-  });
+  }
 
   return {
     headers,
@@ -114,7 +132,7 @@ function compareKeyPresence(
       updatedCount: 0,
       unchangedCount: 0,
     },
-    mode: 'key-presence',
+    mode: "key-presence",
   };
 }
 
@@ -126,44 +144,44 @@ function compareKeyPresence(
 function compareRowDifferences(
   oldSheet: SheetData,
   newSheet: SheetData,
-  oldKeyIndex: number,
+  _oldKeyIndex: number,
   newKeyIndex: number,
-  headers: string[]
+  headers: string[],
 ): ComparisonResult {
   // Build a set of normalized full-row signatures from the old sheet
   const oldRowSignatures = new Set<string>();
-  
-  oldSheet.rows.forEach((oldRow) => {
+
+  for (const oldRow of oldSheet.rows) {
     // Generate deterministic signature for the row
     const signature = JSON.stringify(oldRow);
     oldRowSignatures.add(signature);
-  });
+  }
 
   const rows: ComparisonRow[] = [];
   let newCount = 0;
 
   // Process each row in the new sheet
-  newSheet.rows.forEach((newRow) => {
+  for (const newRow of newSheet.rows) {
     const keyValue = newRow[newKeyIndex];
-    
+
     // Skip rows without key value
     if (keyValue === null || keyValue === undefined) {
-      return;
+      continue;
     }
 
     // Generate signature for the new row
     const newRowSignature = JSON.stringify(newRow);
-    
+
     // Only include if the full-row signature is NOT in old sheet
     if (!oldRowSignatures.has(newRowSignature)) {
       rows.push({
-        status: 'new',
+        status: "new",
         keyValue,
         newData: newRow,
       });
       newCount++;
     }
-  });
+  }
 
   return {
     headers,
@@ -173,7 +191,7 @@ function compareRowDifferences(
       updatedCount: 0,
       unchangedCount: 0,
     },
-    mode: 'row',
+    mode: "row",
   };
 }
 
@@ -185,16 +203,16 @@ function compareColumnDifferences(
   newSheet: SheetData,
   oldKeyIndex: number,
   newKeyIndex: number,
-  headers: string[]
+  headers: string[],
 ): ComparisonResult {
   // Build a map of old data keyed by the key column value
   const oldDataMap = new Map<string, (string | number | boolean | null)[]>();
-  oldSheet.rows.forEach((row) => {
+  for (const row of oldSheet.rows) {
     const keyValue = row[oldKeyIndex];
     if (keyValue !== null && keyValue !== undefined) {
       oldDataMap.set(String(keyValue), row);
     }
-  });
+  }
 
   const rows: ComparisonRow[] = [];
   let newCount = 0;
@@ -202,10 +220,10 @@ function compareColumnDifferences(
   let unchangedCount = 0;
 
   // Process each row in the new sheet
-  newSheet.rows.forEach((newRow) => {
+  for (const newRow of newSheet.rows) {
     const keyValue = newRow[newKeyIndex];
     if (keyValue === null || keyValue === undefined) {
-      return; // Skip rows without key value
+      continue; // Skip rows without key value
     }
 
     const keyStr = String(keyValue);
@@ -214,7 +232,7 @@ function compareColumnDifferences(
     if (!oldRow) {
       // New row (key doesn't exist in old sheet)
       rows.push({
-        status: 'new',
+        status: "new",
         keyValue,
         newData: newRow,
       });
@@ -222,21 +240,23 @@ function compareColumnDifferences(
     } else {
       // Existing row - check for column differences
       const changedColumns: number[] = [];
-      
+
       // Compare each column (excluding the key column itself)
       for (let i = 0; i < newRow.length; i++) {
         // Map new column index to old column index by header name
         const newHeader = newSheet.headers[i];
         const oldColIndex = findHeaderIndex(oldSheet.headers, newHeader);
-        
+
         if (oldColIndex !== -1) {
           const oldValue = oldRow[oldColIndex];
           const newValue = newRow[i];
-          
+
           // Compare values (normalize to string for comparison)
-          const oldStr = oldValue === null || oldValue === undefined ? '' : String(oldValue);
-          const newStr = newValue === null || newValue === undefined ? '' : String(newValue);
-          
+          const oldStr =
+            oldValue === null || oldValue === undefined ? "" : String(oldValue);
+          const newStr =
+            newValue === null || newValue === undefined ? "" : String(newValue);
+
           if (oldStr !== newStr) {
             changedColumns.push(i);
           }
@@ -245,7 +265,7 @@ function compareColumnDifferences(
 
       if (changedColumns.length > 0) {
         rows.push({
-          status: 'updated',
+          status: "updated",
           keyValue,
           oldData: oldRow,
           newData: newRow,
@@ -254,7 +274,7 @@ function compareColumnDifferences(
         updatedCount++;
       } else {
         rows.push({
-          status: 'unchanged',
+          status: "unchanged",
           keyValue,
           oldData: oldRow,
           newData: newRow,
@@ -263,7 +283,7 @@ function compareColumnDifferences(
         unchangedCount++;
       }
     }
-  });
+  }
 
   return {
     headers,
@@ -273,6 +293,6 @@ function compareColumnDifferences(
       updatedCount,
       unchangedCount,
     },
-    mode: 'column',
+    mode: "column",
   };
 }

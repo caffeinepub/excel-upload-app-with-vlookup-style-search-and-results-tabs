@@ -8,7 +8,7 @@
 export function applyRowEdits(
   baseRows: (string | number | boolean | null)[][],
   editedRowsMap: Map<number, (string | number | boolean | null)[]>,
-  rowIndices: number[]
+  rowIndices: number[],
 ): (string | number | boolean | null)[][] {
   return baseRows.map((row, idx) => {
     const originalIndex = rowIndices[idx];

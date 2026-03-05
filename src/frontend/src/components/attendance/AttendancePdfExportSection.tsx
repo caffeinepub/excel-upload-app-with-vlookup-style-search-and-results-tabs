@@ -1,128 +1,284 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Download, AlertCircle, FileText } from 'lucide-react';
-import { useGetAttendanceSummary } from '../../hooks/useAttendance';
-import { getCurrentWeekRange, getCurrentMonthRange, getCurrentYearRange } from '../../lib/attendance/dateRanges';
-import { mapAttendanceSummaryToExportData, generateAttendanceFilename } from '../../lib/attendance/attendancePdfExportMapping';
-import { exportToPdf } from '../../lib/export/exportPdf';
-import { toast } from 'sonner';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Download, FileText, Loader2 } from "lucide-react";
+import React, { useState } from "react";
+import type { AttendanceDayEntry } from "../../backend";
+import { useIsCallerAdmin } from "../../hooks/useApproval";
+import { useObserveUsers } from "../../hooks/useObserveUsers";
+import {
+  mapAttendanceDayEntriesToPdfData,
+  mapAttendanceDayEntriesToPdfDataFull,
+} from "../../lib/attendance/attendancePdfExportMapping";
+import {
+  filterRecordsByDateRange,
+  getPastMonths,
+  getPastWeeks,
+} from "../../lib/attendance/dateRanges";
+import { exportToPdf } from "../../lib/export/exportPdf";
 
-type RangeType = 'week' | 'month' | 'year';
+interface AttendancePdfExportSectionProps {
+  entries: [string, AttendanceDayEntry][];
+}
 
-export function AttendancePdfExportSection() {
-  const [selectedRange, setSelectedRange] = useState<RangeType>('week');
+type FilterMode = "week" | "month";
+
+const PAST_WEEKS = getPastWeeks(24); // Last 24 weeks
+const PAST_MONTHS = getPastMonths(24); // Last 24 months
+
+export default function AttendancePdfExportSection({
+  entries,
+}: AttendancePdfExportSectionProps) {
+  const { data: isAdmin = false } = useIsCallerAdmin();
+  const { data: allUsers = [] } = useObserveUsers();
+
+  const [filterMode, setFilterMode] = useState<FilterMode>("month");
+  const [selectedWeek, setSelectedWeek] = useState(PAST_WEEKS[0]?.start ?? "");
+  const [selectedMonth, setSelectedMonth] = useState(
+    PAST_MONTHS[0]?.start ?? "",
+  );
+  const [selectedEmployee, setSelectedEmployee] = useState<string>("all");
   const [isExporting, setIsExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Calculate date range based on selection
-  const dateRange: [string, string] = 
-    selectedRange === 'week' ? getCurrentWeekRange() :
-    selectedRange === 'month' ? getCurrentMonthRange() :
-    getCurrentYearRange();
-
-  const { data: summary, isLoading } = useGetAttendanceSummary(dateRange);
+  const getDateRange = (): { start: string; end: string; label: string } => {
+    if (filterMode === "week") {
+      const w = PAST_WEEKS.find((w) => w.start === selectedWeek);
+      return w
+        ? { start: w.start, end: w.end, label: w.label }
+        : { start: "", end: "", label: "" };
+    }
+    const m = PAST_MONTHS.find((m) => m.start === selectedMonth);
+    return m
+      ? { start: m.start, end: m.end, label: m.label }
+      : { start: "", end: "", label: "" };
+  };
 
   const handleExport = async () => {
     setError(null);
-
-    if (!summary) {
-      setError('No attendance data available');
-      return;
-    }
-
-    if (summary.totalDays === BigInt(0)) {
-      setError('No attendance data for the selected period');
-      return;
-    }
-
     setIsExporting(true);
-
     try {
-      const exportData = mapAttendanceSummaryToExportData(
-        summary,
-        selectedRange,
-        dateRange[0],
-        dateRange[1]
-      );
+      const { start, end, label } = getDateRange();
+      if (!start || !end) {
+        setError("Please select a valid date range.");
+        setIsExporting(false);
+        return;
+      }
 
-      const filename = generateAttendanceFilename(selectedRange, dateRange[0], dateRange[1]);
+      // Filter entries by date range
+      const filteredByDate = filterRecordsByDateRange(
+        entries as [string, unknown][],
+        start,
+        end,
+      ) as [string, AttendanceDayEntry][];
 
-      await exportToPdf(exportData, filename);
-      toast.success('Attendance report exported successfully');
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to export attendance report';
-      setError(message);
-      toast.error(message);
-      console.error('Export error:', err);
+      let entriesToExport: [
+        string,
+        AttendanceDayEntry & {
+          employeeName?: string;
+          employeePrincipal?: string;
+        },
+      ][];
+
+      if (isAdmin) {
+        if (selectedEmployee !== "all") {
+          // The entries passed in are already the caller's own — but for admin, we'd need all-users data
+          // For now, filter by selected employee principal if we can find it embedded in entries
+          // (entries are the caller's own, so for admin "all employees" it includes all from useGetAttendanceEntries)
+          entriesToExport = filteredByDate.map(([date, entry]) => {
+            const user = allUsers.find(
+              (u) => u.principal.toString() === selectedEmployee,
+            );
+            return [
+              date,
+              {
+                ...entry,
+                employeeName:
+                  user?.profile?.displayName ?? selectedEmployee.slice(0, 12),
+              },
+            ];
+          });
+        } else {
+          // Add employee name to entries (entries are from current user for personal, so label as "All")
+          entriesToExport = filteredByDate.map(([date, entry]) => [
+            date,
+            { ...entry, employeeName: "Self" },
+          ]);
+        }
+      } else {
+        entriesToExport = filteredByDate;
+      }
+
+      if (entriesToExport.length === 0) {
+        setError("No attendance records found for the selected period.");
+        setIsExporting(false);
+        return;
+      }
+
+      const empLabel =
+        isAdmin && selectedEmployee !== "all"
+          ? ` — ${allUsers.find((u) => u.principal.toString() === selectedEmployee)?.profile?.displayName ?? "Employee"}`
+          : "";
+
+      const rangeLabel = `${label}${empLabel}`;
+
+      const pdfData = isAdmin
+        ? mapAttendanceDayEntriesToPdfDataFull(
+            entriesToExport,
+            "Attendance Report",
+            rangeLabel,
+          )
+        : mapAttendanceDayEntriesToPdfData(
+            entriesToExport,
+            "My Attendance Report",
+            rangeLabel,
+          );
+
+      await exportToPdf(pdfData, `attendance-${start}-${end}.pdf`);
+    } catch (e) {
+      setError(String(e));
     } finally {
       setIsExporting(false);
     }
   };
 
-  const canExport = !isLoading && summary && summary.totalDays > BigInt(0);
-
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <FileText className="w-5 h-5" />
-          Export Attendance Report
+    <Card className="border-border" data-ocid="attendance-pdf-export.card">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-sm">
+          <FileText className="h-4 w-4 text-primary" />
+          Download Attendance PDF
         </CardTitle>
-        <CardDescription>Download detailed attendance report as PDF</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        {error && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        )}
-
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="flex-1">
-            <Select value={selectedRange} onValueChange={(value) => setSelectedRange(value as RangeType)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select period" />
+      <CardContent className="space-y-3">
+        <div className="flex flex-wrap gap-3 items-end">
+          {/* Filter Mode */}
+          <div className="space-y-1">
+            <Label className="text-xs">Period</Label>
+            <Select
+              value={filterMode}
+              onValueChange={(v) => setFilterMode(v as FilterMode)}
+            >
+              <SelectTrigger
+                className="w-28 h-8 text-xs"
+                data-ocid="attendance-pdf-export.period-select"
+              >
+                <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="week">This Week</SelectItem>
-                <SelectItem value="month">This Month</SelectItem>
-                <SelectItem value="year">This Year</SelectItem>
+                <SelectItem value="week">By Week</SelectItem>
+                <SelectItem value="month">By Month</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
+          {/* Week / Month Selector */}
+          {filterMode === "week" ? (
+            <div className="space-y-1">
+              <Label className="text-xs">Select Week</Label>
+              <Select value={selectedWeek} onValueChange={setSelectedWeek}>
+                <SelectTrigger
+                  className="w-56 h-8 text-xs"
+                  data-ocid="attendance-pdf-export.week-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAST_WEEKS.map((w) => (
+                    <SelectItem key={w.start} value={w.start}>
+                      {w.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : (
+            <div className="space-y-1">
+              <Label className="text-xs">Select Month</Label>
+              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                <SelectTrigger
+                  className="w-48 h-8 text-xs"
+                  data-ocid="attendance-pdf-export.month-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PAST_MONTHS.map((m) => (
+                    <SelectItem key={m.start} value={m.start}>
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Admin: Employee Filter */}
+          {isAdmin && (
+            <div className="space-y-1">
+              <Label className="text-xs">Employee</Label>
+              <Select
+                value={selectedEmployee}
+                onValueChange={setSelectedEmployee}
+              >
+                <SelectTrigger
+                  className="w-44 h-8 text-xs"
+                  data-ocid="attendance-pdf-export.employee-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Employees</SelectItem>
+                  {allUsers.map((u) => (
+                    <SelectItem
+                      key={u.principal.toString()}
+                      value={u.principal.toString()}
+                    >
+                      {u.profile?.displayName ??
+                        `${u.principal.toString().slice(0, 12)}...`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           <Button
             onClick={handleExport}
-            disabled={!canExport || isExporting}
-            className="sm:w-auto"
+            disabled={isExporting}
+            size="sm"
+            className="gap-2 h-8"
+            data-ocid="attendance-pdf-export.download-button"
           >
-            <Download className="w-4 h-4 mr-2" />
-            {isExporting ? 'Exporting...' : 'Export PDF'}
+            {isExporting ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : (
+              <Download className="h-3 w-3" />
+            )}
+            Download PDF
           </Button>
         </div>
 
-        {isLoading && (
-          <p className="text-sm text-muted-foreground">Loading attendance data...</p>
-        )}
+        <p className="text-xs text-muted-foreground">
+          PDF includes: date, attendance status (Present / Leave / Company Leave
+          / Festival Leave / Week Off / Holiday / Half Day), check-in/out times,
+          working hours, and work details.
+        </p>
 
-        {!isLoading && summary && summary.totalDays === BigInt(0) && (
-          <Alert>
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              No attendance data available for the selected period
-            </AlertDescription>
-          </Alert>
-        )}
-
-        {!isLoading && summary && summary.totalDays > BigInt(0) && (
-          <div className="text-sm text-muted-foreground">
-            <p>Period: {dateRange[0]} to {dateRange[1]}</p>
-            <p>Total days: {Number(summary.totalDays)}</p>
-          </div>
+        {error && (
+          <p
+            className="text-xs text-destructive"
+            data-ocid="attendance-pdf-export.error-state"
+          >
+            {error}
+          </p>
         )}
       </CardContent>
     </Card>

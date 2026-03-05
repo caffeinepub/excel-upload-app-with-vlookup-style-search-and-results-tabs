@@ -1,6 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import type { UserApprovalInfo } from '../backend';
+import { useQuery } from "@tanstack/react-query";
+import type { UserApprovalInfo } from "../backend";
+import { useActor } from "./useActor";
 
 /**
  * Query to check if the current caller is approved
@@ -9,7 +9,7 @@ export function useIsCallerApproved() {
   const { actor, isFetching } = useActor();
 
   return useQuery<boolean>({
-    queryKey: ['isCallerApproved'],
+    queryKey: ["isCallerApproved"],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isCallerApproved();
@@ -26,7 +26,7 @@ export function useIsCallerAdmin() {
   const { actor, isFetching } = useActor();
 
   return useQuery<boolean>({
-    queryKey: ['isCallerAdmin'],
+    queryKey: ["isCallerAdmin"],
     queryFn: async () => {
       if (!actor) return false;
       return actor.isCallerAdmin();
@@ -43,7 +43,7 @@ export function useListApprovals() {
   const { actor, isFetching } = useActor();
 
   return useQuery<UserApprovalInfo[]>({
-    queryKey: ['approvals'],
+    queryKey: ["approvals"],
     queryFn: async () => {
       if (!actor) return [];
       return actor.listApprovals();
@@ -51,4 +51,13 @@ export function useListApprovals() {
     enabled: !!actor && !isFetching,
     retry: 1,
   });
+}
+
+/**
+ * Convenience hook that returns isAdmin flag and loading state.
+ * Used by components that need a simple isAdmin boolean.
+ */
+export function useApproval() {
+  const { data: isAdmin = false, isLoading } = useIsCallerAdmin();
+  return { isAdmin, isLoading };
 }

@@ -1,24 +1,27 @@
-import type { ExpenseEntry } from '../../backend';
-import type { ExportData } from '../export/exportPdf';
+import type { ExpenseEntry } from "../../backend";
+import type { ExportData } from "../export/exportPdf";
 
-export type ReportType = 'weekly' | 'monthly' | 'yearly';
+export type ReportType = "weekly" | "monthly" | "yearly";
 
 /**
  * Get the date range for a given report type
  */
-export function getDateRangeForReportType(reportType: ReportType): { start: Date; end: Date } {
+export function getDateRangeForReportType(reportType: ReportType): {
+  start: Date;
+  end: Date;
+} {
   const now = new Date();
   const end = new Date(now);
   let start = new Date(now);
 
   switch (reportType) {
-    case 'weekly':
+    case "weekly":
       start.setDate(now.getDate() - 7);
       break;
-    case 'monthly':
+    case "monthly":
       start.setMonth(now.getMonth() - 1);
       break;
-    case 'yearly':
+    case "yearly":
       start.setFullYear(now.getFullYear() - 1);
       break;
   }
@@ -32,7 +35,7 @@ export function getDateRangeForReportType(reportType: ReportType): { start: Date
 export function filterExpensesByDateRange(
   expenses: ExpenseEntry[],
   start: Date,
-  end: Date
+  end: Date,
 ): ExpenseEntry[] {
   return expenses.filter((expense) => {
     const expenseDate = new Date(expense.date);
@@ -52,27 +55,27 @@ export function calculateTotal(expenses: ExpenseEntry[]): number {
  */
 export function buildExpenseReportData(
   expenses: ExpenseEntry[],
-  reportType: ReportType
+  reportType: ReportType,
 ): ExportData {
   const { start, end } = getDateRangeForReportType(reportType);
   const filteredExpenses = filterExpensesByDateRange(expenses, start, end);
-  
+
   // Sort by date descending
   const sortedExpenses = [...filteredExpenses].sort((a, b) => {
     return new Date(b.date).getTime() - new Date(a.date).getTime();
   });
 
-  const headers = ['Date', 'Category', 'Amount', 'Description'];
+  const headers = ["Date", "Category", "Amount", "Description"];
   const rows: (string | number)[][] = sortedExpenses.map((expense) => [
     expense.date,
     expense.category,
     Number(expense.amount),
-    expense.description || '-',
+    expense.description || "-",
   ]);
 
   // Add totals row
   const total = calculateTotal(sortedExpenses);
-  rows.push(['', 'TOTAL', total, '']);
+  rows.push(["", "TOTAL", total, ""]);
 
   return { headers, rows };
 }
@@ -82,8 +85,8 @@ export function buildExpenseReportData(
  */
 export function generateReportFilename(reportType: ReportType): string {
   const { start, end } = getDateRangeForReportType(reportType);
-  const startStr = start.toISOString().split('T')[0];
-  const endStr = end.toISOString().split('T')[0];
-  
+  const startStr = start.toISOString().split("T")[0];
+  const endStr = end.toISOString().split("T")[0];
+
   return `expense-report-${reportType}-${startStr}-to-${endStr}.pdf`;
 }

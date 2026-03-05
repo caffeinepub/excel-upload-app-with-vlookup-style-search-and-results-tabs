@@ -1,4 +1,4 @@
-import { Principal } from '@icp-sdk/core/principal';
+import { Principal } from "@icp-sdk/core/principal";
 
 /**
  * Result type for Principal parsing operations
@@ -15,25 +15,26 @@ export type ParsePrincipalResult =
 export function parsePrincipal(value: unknown): ParsePrincipalResult {
   try {
     // If already a Principal instance, return it
-    if (value && typeof value === 'object' && 'toText' in value) {
+    if (value && typeof value === "object" && "toText" in value) {
       return { success: true, principal: value as Principal };
     }
 
     // If it's a string, try to parse it
-    if (typeof value === 'string') {
-      if (value.trim() === '') {
-        return { success: false, error: 'Principal ID cannot be empty' };
+    if (typeof value === "string") {
+      if (value.trim() === "") {
+        return { success: false, error: "Principal ID cannot be empty" };
       }
       const principal = Principal.fromText(value);
       return { success: true, principal };
     }
 
-    return { success: false, error: 'Invalid Principal format' };
+    return { success: false, error: "Invalid Principal format" };
   } catch (error) {
-    console.error('Principal parsing error:', error);
+    console.error("Principal parsing error:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : 'Failed to parse Principal ID',
+      error:
+        error instanceof Error ? error.message : "Failed to parse Principal ID",
     };
   }
 }

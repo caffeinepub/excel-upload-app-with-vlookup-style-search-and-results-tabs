@@ -1,230 +1,270 @@
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useGetCalendarEvents, useCreateCalendarEvent, useDeleteCalendarEvent } from '../hooks/useCalendarEvents';
-import { useAttendanceCalendarOverlay } from '../hooks/useAttendanceCalendarOverlay';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { useIsCallerApproved, useIsCallerAdmin } from '../hooks/useApproval';
-import { Calendar as CalendarIcon, Trash2, AlertCircle, Plus, Clock } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
-import { ApprovalGate } from '../components/auth/ApprovalGate';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { CalendarDays, Lock, Plus, RefreshCw, Trash2 } from "lucide-react";
+import React, { useState } from "react";
+import type { CalendarEvent } from "../backend";
+import { ApprovalGate } from "../components/auth/ApprovalGate";
+import { useIsCallerAdmin } from "../hooks/useApproval";
+import {
+  useCreateCalendarEvent,
+  useDeleteCalendarEvent,
+  useGetCalendarEvents,
+} from "../hooks/useCalendarEvents";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
-export function CalendarTab() {
+function formatEventDate(dateTime: bigint): string {
+  const ms = Number(dateTime);
+  return new Date(ms).toLocaleString();
+}
+
+function groupByDate(events: CalendarEvent[]): Record<string, CalendarEvent[]> {
+  const groups: Record<string, CalendarEvent[]> = {};
+  for (const ev of events) {
+    const ms = Number(ev.dateTime);
+    const dateKey = new Date(ms).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    if (!groups[dateKey]) groups[dateKey] = [];
+    groups[dateKey].push(ev);
+  }
+  return groups;
+}
+
+export default function CalendarTab() {
   const { identity } = useInternetIdentity();
-  const isAuthenticated = !!identity;
+  const { data: isAdmin } = useIsCallerAdmin();
+  const { data: events = [], isLoading } = useGetCalendarEvents();
+  const createEvent = useCreateCalendarEvent();
+  const deleteEvent = useDeleteCalendarEvent();
 
-  const { data: userEvents = [], isLoading: userEventsLoading } = useGetCalendarEvents();
-  const { data: attendanceEvents = [], isLoading: attendanceEventsLoading } = useAttendanceCalendarOverlay();
-  const createMutation = useCreateCalendarEvent();
-  const deleteMutation = useDeleteCalendarEvent();
+  const [showCreate, setShowCreate] = useState(false);
+  const [title, setTitle] = useState("");
+  const [dateTimeStr, setDateTimeStr] = useState("");
+  const [description, setDescription] = useState("");
+  const [adminOnly, setAdminOnly] = useState(false);
 
-  const [dialogOpen, setDialogOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
-  const [startTime, setStartTime] = useState('');
-
-  // Combine user events and attendance events
-  const allEvents = [...userEvents, ...attendanceEvents].sort((a, b) => Number(a.startTime - b.startTime));
-  const isLoading = userEventsLoading || attendanceEventsLoading;
+  const currentPrincipal = identity?.getPrincipal().toString();
 
   const handleCreate = async () => {
-    if (!title.trim() || !startTime) return;
-
-    try {
-      const timeMs = new Date(startTime).getTime();
-      await createMutation.mutateAsync({
-        title,
-        description,
-        startTime: BigInt(timeMs),
-      });
-      setDialogOpen(false);
-      setTitle('');
-      setDescription('');
-      setStartTime('');
-    } catch (error) {
-      console.error('Failed to create event:', error);
-    }
+    if (!title.trim() || !dateTimeStr) return;
+    const ms = new Date(dateTimeStr).getTime();
+    await createEvent.mutateAsync({
+      title: title.trim(),
+      dateTime: BigInt(ms),
+      description: description.trim(),
+      isAdminOnly: adminOnly,
+    });
+    setTitle("");
+    setDateTimeStr("");
+    setDescription("");
+    setAdminOnly(false);
+    setShowCreate(false);
   };
 
   const handleDelete = async (id: bigint) => {
-    if (!confirm('Delete this event?')) return;
-    try {
-      await deleteMutation.mutateAsync(id);
-    } catch (error) {
-      console.error('Failed to delete event:', error);
-    }
+    await deleteEvent.mutateAsync(id);
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className="max-w-4xl mx-auto">
-        <Alert>
-          <AlertCircle className="h-4 w-4" />
-          <AlertDescription>
-            Please log in to view and manage your calendar events.
-          </AlertDescription>
-        </Alert>
-      </div>
-    );
-  }
+  const canDelete = (ev: CalendarEvent) => {
+    return isAdmin || ev.createdBy.toString() === currentPrincipal;
+  };
+
+  const sorted = [...events].sort((a, b) => Number(a.dateTime - b.dateTime));
+  const grouped = groupByDate(sorted);
 
   return (
     <ApprovalGate>
-      <div className="max-w-4xl mx-auto space-y-6">
+      <div className="p-4 max-w-3xl mx-auto space-y-4">
+        {/* Header */}
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-2">
-              <CalendarIcon className="w-8 h-8" />
-              Calendar Events
-            </h1>
-            <p className="text-muted-foreground mt-1">Manage your calendar events and view attendance</p>
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-primary" />
+            <h1 className="text-lg font-semibold">Calendar Events</h1>
           </div>
-          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Event
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add Calendar Event</DialogTitle>
-                <DialogDescription>Create a new calendar event</DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4">
-                <div>
-                  <Label htmlFor="event-title">Title</Label>
-                  <Input
-                    id="event-title"
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    placeholder="Project kickoff"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="event-description">Description</Label>
-                  <Textarea
-                    id="event-description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Initial planning session"
-                    rows={3}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="event-start">Start Date & Time</Label>
-                  <Input
-                    id="event-start"
-                    type="datetime-local"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                  />
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={handleCreate} disabled={createMutation.isPending || !title.trim() || !startTime}>
-                  {createMutation.isPending ? 'Creating...' : 'Create'}
-                </Button>
-              </DialogFooter>
-
-              {createMutation.isError && (
-                <Alert variant="destructive" className="mt-4">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertDescription>
-                    {createMutation.error instanceof Error
-                      ? createMutation.error.message
-                      : 'Failed to create event'}
-                  </AlertDescription>
-                </Alert>
-              )}
-            </DialogContent>
-          </Dialog>
+          <div className="flex items-center gap-2">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled
+                      className="gap-1 opacity-60"
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      Sync Calendar
+                    </Button>
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  External calendar sync coming soon
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+            <Button
+              size="sm"
+              onClick={() => setShowCreate(true)}
+              className="gap-1"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              New Event
+            </Button>
+          </div>
         </div>
 
+        {/* Events */}
         {isLoading ? (
-          <Card>
-            <CardContent className="py-8">
-              <p className="text-center text-muted-foreground">Loading events...</p>
-            </CardContent>
-          </Card>
-        ) : allEvents.length === 0 ? (
-          <Card>
-            <CardContent className="py-8">
-              <p className="text-center text-muted-foreground">
-                No events yet. Create your first event above or check in for attendance.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            Loading events...
+          </div>
+        ) : sorted.length === 0 ? (
+          <div className="text-center py-12 text-muted-foreground text-sm">
+            No events yet. Create your first event!
+          </div>
         ) : (
-          <div className="space-y-3">
-            {allEvents.map((event) => {
-              const eventDate = new Date(Number(event.startTime));
-              const isAttendanceEvent = event.source === 'attendance';
-
-              return (
-                <Card key={Number(event.id)} className={isAttendanceEvent ? 'border-l-4 border-l-primary' : ''}>
-                  <CardHeader>
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <CardTitle className="text-lg">{event.title}</CardTitle>
-                          {isAttendanceEvent && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Clock className="w-3 h-3 mr-1" />
-                              Attendance
+          <div className="space-y-6">
+            {Object.entries(grouped).map(([dateKey, dayEvents]) => (
+              <div key={dateKey}>
+                <h2 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-1">
+                  {dateKey}
+                </h2>
+                <div className="space-y-2">
+                  {dayEvents.map((ev) => (
+                    <div
+                      key={ev.id.toString()}
+                      className={`rounded-xl border p-3 flex items-start justify-between gap-3 ${
+                        ev.isAdminOnly
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-border bg-card"
+                      }`}
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-sm">
+                            {ev.title}
+                          </span>
+                          {ev.isAdminOnly && (
+                            <Badge
+                              variant="secondary"
+                              className="gap-1 text-xs"
+                            >
+                              <Lock className="h-2.5 w-2.5" />
+                              Admin Only
                             </Badge>
                           )}
                         </div>
-                        <CardDescription className="mt-1">
-                          {eventDate.toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric',
-                          })}
-                          {' at '}
-                          {eventDate.toLocaleTimeString('en-US', {
-                            hour: '2-digit',
-                            minute: '2-digit',
-                          })}
-                        </CardDescription>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {formatEventDate(ev.dateTime)}
+                        </p>
+                        {ev.description && (
+                          <p className="text-sm text-foreground/80 mt-1">
+                            {ev.description}
+                          </p>
+                        )}
                       </div>
-                      {event.isDeletable && (
+                      {canDelete(ev) && (
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => handleDelete(event.id)}
-                          disabled={deleteMutation.isPending}
+                          className="h-7 w-7 shrink-0 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(ev.id)}
+                          disabled={deleteEvent.isPending}
                         >
-                          <Trash2 className="w-4 h-4 text-destructive" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
-                  </CardHeader>
-                  {event.description && (
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{event.description}</p>
-                    </CardContent>
-                  )}
-                </Card>
-              );
-            })}
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         )}
 
-        {deleteMutation.isError && (
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertDescription>
-              {deleteMutation.error instanceof Error ? deleteMutation.error.message : 'Failed to delete event'}
-            </AlertDescription>
-          </Alert>
-        )}
+        {/* Create Dialog */}
+        <Dialog open={showCreate} onOpenChange={setShowCreate}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Create Event</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3 py-2">
+              <div>
+                <Label htmlFor="ev-title">Title *</Label>
+                <Input
+                  id="ev-title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Event title"
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-datetime">Date & Time *</Label>
+                <Input
+                  id="ev-datetime"
+                  type="datetime-local"
+                  value={dateTimeStr}
+                  onChange={(e) => setDateTimeStr(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label htmlFor="ev-desc">Description</Label>
+                <Textarea
+                  id="ev-desc"
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Optional description"
+                  rows={3}
+                />
+              </div>
+              {isAdmin && (
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="ev-admin"
+                    checked={adminOnly}
+                    onCheckedChange={(v) => setAdminOnly(!!v)}
+                  />
+                  <Label htmlFor="ev-admin" className="cursor-pointer">
+                    Admin-only event
+                  </Label>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowCreate(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleCreate}
+                disabled={
+                  !title.trim() || !dateTimeStr || createEvent.isPending
+                }
+              >
+                {createEvent.isPending ? "Creating..." : "Create Event"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </ApprovalGate>
   );

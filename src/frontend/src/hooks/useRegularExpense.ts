@@ -1,10 +1,10 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useActor } from './useActor';
-import { useInternetIdentity } from './useInternetIdentity';
-import { useAddHistoryEntry } from './useQueries';
-import { parseNatBigInt } from '../utils/number/parseNatBigInt';
-import type { Budget, ExpenseEntry } from '../backend';
-import { HistoryType } from '../backend';
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import type { Budget, ExpenseEntry } from "../backend";
+import { HistoryType } from "../backend";
+import { parseNatBigInt } from "../utils/number/parseNatBigInt";
+import { useActor } from "./useActor";
+import { useInternetIdentity } from "./useInternetIdentity";
+import { useAddHistoryEntry } from "./useQueries";
 
 /**
  * Query to fetch the current user's budget
@@ -13,9 +13,9 @@ export function useGetBudget() {
   const { actor, isFetching } = useActor();
 
   return useQuery<Budget | null>({
-    queryKey: ['budget'],
+    queryKey: ["budget"],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
+      if (!actor) throw new Error("Actor not available");
       return actor.getBudget();
     },
     enabled: !!actor && !isFetching,
@@ -33,43 +33,42 @@ export function useSaveBudget() {
   const addHistory = useAddHistoryEntry();
 
   return useMutation({
-    mutationFn: async (budget: { monthlyLimit: string; dayLimit: string; savingsGoal: string; lastUpdated: string }) => {
-      // Check authentication
-      if (!identity) {
-        throw new Error('Please log in to save budget settings');
-      }
+    mutationFn: async (budget: {
+      monthlyLimit: string;
+      dayLimit: string;
+      savingsGoal: string;
+      lastUpdated: string;
+    }) => {
+      if (!identity) throw new Error("Please log in to save budget settings");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
 
-      // Check actor readiness
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      // Parse and validate all numeric inputs
       const monthlyLimitResult = parseNatBigInt(budget.monthlyLimit);
-      if (!monthlyLimitResult.success) {
+      if (!monthlyLimitResult.success)
         throw new Error(`Monthly limit: ${monthlyLimitResult.error}`);
-      }
 
       const dayLimitResult = parseNatBigInt(budget.dayLimit);
-      if (!dayLimitResult.success) {
+      if (!dayLimitResult.success)
         throw new Error(`Daily limit: ${dayLimitResult.error}`);
-      }
 
       const savingsGoalResult = parseNatBigInt(budget.savingsGoal);
-      if (!savingsGoalResult.success) {
+      if (!savingsGoalResult.success)
         throw new Error(`Savings goal: ${savingsGoalResult.error}`);
-      }
 
-      await actor.saveBudget(
-        monthlyLimitResult.value,
-        dayLimitResult.value,
-        savingsGoalResult.value,
-        budget.lastUpdated
-      );
+      const budgetObj: Budget = {
+        monthlyLimit: monthlyLimitResult.value,
+        dayLimit: dayLimitResult.value,
+        savingsGoal: savingsGoalResult.value,
+        lastUpdated: budget.lastUpdated,
+      };
+
+      await actor.saveBudget(budgetObj);
 
       return {
         monthlyLimit: Number(monthlyLimitResult.value),
@@ -78,16 +77,15 @@ export function useSaveBudget() {
         lastUpdated: budget.lastUpdated,
       };
     },
-    onSuccess: (budget) => {
-      queryClient.invalidateQueries({ queryKey: ['budget'] });
-      // Add history entry for budget change
+    onSuccess: (b) => {
+      queryClient.invalidateQueries({ queryKey: ["budget"] });
       addHistory.mutate({
         entryType: HistoryType.budgetChange,
-        details: `Budget updated: Monthly limit $${budget.monthlyLimit}, Savings goal $${budget.savingsGoal}`,
+        details: `Budget updated: Monthly limit $${b.monthlyLimit}, Savings goal $${b.savingsGoal}`,
       });
     },
     onError: (error) => {
-      console.error('Failed to save budget:', error);
+      console.error("Failed to save budget:", error);
     },
   });
 }
@@ -99,10 +97,10 @@ export function useGetExpenses() {
   const { actor, isFetching } = useActor();
 
   return useQuery<ExpenseEntry[]>({
-    queryKey: ['expenses'],
+    queryKey: ["expenses"],
     queryFn: async () => {
-      if (!actor) throw new Error('Actor not available');
-      return actor.getExpensesForCaller();
+      if (!actor) throw new Error("Actor not available");
+      return actor.getExpenses();
     },
     enabled: !!actor && !isFetching,
     retry: 1,
@@ -119,36 +117,35 @@ export function useAddExpense() {
   const addHistory = useAddHistoryEntry();
 
   return useMutation({
-    mutationFn: async (expense: { date: string; category: string; amount: string; description: string }) => {
-      // Check authentication
-      if (!identity) {
-        throw new Error('Please log in to add expenses');
-      }
+    mutationFn: async (expense: {
+      date: string;
+      category: string;
+      amount: string;
+      description: string;
+    }) => {
+      if (!identity) throw new Error("Please log in to add expenses");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
 
-      // Check actor readiness
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      // Parse and validate amount
       const amountResult = parseNatBigInt(expense.amount);
-      if (!amountResult.success) {
+      if (!amountResult.success)
         throw new Error(`Amount: ${amountResult.error}`);
-      }
 
       const id = await actor.addExpense(
         amountResult.value,
         expense.category,
         expense.description,
-        expense.date
+        expense.date,
       );
 
-      return { 
-        id, 
+      return {
+        id,
         amount: Number(amountResult.value),
         category: expense.category,
         description: expense.description,
@@ -156,21 +153,21 @@ export function useAddExpense() {
       };
     },
     onSuccess: (expense) => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      // Add history entry for expense change
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       addHistory.mutate({
         entryType: HistoryType.expenseChange,
-        details: `Expense added: ${expense.category} - $${expense.amount} (${expense.description || 'No description'})`,
+        details: `Expense added: ${expense.category} - $${expense.amount} (${expense.description || "No description"})`,
       });
     },
     onError: (error) => {
-      console.error('Failed to add expense:', error);
+      console.error("Failed to add expense:", error);
     },
   });
 }
 
 /**
  * Mutation to edit an existing expense
+ * Backend has no editExpense; we delete and re-add as a workaround.
  */
 export function useEditExpense() {
   const { actor, isFetching } = useActor();
@@ -179,37 +176,38 @@ export function useEditExpense() {
   const addHistory = useAddHistoryEntry();
 
   return useMutation({
-    mutationFn: async (expense: { id: bigint; date: string; category: string; amount: string; description: string }) => {
-      // Check authentication
-      if (!identity) {
-        throw new Error('Please log in to edit expenses');
-      }
+    mutationFn: async (expense: {
+      id: bigint;
+      date: string;
+      category: string;
+      amount: string;
+      description: string;
+    }) => {
+      if (!identity) throw new Error("Please log in to edit expenses");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
 
-      // Check actor readiness
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
-      // Parse and validate amount
       const amountResult = parseNatBigInt(expense.amount);
-      if (!amountResult.success) {
+      if (!amountResult.success)
         throw new Error(`Amount: ${amountResult.error}`);
-      }
 
-      await actor.editExpense(
-        expense.id,
+      // Delete old entry then add new one (backend has no editExpense)
+      await actor.deleteExpense(expense.id);
+      const newId = await actor.addExpense(
         amountResult.value,
         expense.category,
         expense.description,
-        expense.date
+        expense.date,
       );
 
       return {
-        id: expense.id,
+        id: newId,
         amount: Number(amountResult.value),
         category: expense.category,
         description: expense.description,
@@ -217,15 +215,14 @@ export function useEditExpense() {
       };
     },
     onSuccess: (expense) => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      // Add history entry for expense change
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       addHistory.mutate({
         entryType: HistoryType.expenseChange,
-        details: `Expense edited: ${expense.category} - $${expense.amount} (${expense.description || 'No description'})`,
+        details: `Expense edited: ${expense.category} - $${expense.amount} (${expense.description || "No description"})`,
       });
     },
     onError: (error) => {
-      console.error('Failed to edit expense:', error);
+      console.error("Failed to edit expense:", error);
     },
   });
 }
@@ -241,33 +238,27 @@ export function useDeleteExpense() {
 
   return useMutation({
     mutationFn: async ({ id, details }: { id: bigint; details: string }) => {
-      // Check authentication
-      if (!identity) {
-        throw new Error('Please log in to delete expenses');
-      }
-
-      // Check actor readiness
-      if (!actor) {
-        throw new Error('Backend connection not ready. Please wait a moment and try again.');
-      }
-
-      if (isFetching) {
-        throw new Error('Backend is initializing. Please wait a moment and try again.');
-      }
-
+      if (!identity) throw new Error("Please log in to delete expenses");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
       await actor.deleteExpense(id);
       return { id, details };
     },
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      // Add history entry for expense deletion
+      queryClient.invalidateQueries({ queryKey: ["expenses"] });
       addHistory.mutate({
         entryType: HistoryType.expenseChange,
         details: `Expense deleted: ${data.details}`,
       });
     },
     onError: (error) => {
-      console.error('Failed to delete expense:', error);
+      console.error("Failed to delete expense:", error);
     },
   });
 }

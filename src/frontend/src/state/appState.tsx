@@ -1,6 +1,12 @@
-import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
-import { useAddHistoryEntry } from '../hooks/useQueries';
-import { HistoryType } from '../backend';
+import {
+  type ReactNode,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+} from "react";
+import { HistoryType } from "../backend";
+import { useAddHistoryEntry } from "../hooks/useQueries";
 
 export interface SheetData {
   headers: string[];
@@ -18,19 +24,24 @@ export interface SearchParams {
   lookupValue: string;
   keyColumn: string;
   returnColumn: string;
-  matchType: 'exact' | 'approximate';
+  matchType: "exact" | "approximate";
 }
 
 export interface MultiSearchParams {
   lookupValues: string[];
   keyColumn: string;
   returnColumn: string;
-  matchType: 'exact' | 'approximate';
+  matchType: "exact" | "approximate";
 }
 
 export interface SearchResult {
   found: boolean;
-  value: string | number | boolean | null | (string | number | boolean | null)[];
+  value:
+    | string
+    | number
+    | boolean
+    | null
+    | (string | number | boolean | null)[];
   rowIndex?: number;
   fullRow?: { index: number; data: (string | number | boolean | null)[] };
   message?: string;
@@ -49,7 +60,7 @@ export interface FilterResults {
 }
 
 export interface ComparisonRow {
-  status: 'new' | 'updated' | 'unchanged';
+  status: "new" | "updated" | "unchanged";
   keyValue: string | number | boolean | null;
   oldData?: (string | number | boolean | null)[];
   newData: (string | number | boolean | null)[];
@@ -64,11 +75,11 @@ export interface ComparisonResult {
     updatedCount: number;
     unchangedCount: number;
   };
-  mode: 'row' | 'column' | 'key-presence';
+  mode: "row" | "column" | "key-presence";
 }
 
 export interface HistoryItem {
-  type: 'vlookup' | 'filter' | 'update-checking';
+  type: "vlookup" | "filter" | "update-checking";
   timestamp: number;
   data: any;
 }
@@ -94,35 +105,50 @@ interface AppState {
   addToHistory: (item: HistoryItem) => void;
   clearHistory: () => void;
   reset: () => void;
-  updateWorkbookCell: (rowIndex: number, colIndex: number, value: string | number | boolean | null) => void;
-  updateWorkbookRow: (rowIndex: number, newRow: (string | number | boolean | null)[]) => void;
+  updateWorkbookCell: (
+    rowIndex: number,
+    colIndex: number,
+    value: string | number | boolean | null,
+  ) => void;
+  updateWorkbookRow: (
+    rowIndex: number,
+    newRow: (string | number | boolean | null)[],
+  ) => void;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
 
-const HISTORY_STORAGE_KEY = 'crystal-atlas-history';
+const HISTORY_STORAGE_KEY = "crystal-atlas-history";
 const MAX_HISTORY_ITEMS = 50;
 
 // Helper to normalize workbook state and ensure selectedSheet is valid and non-empty
-function normalizeWorkbook(workbook: WorkbookState | null): WorkbookState | null {
+function normalizeWorkbook(
+  workbook: WorkbookState | null,
+): WorkbookState | null {
   if (!workbook) return null;
-  
+
   // Filter out any empty sheet names
-  const validSheetNames = workbook.sheetNames.filter(name => name && name.trim().length > 0);
-  
+  const validSheetNames = workbook.sheetNames.filter(
+    (name) => name && name.trim().length > 0,
+  );
+
   if (validSheetNames.length === 0) {
-    console.warn('Workbook has no valid sheet names after filtering empty values.');
+    console.warn(
+      "Workbook has no valid sheet names after filtering empty values.",
+    );
     return null;
   }
-  
+
   // Ensure selectedSheet is in validSheetNames and not empty
   let selectedSheet = workbook.selectedSheet;
   if (!selectedSheet || !validSheetNames.includes(selectedSheet)) {
     // Fall back to first valid sheet
     selectedSheet = validSheetNames[0];
-    console.warn(`Selected sheet "${workbook.selectedSheet}" not found in valid sheet names. Falling back to "${selectedSheet}".`);
+    console.warn(
+      `Selected sheet "${workbook.selectedSheet}" not found in valid sheet names. Falling back to "${selectedSheet}".`,
+    );
   }
-  
+
   return {
     ...workbook,
     sheetNames: validSheetNames,
@@ -130,12 +156,21 @@ function normalizeWorkbook(workbook: WorkbookState | null): WorkbookState | null
   };
 }
 
-export function AppStateProvider({ children }: { children: ReactNode | ((context: AppState) => ReactNode) }) {
+export function AppStateProvider({
+  children,
+}: { children: ReactNode | ((context: AppState) => ReactNode) }) {
   const [workbook, setWorkbookInternal] = useState<WorkbookState | null>(null);
-  const [searchParams, setSearchParams] = useState<SearchParams | MultiSearchParams | null>(null);
-  const [vlookupResults, setVlookupResults] = useState<VlookupResult[] | null>(null);
-  const [filterResults, setFilterResults] = useState<FilterResults | null>(null);
-  const [updateCheckingResults, setUpdateCheckingResults] = useState<ComparisonResult | null>(null);
+  const [searchParams, setSearchParams] = useState<
+    SearchParams | MultiSearchParams | null
+  >(null);
+  const [vlookupResults, setVlookupResults] = useState<VlookupResult[] | null>(
+    null,
+  );
+  const [filterResults, setFilterResults] = useState<FilterResults | null>(
+    null,
+  );
+  const [updateCheckingResults, setUpdateCheckingResults] =
+    useState<ComparisonResult | null>(null);
   const [uploadLoading, setUploadLoading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [history, setHistory] = useState<HistoryItem[]>(() => {
@@ -155,7 +190,7 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
     try {
       localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
     } catch (error) {
-      console.error('Failed to save history:', error);
+      console.error("Failed to save history:", error);
     }
   }, [history]);
 
@@ -175,19 +210,23 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
     setUpdateCheckingResults(null);
   };
 
-  const updateWorkbookCell = (rowIndex: number, colIndex: number, value: string | number | boolean | null) => {
-    setWorkbookInternal(prev => {
+  const updateWorkbookCell = (
+    rowIndex: number,
+    colIndex: number,
+    value: string | number | boolean | null,
+  ) => {
+    setWorkbookInternal((prev) => {
       if (!prev || !prev.sheetData) return prev;
-      
+
       const newRows = [...prev.sheetData.rows];
       if (rowIndex < 0 || rowIndex >= newRows.length) return prev;
-      
+
       const newRow = [...newRows[rowIndex]];
       if (colIndex < 0 || colIndex >= newRow.length) return prev;
-      
+
       newRow[colIndex] = value;
       newRows[rowIndex] = newRow;
-      
+
       return {
         ...prev,
         sheetData: {
@@ -198,15 +237,18 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
     });
   };
 
-  const updateWorkbookRow = (rowIndex: number, newRow: (string | number | boolean | null)[]) => {
-    setWorkbookInternal(prev => {
+  const updateWorkbookRow = (
+    rowIndex: number,
+    newRow: (string | number | boolean | null)[],
+  ) => {
+    setWorkbookInternal((prev) => {
       if (!prev || !prev.sheetData) return prev;
-      
+
       const newRows = [...prev.sheetData.rows];
       if (rowIndex < 0 || rowIndex >= newRows.length) return prev;
-      
+
       newRows[rowIndex] = [...newRow];
-      
+
       return {
         ...prev,
         sheetData: {
@@ -229,23 +271,23 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
       // Map local history type to backend HistoryType
       let entryType: HistoryType;
       switch (item.type) {
-        case 'vlookup':
+        case "vlookup":
           entryType = HistoryType.search;
           break;
-        case 'filter':
+        case "filter":
           entryType = HistoryType.search;
           break;
-        case 'update-checking':
+        case "update-checking":
           entryType = HistoryType.updateChecking;
           break;
         default:
           entryType = HistoryType.search;
       }
-      
+
       const details = JSON.stringify(item.data).substring(0, 500); // Limit details length
       addHistoryMutation.mutate({ entryType, details });
     } catch (error) {
-      console.error('Failed to persist history to backend:', error);
+      console.error("Failed to persist history to backend:", error);
       // Continue with local history even if backend fails
     }
   };
@@ -291,7 +333,7 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
 
   return (
     <AppStateContext.Provider value={contextValue}>
-      {typeof children === 'function' ? children(contextValue) : children}
+      {typeof children === "function" ? children(contextValue) : children}
     </AppStateContext.Provider>
   );
 }
@@ -299,7 +341,7 @@ export function AppStateProvider({ children }: { children: ReactNode | ((context
 export function useAppState() {
   const context = useContext(AppStateContext);
   if (!context) {
-    throw new Error('useAppState must be used within AppStateProvider');
+    throw new Error("useAppState must be used within AppStateProvider");
   }
   return context;
 }

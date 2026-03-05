@@ -7,9 +7,10 @@ export interface BrandingConfig {
 }
 
 export const CRYSTAL_ATLAS_BRANDING: BrandingConfig = {
-  title: 'Crystal Atlas',
-  logoPath: '/assets/CRYSTAL ATLAS LOGO.png',
-  watermarkPath: '/assets/generated/pill-watermark-capsule-cutout.dim_1600x900.png',
+  title: "Crystal Atlas",
+  logoPath: "/assets/CRYSTAL ATLAS LOGO.png",
+  watermarkPath:
+    "/assets/generated/pill-watermark-capsule-cutout.dim_1600x900.png",
 };
 
 /**
@@ -25,11 +26,11 @@ export async function loadLogoAsBase64(): Promise<string> {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onloadend = () => resolve(reader.result as string);
-      reader.onerror = () => reject(new Error('Failed to read logo as base64'));
+      reader.onerror = () => reject(new Error("Failed to read logo as base64"));
       reader.readAsDataURL(blob);
     });
   } catch (error) {
-    console.error('Failed to load logo as base64:', error);
+    console.error("Failed to load logo as base64:", error);
     throw error;
   }
 }
@@ -41,22 +42,22 @@ export async function loadLogoAsBase64(): Promise<string> {
 export async function loadLogoAsImage(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    
+    img.crossOrigin = "anonymous";
+
     const timeout = setTimeout(() => {
-      reject(new Error('Logo loading timed out'));
+      reject(new Error("Logo loading timed out"));
     }, 5000);
 
     img.onload = () => {
       clearTimeout(timeout);
       resolve(img);
     };
-    
-    img.onerror = (error) => {
+
+    img.onerror = (_error) => {
       clearTimeout(timeout);
-      reject(new Error('Failed to load logo image'));
+      reject(new Error("Failed to load logo image"));
     };
-    
+
     img.src = CRYSTAL_ATLAS_BRANDING.logoPath;
   });
 }
@@ -67,22 +68,26 @@ export async function loadLogoAsImage(): Promise<HTMLImageElement> {
 export async function loadWatermarkAsImage(): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    img.crossOrigin = 'anonymous';
-    
+    img.crossOrigin = "anonymous";
+
     const timeout = setTimeout(() => {
-      reject(new Error('Watermark loading timed out'));
+      reject(new Error("Watermark loading timed out"));
     }, 5000);
 
     img.onload = () => {
       clearTimeout(timeout);
       resolve(img);
     };
-    
-    img.onerror = (error) => {
+
+    img.onerror = (_error) => {
       clearTimeout(timeout);
-      reject(new Error('Failed to load capsule watermark. Please ensure the asset is available.'));
+      reject(
+        new Error(
+          "Failed to load capsule watermark. Please ensure the asset is available.",
+        ),
+      );
     };
-    
+
     img.src = CRYSTAL_ATLAS_BRANDING.watermarkPath;
   });
 }

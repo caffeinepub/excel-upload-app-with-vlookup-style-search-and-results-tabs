@@ -1,6 +1,6 @@
-import { ComparisonRow } from './compareWorkbooks';
+import type { ComparisonRow } from "./compareWorkbooks";
 
-export type MatchType = 'exact' | 'contains';
+export type MatchType = "exact" | "contains";
 
 /**
  * Filter comparison rows by keyword with null-safe handling
@@ -10,7 +10,7 @@ export function filterComparisonRows(
   rows: ComparisonRow[],
   keyword: string,
   matchType: MatchType,
-  headers: string[]
+  _headers: string[],
 ): ComparisonRow[] {
   // Empty keyword returns all rows
   if (!keyword || keyword.trim().length === 0) {
@@ -29,19 +29,18 @@ export function filterComparisonRows(
     }
 
     // Add all cell values from newData
-    row.newData.forEach((cell) => {
+    for (const cell of row.newData) {
       if (cell !== null && cell !== undefined) {
         searchableValues.push(String(cell).toLowerCase());
       }
-    });
+    }
 
     // Check if any value matches the search term
     return searchableValues.some((value) => {
-      if (matchType === 'exact') {
+      if (matchType === "exact") {
         return value === searchTerm;
-      } else {
-        return value.includes(searchTerm);
       }
+      return value.includes(searchTerm);
     });
   });
 }

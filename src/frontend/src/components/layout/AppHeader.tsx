@@ -1,16 +1,23 @@
-import { useRef } from 'react';
-import { useAppState } from '../../state/appState';
-import { useInternetIdentity } from '../../hooks/useInternetIdentity';
-import { Button } from '../ui/button';
-import { RotateCcw, Upload, UserCheck } from 'lucide-react';
-import { LoginButton } from '../auth/LoginButton';
+import { RotateCcw, Upload, UserCheck } from "lucide-react";
+import { useRef } from "react";
+import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+import { useAppState } from "../../state/appState";
+import { LoginButton } from "../auth/LoginButton";
+import { Button } from "../ui/button";
 
 interface AppHeaderProps {
   onNavigate?: (tab: string) => void;
 }
 
 export function AppHeader({ onNavigate }: AppHeaderProps) {
-  const { workbook, reset, replaceWorkbook, uploadLoading, setUploadLoading, setUploadError } = useAppState();
+  const {
+    workbook,
+    reset,
+    replaceWorkbook,
+    uploadLoading,
+    setUploadLoading,
+    setUploadError,
+  } = useAppState();
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -23,27 +30,31 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const inputElement = e.target;
-    
+
     if (!file) return;
 
     setUploadLoading(true);
     setUploadError(null);
 
     try {
-      const { parseWorkbook } = await import('../../lib/excel/parseWorkbook');
+      const { parseWorkbook } = await import("../../lib/excel/parseWorkbook");
       const parsed = await parseWorkbook(file);
-      
+
       // Validate that workbook has at least one sheet
       if (!parsed.sheetNames || parsed.sheetNames.length === 0) {
-        throw new Error('Excel file contains no sheets. Please upload a valid Excel file.');
+        throw new Error(
+          "Excel file contains no sheets. Please upload a valid Excel file.",
+        );
       }
 
       // Validate first sheet exists and has data
       const firstSheet = parsed.sheetNames[0];
       const firstSheetData = parsed.sheets.get(firstSheet);
-      
+
       if (!firstSheetData) {
-        throw new Error('Failed to read first sheet data. Please try a different file.');
+        throw new Error(
+          "Failed to read first sheet data. Please try a different file.",
+        );
       }
 
       replaceWorkbook({
@@ -52,22 +63,25 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
         selectedSheet: firstSheet,
         sheetData: firstSheetData,
       });
-      
+
       setUploadError(null);
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load Excel file. Please try again.';
+      const errorMessage =
+        error instanceof Error
+          ? error.message
+          : "Failed to load Excel file. Please try again.";
       setUploadError(errorMessage);
-      console.error('Failed to replace workbook:', error);
+      console.error("Failed to replace workbook:", error);
     } finally {
       setUploadLoading(false);
       // Always reset input value to allow selecting the same file again
-      inputElement.value = '';
+      inputElement.value = "";
     }
   };
 
   const handleAttendanceClick = () => {
     if (onNavigate) {
-      onNavigate('attendance');
+      onNavigate("attendance");
     }
   };
 
@@ -85,7 +99,11 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
           <div className="flex gap-2 flex-wrap justify-center sm:justify-end items-center">
             <LoginButton />
             {isAuthenticated && (
-              <Button onClick={handleAttendanceClick} variant="outline" size="sm">
+              <Button
+                onClick={handleAttendanceClick}
+                variant="outline"
+                size="sm"
+              >
                 <UserCheck className="w-4 h-4 mr-2" />
                 <span className="hidden xs:inline">Attendance</span>
                 <span className="xs:hidden">Attend</span>
@@ -93,12 +111,24 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
             )}
             {workbook && (
               <>
-                <Button onClick={handleReplaceWorkbook} variant="outline" size="sm" disabled={uploadLoading}>
-                  <Upload className={`w-4 h-4 mr-2 ${uploadLoading ? 'animate-spin' : ''}`} />
+                <Button
+                  onClick={handleReplaceWorkbook}
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadLoading}
+                >
+                  <Upload
+                    className={`w-4 h-4 mr-2 ${uploadLoading ? "animate-spin" : ""}`}
+                  />
                   <span className="hidden xs:inline">Replace Excel</span>
                   <span className="xs:hidden">Replace</span>
                 </Button>
-                <Button onClick={reset} variant="outline" size="sm" disabled={uploadLoading}>
+                <Button
+                  onClick={reset}
+                  variant="outline"
+                  size="sm"
+                  disabled={uploadLoading}
+                >
                   <RotateCcw className="w-4 h-4 mr-2" />
                   Reset
                 </Button>
@@ -107,7 +137,7 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
           </div>
         </div>
       </div>
-      
+
       {/* Hidden file input for replace functionality */}
       <input
         ref={fileInputRef}

@@ -1,20 +1,51 @@
-import { useState } from 'react';
-import { useIsCallerAdmin, useListApprovals } from '../hooks/useApproval';
-import { useSetApproval } from '../hooks/useApprovalMutations';
-import { ApprovalStatus } from '../backend';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { AlertCircle, Users, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
-import type { Principal } from '@icp-sdk/core/principal';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import type { Principal } from "@icp-sdk/core/principal";
+import {
+  AlertCircle,
+  Calendar,
+  CheckCircle,
+  Clock,
+  Users,
+  XCircle,
+} from "lucide-react";
+import { useState } from "react";
+import { toast } from "sonner";
+import { ApprovalStatus } from "../backend";
+import { useIsCallerAdmin, useListApprovals } from "../hooks/useApproval";
+import { useSetApproval } from "../hooks/useApprovalMutations";
+import {
+  useGrantCustomDatePermission,
+  useRevokeCustomDatePermission,
+} from "../hooks/useAttendance";
+import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 export function AdminUsersTab() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
-  const { data: approvals = [], isLoading: approvalsLoading, refetch } = useListApprovals();
+  const {
+    data: approvals = [],
+    isLoading: approvalsLoading,
+    refetch,
+  } = useListApprovals();
   const setApprovalMutation = useSetApproval();
+  const grantPermission = useGrantCustomDatePermission();
+  const revokePermission = useRevokeCustomDatePermission();
 
   const [processingUser, setProcessingUser] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -30,8 +61,9 @@ export function AdminUsersTab() {
         status: ApprovalStatus.approved,
       });
       await refetch();
+      toast.success("User approved successfully");
     } catch (error) {
-      console.error('Failed to approve user:', error);
+      console.error("Failed to approve user:", error);
       setActionError(getUserFriendlyError(error));
     } finally {
       setProcessingUser(null);
@@ -39,7 +71,7 @@ export function AdminUsersTab() {
   };
 
   const handleReject = async (principal: Principal) => {
-    if (!confirm('Are you sure you want to reject this user?')) return;
+    if (!confirm("Are you sure you want to reject this user?")) return;
 
     const principalStr = principal.toString();
     setProcessingUser(principalStr);
@@ -51,9 +83,53 @@ export function AdminUsersTab() {
         status: ApprovalStatus.rejected,
       });
       await refetch();
+      toast.success("User rejected");
     } catch (error) {
-      console.error('Failed to reject user:', error);
+      console.error("Failed to reject user:", error);
       setActionError(getUserFriendlyError(error));
+    } finally {
+      setProcessingUser(null);
+    }
+  };
+
+  const handleGrantCustomDatePermission = async (principal: Principal) => {
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
+    try {
+      await grantPermission.mutateAsync(principal);
+      toast.success("Custom date permission granted");
+    } catch (error) {
+      console.error("Failed to grant permission:", error);
+      const message = getUserFriendlyError(error);
+      setActionError(message);
+      toast.error(message);
+    } finally {
+      setProcessingUser(null);
+    }
+  };
+
+  const handleRevokeCustomDatePermission = async (principal: Principal) => {
+    if (
+      !confirm(
+        "Are you sure you want to revoke custom date permission for this user?",
+      )
+    )
+      return;
+
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
+    try {
+      await revokePermission.mutateAsync(principal);
+      toast.success("Custom date permission revoked");
+    } catch (error) {
+      console.error("Failed to revoke permission:", error);
+      const message = getUserFriendlyError(error);
+      setActionError(message);
+      toast.error(message);
     } finally {
       setProcessingUser(null);
     }
@@ -115,7 +191,9 @@ export function AdminUsersTab() {
           <Users className="w-8 h-8" />
           User Management
         </h1>
-        <p className="text-muted-foreground mt-1">Manage user access and approvals</p>
+        <p className="text-muted-foreground mt-1">
+          Manage user access and permissions
+        </p>
       </div>
 
       {actionError && (
@@ -129,14 +207,19 @@ export function AdminUsersTab() {
         <CardHeader>
           <CardTitle>All Users</CardTitle>
           <CardDescription>
-            {approvals.length} {approvals.length === 1 ? 'user' : 'users'} registered
+            {approvals.length} {approvals.length === 1 ? "user" : "users"}{" "}
+            registered
           </CardDescription>
         </CardHeader>
         <CardContent>
           {approvalsLoading ? (
-            <p className="text-center text-muted-foreground py-8">Loading users...</p>
+            <p className="text-center text-muted-foreground py-8">
+              Loading users...
+            </p>
           ) : approvals.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">No users found</p>
+            <p className="text-center text-muted-foreground py-8">
+              No users found
+            </p>
           ) : (
             <div className="overflow-x-auto">
               <Table>
@@ -159,15 +242,17 @@ export function AdminUsersTab() {
                         </TableCell>
                         <TableCell>{getStatusBadge(approval.status)}</TableCell>
                         <TableCell className="text-right">
-                          <div className="flex gap-2 justify-end">
+                          <div className="flex gap-2 justify-end flex-wrap">
                             {approval.status !== ApprovalStatus.approved && (
                               <Button
                                 size="sm"
                                 variant="default"
-                                onClick={() => handleApprove(approval.principal)}
+                                onClick={() =>
+                                  handleApprove(approval.principal)
+                                }
                                 disabled={isProcessing}
                               >
-                                {isProcessing ? 'Processing...' : 'Approve'}
+                                {isProcessing ? "Processing..." : "Approve"}
                               </Button>
                             )}
                             {approval.status !== ApprovalStatus.rejected && (
@@ -177,8 +262,40 @@ export function AdminUsersTab() {
                                 onClick={() => handleReject(approval.principal)}
                                 disabled={isProcessing}
                               >
-                                {isProcessing ? 'Processing...' : 'Reject'}
+                                {isProcessing ? "Processing..." : "Reject"}
                               </Button>
+                            )}
+                            {approval.status === ApprovalStatus.approved && (
+                              <>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleGrantCustomDatePermission(
+                                      approval.principal,
+                                    )
+                                  }
+                                  disabled={isProcessing}
+                                  title="Grant permission to edit past/future attendance"
+                                >
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Grant Date Access
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() =>
+                                    handleRevokeCustomDatePermission(
+                                      approval.principal,
+                                    )
+                                  }
+                                  disabled={isProcessing}
+                                  title="Revoke permission to edit past/future attendance"
+                                >
+                                  <Calendar className="w-3 h-3 mr-1" />
+                                  Revoke Date Access
+                                </Button>
+                              </>
                             )}
                           </div>
                         </TableCell>
@@ -195,8 +312,9 @@ export function AdminUsersTab() {
       <Alert>
         <AlertCircle className="h-4 w-4" />
         <AlertDescription>
-          <strong>Note:</strong> Username/password authentication and user editing/deletion features are coming soon.
-          Currently, only Internet Identity authentication is supported.
+          <strong>Custom Date Permission:</strong> Allows approved users to
+          create and edit attendance entries for past or future dates. By
+          default, users can only edit today's attendance.
         </AlertDescription>
       </Alert>
     </div>

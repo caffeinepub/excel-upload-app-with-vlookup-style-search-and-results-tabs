@@ -1,27 +1,38 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useGetToDoItems } from '../hooks/useProductivityQueries';
-import { useCreateTodo, useToggleTodo } from '../hooks/useProductivityMutations';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { CheckSquare, AlertCircle, Plus } from 'lucide-react';
-import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle, CheckSquare, Plus } from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useCreateTodo,
+  useToggleTodo,
+} from "../hooks/useProductivityMutations";
+import { useGetTodos } from "../hooks/useProductivityQueries";
+import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 export function TodoTab() {
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
 
-  const { data: todos = [], isLoading } = useGetToDoItems();
+  const { data: todos = [], isLoading } = useGetTodos();
   const createMutation = useCreateTodo();
   const toggleMutation = useToggleTodo();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
@@ -31,11 +42,11 @@ export function TodoTab() {
     try {
       await createMutation.mutateAsync(text);
       setDialogOpen(false);
-      setText('');
+      setText("");
     } catch (err) {
       const message = getUserFriendlyError(err);
       setError(message);
-      console.error('Failed to create todo:', err);
+      console.error("Failed to create todo:", err);
     }
   };
 
@@ -47,7 +58,7 @@ export function TodoTab() {
     } catch (err) {
       const message = getUserFriendlyError(err);
       setError(message);
-      console.error('Failed to toggle todo:', err);
+      console.error("Failed to toggle todo:", err);
     }
   };
 
@@ -64,8 +75,8 @@ export function TodoTab() {
     );
   }
 
-  const openTodos = todos.filter(t => !t.completed);
-  const completedTodos = todos.filter(t => t.completed);
+  const openTodos = todos.filter((t) => !t.completed);
+  const completedTodos = todos.filter((t) => t.completed);
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -108,8 +119,11 @@ export function TodoTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createMutation.isPending || !text.trim()}>
-                {createMutation.isPending ? 'Creating...' : 'Create'}
+              <Button
+                onClick={handleCreate}
+                disabled={createMutation.isPending || !text.trim()}
+              >
+                {createMutation.isPending ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -126,13 +140,17 @@ export function TodoTab() {
       {isLoading ? (
         <Card>
           <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">Loading to-dos...</p>
+            <p className="text-center text-muted-foreground">
+              Loading to-dos...
+            </p>
           </CardContent>
         </Card>
       ) : todos.length === 0 ? (
         <Card>
           <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">No to-dos yet. Create your first to-do above.</p>
+            <p className="text-center text-muted-foreground">
+              No to-dos yet. Create your first to-do above.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -145,7 +163,10 @@ export function TodoTab() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {openTodos.map((todo) => (
-                  <div key={Number(todo.id)} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors">
+                  <div
+                    key={Number(todo.id)}
+                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors"
+                  >
                     <Checkbox
                       checked={todo.completed}
                       onCheckedChange={() => handleToggle(todo.id)}
@@ -168,7 +189,10 @@ export function TodoTab() {
               </CardHeader>
               <CardContent className="space-y-2">
                 {completedTodos.map((todo) => (
-                  <div key={Number(todo.id)} className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors opacity-60">
+                  <div
+                    key={Number(todo.id)}
+                    className="flex items-start gap-3 p-3 border rounded-lg hover:bg-accent/50 transition-colors opacity-60"
+                  >
                     <Checkbox
                       checked={todo.completed}
                       onCheckedChange={() => handleToggle(todo.id)}

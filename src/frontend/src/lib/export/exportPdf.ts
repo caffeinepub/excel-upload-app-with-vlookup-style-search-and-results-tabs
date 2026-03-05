@@ -1,5 +1,5 @@
-import { loadLogoAsImage, loadWatermarkAsImage } from './branding';
-import { PDF_COMPANY_INFO } from './pdfCompanyInfo';
+import { loadLogoAsImage, loadWatermarkAsImage } from "./branding";
+import { PDF_COMPANY_INFO } from "./pdfCompanyInfo";
 
 // Define minimal jsPDF types
 interface jsPDFStatic {
@@ -7,8 +7,23 @@ interface jsPDFStatic {
 }
 
 interface jsPDFInstance {
-  text: (text: string | string[], x: number, y: number, options?: any) => jsPDFInstance;
-  addImage: (imageData: any, format: string, x: number, y: number, width: number, height: number, alias?: string, compression?: string, rotation?: number) => jsPDFInstance;
+  text: (
+    text: string | string[],
+    x: number,
+    y: number,
+    options?: any,
+  ) => jsPDFInstance;
+  addImage: (
+    imageData: any,
+    format: string,
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    alias?: string,
+    compression?: string,
+    rotation?: number,
+  ) => jsPDFInstance;
   addPage: () => jsPDFInstance;
   setFontSize: (size: number) => jsPDFInstance;
   setFont: (fontName: string, fontStyle?: string) => jsPDFInstance;
@@ -19,7 +34,13 @@ interface jsPDFInstance {
   setGState: (gState: any) => jsPDFInstance;
   GState: new (options: any) => any;
   line: (x1: number, y1: number, x2: number, y2: number) => jsPDFInstance;
-  rect: (x: number, y: number, width: number, height: number, style?: string) => jsPDFInstance;
+  rect: (
+    x: number,
+    y: number,
+    width: number,
+    height: number,
+    style?: string,
+  ) => jsPDFInstance;
   save: (filename: string) => void;
   getTextWidth: (text: string) => number;
   splitTextToSize: (text: string, maxWidth: number) => string[];
@@ -38,17 +59,18 @@ async function loadJsPDF(): Promise<jsPDFStatic> {
   if (jsPDF) return jsPDF;
 
   return new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    const script = document.createElement("script");
+    script.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
     script.onload = () => {
       jsPDF = (window as any).jspdf?.jsPDF;
       if (jsPDF) {
         resolve(jsPDF);
       } else {
-        reject(new Error('Failed to load jsPDF library'));
+        reject(new Error("Failed to load jsPDF library"));
       }
     };
-    script.onerror = () => reject(new Error('Failed to load jsPDF library'));
+    script.onerror = () => reject(new Error("Failed to load jsPDF library"));
     document.head.appendChild(script);
   });
 }
@@ -61,10 +83,14 @@ export interface ExportData {
 /**
  * Export data to professional PDF with logo branding and single centered capsule watermark
  */
-export async function exportToPdf(data: ExportData, filename: string = 'export.pdf') {
+export async function exportToPdf(data: ExportData, filename = "export.pdf") {
   try {
     const jsPDFClass = await loadJsPDF();
-    const doc = new jsPDFClass({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const doc = new jsPDFClass({
+      orientation: "landscape",
+      unit: "mm",
+      format: "a4",
+    });
 
     const pageWidth = doc.internal.pageSize.width;
     const pageHeight = doc.internal.pageSize.height;
@@ -80,7 +106,7 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
     try {
       watermarkImage = await loadWatermarkAsImage();
     } catch (error) {
-      console.warn('Could not load capsule watermark:', error);
+      console.warn("Could not load capsule watermark:", error);
       // Continue without watermark
     }
 
@@ -91,11 +117,11 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
       // Calculate watermark size - large relative to page, preserving aspect ratio
       const watermarkMaxWidth = pageWidth * 0.6; // 60% of page width
       const watermarkMaxHeight = pageHeight * 0.6; // 60% of page height
-      
+
       const imageAspectRatio = watermarkImage.width / watermarkImage.height;
       let watermarkWidth = watermarkMaxWidth;
       let watermarkHeight = watermarkWidth / imageAspectRatio;
-      
+
       // If height exceeds max, scale down based on height
       if (watermarkHeight > watermarkMaxHeight) {
         watermarkHeight = watermarkMaxHeight;
@@ -111,9 +137,16 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
       doc.setGState(gState);
 
       try {
-        doc.addImage(watermarkImage, 'PNG', watermarkX, watermarkY, watermarkWidth, watermarkHeight);
+        doc.addImage(
+          watermarkImage,
+          "PNG",
+          watermarkX,
+          watermarkY,
+          watermarkWidth,
+          watermarkHeight,
+        );
       } catch (err) {
-        console.warn('Failed to add watermark:', err);
+        console.warn("Failed to add watermark:", err);
       }
 
       // Reset opacity
@@ -130,15 +163,15 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
         const logo = await loadLogoAsImage();
         const logoHeight = 15;
         const logoWidth = (logo.width / logo.height) * logoHeight;
-        doc.addImage(logo, 'PNG', margin, yPosition, logoWidth, logoHeight);
+        doc.addImage(logo, "PNG", margin, yPosition, logoWidth, logoHeight);
       } catch (error) {
-        console.warn('Could not load logo for PDF export:', error);
+        console.warn("Could not load logo for PDF export:", error);
         // Continue without logo
       }
 
       // Add contact details on the right with wrapping
       doc.setFontSize(9);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(60, 60, 60);
 
       const rightX = pageWidth - margin;
@@ -148,12 +181,18 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
       // Phone - wrap if needed
       const phoneText = `Contact Us: ${PDF_COMPANY_INFO.headerContact.phone}`;
       const phoneLines = doc.splitTextToSize(phoneText, maxContactWidth);
-      doc.text(phoneLines, rightX, contactY, { align: 'right', maxWidth: maxContactWidth });
-      
+      doc.text(phoneLines, rightX, contactY, {
+        align: "right",
+        maxWidth: maxContactWidth,
+      });
+
       // Email - wrap if needed
       const emailText = `Email: ${PDF_COMPANY_INFO.headerContact.email}`;
       const emailLines = doc.splitTextToSize(emailText, maxContactWidth);
-      doc.text(emailLines, rightX, contactY + 5, { align: 'right', maxWidth: maxContactWidth });
+      doc.text(emailLines, rightX, contactY + 5, {
+        align: "right",
+        maxWidth: maxContactWidth,
+      });
 
       yPosition += 20;
 
@@ -169,78 +208,100 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
     // Function to add footer with company information
     const addPageFooter = () => {
       const footerStartY = pageHeight - footerHeight + 5;
-      
+
       // Separator line
       doc.setDrawColor(200, 200, 200);
       doc.setLineWidth(0.3);
       doc.line(margin, footerStartY - 3, pageWidth - margin, footerStartY - 3);
 
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       doc.setTextColor(80, 80, 80);
 
       let footerY = footerStartY;
       const footerMaxWidth = pageWidth - 2 * margin;
 
       // Tagline - wrap if needed
-      doc.setFont('helvetica', 'bold');
-      const taglineLines = doc.splitTextToSize(PDF_COMPANY_INFO.footer.tagline, footerMaxWidth);
-      doc.text(taglineLines, pageWidth / 2, footerY, { align: 'center', maxWidth: footerMaxWidth });
+      doc.setFont("helvetica", "bold");
+      const taglineLines = doc.splitTextToSize(
+        PDF_COMPANY_INFO.footer.tagline,
+        footerMaxWidth,
+      );
+      doc.text(taglineLines, pageWidth / 2, footerY, {
+        align: "center",
+        maxWidth: footerMaxWidth,
+      });
       footerY += 4;
 
       // Website and Email - wrap if needed
-      doc.setFont('helvetica', 'normal');
+      doc.setFont("helvetica", "normal");
       const contactLine = `Visit Us: ${PDF_COMPANY_INFO.footer.website}  |  Email Us: ${PDF_COMPANY_INFO.footer.email}`;
       const contactLines = doc.splitTextToSize(contactLine, footerMaxWidth);
-      doc.text(contactLines, pageWidth / 2, footerY, { align: 'center', maxWidth: footerMaxWidth });
+      doc.text(contactLines, pageWidth / 2, footerY, {
+        align: "center",
+        maxWidth: footerMaxWidth,
+      });
       footerY += 4;
 
       // Location - wrap if needed
-      const locationLines = doc.splitTextToSize(`Our Location: ${PDF_COMPANY_INFO.footer.location}`, footerMaxWidth);
-      doc.text(locationLines, pageWidth / 2, footerY, { align: 'center', maxWidth: footerMaxWidth });
+      const locationLines = doc.splitTextToSize(
+        `Our Location: ${PDF_COMPANY_INFO.footer.location}`,
+        footerMaxWidth,
+      );
+      doc.text(locationLines, pageWidth / 2, footerY, {
+        align: "center",
+        maxWidth: footerMaxWidth,
+      });
       footerY += 5;
 
       // Page number
       doc.setFontSize(7);
       doc.setTextColor(128, 128, 128);
-      doc.text(`Page ${currentPage}`, pageWidth / 2, footerY, { align: 'center' });
+      doc.text(`Page ${currentPage}`, pageWidth / 2, footerY, {
+        align: "center",
+      });
     };
 
     // Function to draw table header row
-    const drawTableHeader = (yPosition: number, colWidths: number[]): number => {
+    const drawTableHeader = (
+      yPosition: number,
+      colWidths: number[],
+    ): number => {
       let xPosition = margin;
 
       // Header background
       doc.setFillColor(240, 240, 240);
-      doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 8, 'F');
+      doc.rect(margin, yPosition - 5, pageWidth - 2 * margin, 8, "F");
 
       // Header text
       doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont("helvetica", "bold");
       doc.setTextColor(0, 0, 0);
 
       data.headers.forEach((header, idx) => {
         const cellText = String(header);
         const wrappedText = doc.splitTextToSize(cellText, colWidths[idx] - 4);
-        doc.text(wrappedText, xPosition + 2, yPosition, { maxWidth: colWidths[idx] - 4 });
+        doc.text(wrappedText, xPosition + 2, yPosition, {
+          maxWidth: colWidths[idx] - 4,
+        });
         xPosition += colWidths[idx];
       });
 
-      yPosition += 4;
+      const yAfterHeader = yPosition + 4;
 
       // Header bottom border
       doc.setDrawColor(100, 100, 100);
       doc.setLineWidth(0.5);
-      doc.line(margin, yPosition, pageWidth - margin, yPosition);
+      doc.line(margin, yAfterHeader, pageWidth - margin, yAfterHeader);
 
-      return yPosition + 4;
+      return yAfterHeader + 4;
     };
 
     // Calculate column widths based on content
     const calculateColumnWidths = (): number[] => {
       const tableWidth = pageWidth - 2 * margin;
       const numCols = data.headers.length;
-      
+
       // Equal width for simplicity (can be enhanced to be content-aware)
       const colWidth = tableWidth / numCols;
       return Array(numCols).fill(colWidth);
@@ -254,7 +315,7 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
     yPosition = drawTableHeader(yPosition, colWidths);
 
     // Draw table rows
-    doc.setFont('helvetica', 'normal');
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
     doc.setTextColor(0, 0, 0);
 
@@ -266,8 +327,12 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
       // Calculate row height based on wrapped content
       let maxLines = 1;
       row.forEach((cell, cellIdx) => {
-        const cellValue = cell === null || cell === undefined ? '-' : String(cell);
-        const wrappedLines = doc.splitTextToSize(cellValue, colWidths[cellIdx] - 4);
+        const cellValue =
+          cell === null || cell === undefined ? "-" : String(cell);
+        const wrappedLines = doc.splitTextToSize(
+          cellValue,
+          colWidths[cellIdx] - 4,
+        );
         maxLines = Math.max(maxLines, wrappedLines.length);
       });
       const rowHeight = baseRowHeight * maxLines;
@@ -277,10 +342,10 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
         addPageFooter();
         doc.addPage();
         currentPage++;
-        
+
         // Draw watermark on new page
         drawWatermark();
-        
+
         yPosition = await addPageHeader(margin);
         yPosition = drawTableHeader(yPosition, colWidths);
       }
@@ -288,9 +353,15 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
       // Draw row cells with wrapping
       let xPosition = margin;
       row.forEach((cell, cellIdx) => {
-        const cellValue = cell === null || cell === undefined ? '-' : String(cell);
-        const wrappedText = doc.splitTextToSize(cellValue, colWidths[cellIdx] - 4);
-        doc.text(wrappedText, xPosition + 2, yPosition, { maxWidth: colWidths[cellIdx] - 4 });
+        const cellValue =
+          cell === null || cell === undefined ? "-" : String(cell);
+        const wrappedText = doc.splitTextToSize(
+          cellValue,
+          colWidths[cellIdx] - 4,
+        );
+        doc.text(wrappedText, xPosition + 2, yPosition, {
+          maxWidth: colWidths[cellIdx] - 4,
+        });
         xPosition += colWidths[cellIdx];
       });
 
@@ -310,7 +381,7 @@ export async function exportToPdf(data: ExportData, filename: string = 'export.p
     // Save the PDF
     doc.save(filename);
   } catch (error) {
-    console.error('Failed to export to PDF:', error);
-    throw new Error('Failed to export to PDF. Please try again.');
+    console.error("Failed to export to PDF:", error);
+    throw new Error("Failed to export to PDF. Please try again.");
   }
 }

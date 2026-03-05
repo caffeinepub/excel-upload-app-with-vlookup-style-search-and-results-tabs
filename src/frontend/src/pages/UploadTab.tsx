@@ -1,18 +1,37 @@
-import { useState, useRef } from 'react';
-import { useAppState } from '../state/appState';
-import { useAddHistoryEntry } from '../hooks/useQueries';
-import { parseWorkbook } from '../lib/excel/parseWorkbook';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import { Label } from '../components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
-import { Alert, AlertDescription } from '../components/ui/alert';
-import { DataPreviewTable } from '../components/table/DataPreviewTable';
-import { Upload, FileSpreadsheet, AlertCircle, RefreshCw } from 'lucide-react';
-import { HistoryType } from '../backend';
+import { AlertCircle, FileSpreadsheet, RefreshCw, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+import { HistoryType } from "../backend";
+import { DataPreviewTable } from "../components/table/DataPreviewTable";
+import { Alert, AlertDescription } from "../components/ui/alert";
+import { Button } from "../components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "../components/ui/card";
+import { Label } from "../components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../components/ui/select";
+import { useAddHistoryEntry } from "../hooks/useQueries";
+import { parseWorkbook } from "../lib/excel/parseWorkbook";
+import { useAppState } from "../state/appState";
 
 export function UploadTab() {
-  const { workbook, replaceWorkbook, uploadLoading, uploadError, setUploadLoading, setUploadError } = useAppState();
+  const {
+    workbook,
+    replaceWorkbook,
+    uploadLoading,
+    uploadError,
+    setUploadLoading,
+    setUploadError,
+  } = useAppState();
   const [parsedData, setParsedData] = useState<Map<string, any> | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -21,7 +40,7 @@ export function UploadTab() {
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     const inputElement = e.target;
-    
+
     if (!file) return;
 
     setUploadLoading(true);
@@ -29,18 +48,22 @@ export function UploadTab() {
 
     try {
       const parsed = await parseWorkbook(file);
-      
+
       // Validate that workbook has at least one sheet
       if (!parsed.sheetNames || parsed.sheetNames.length === 0) {
-        throw new Error('Excel file contains no sheets. Please upload a valid Excel file.');
+        throw new Error(
+          "Excel file contains no sheets. Please upload a valid Excel file.",
+        );
       }
 
       // Validate first sheet exists and has data
       const firstSheet = parsed.sheetNames[0];
       const firstSheetData = parsed.sheets.get(firstSheet);
-      
+
       if (!firstSheetData) {
-        throw new Error('Failed to read first sheet data. Please try a different file.');
+        throw new Error(
+          "Failed to read first sheet data. Please try a different file.",
+        );
       }
 
       setParsedData(parsed.sheets);
@@ -52,7 +75,7 @@ export function UploadTab() {
         selectedSheet: firstSheet,
         sheetData: firstSheetData,
       });
-      
+
       setUploadError(null);
 
       // Record history entry for upload
@@ -61,14 +84,17 @@ export function UploadTab() {
         details: `Uploaded workbook: ${file.name} with ${parsed.sheetNames.length} sheet(s)`,
       });
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to parse Excel file. Please try again.';
+      const errorMessage =
+        err instanceof Error
+          ? err.message
+          : "Failed to parse Excel file. Please try again.";
       setUploadError(errorMessage);
       setParsedData(null);
       // Don't clear workbook on error - keep previous state if it exists
     } finally {
       setUploadLoading(false);
       // Reset input value to allow selecting the same file again
-      inputElement.value = '';
+      inputElement.value = "";
     }
   };
 
@@ -80,9 +106,11 @@ export function UploadTab() {
     if (!parsedData || !workbook) return;
 
     const sheetData = parsedData.get(sheetName);
-    
+
     if (!sheetData) {
-      setUploadError(`Failed to load sheet: ${sheetName}. Please try selecting a different sheet.`);
+      setUploadError(
+        `Failed to load sheet: ${sheetName}. Please try selecting a different sheet.`,
+      );
       return;
     }
 
@@ -176,7 +204,8 @@ export function UploadTab() {
               <div>
                 <CardTitle>{workbook.fileName}</CardTitle>
                 <CardDescription>
-                  {workbook.sheetData.headers.length} columns × {workbook.sheetData.rows.length} rows
+                  {workbook.sheetData.headers.length} columns ×{" "}
+                  {workbook.sheetData.rows.length} rows
                 </CardDescription>
               </div>
             </div>
@@ -211,7 +240,10 @@ export function UploadTab() {
           {workbook.sheetNames.length > 1 && (
             <div className="space-y-2">
               <Label htmlFor="sheet-select">Select Sheet</Label>
-              <Select value={workbook.selectedSheet} onValueChange={handleSheetChange}>
+              <Select
+                value={workbook.selectedSheet}
+                onValueChange={handleSheetChange}
+              >
                 <SelectTrigger id="sheet-select">
                   <SelectValue />
                 </SelectTrigger>

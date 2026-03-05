@@ -1,16 +1,27 @@
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { useGetNotes } from '../hooks/useProductivityQueries';
-import { useCreateNote, useDeleteNote } from '../hooks/useProductivityMutations';
-import { useInternetIdentity } from '../hooks/useInternetIdentity';
-import { StickyNote, Trash2, AlertCircle, Plus } from 'lucide-react';
-import { getUserFriendlyError } from '../utils/errors/userFriendlyError';
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { AlertCircle, Plus, StickyNote, Trash2 } from "lucide-react";
+import { useState } from "react";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import {
+  useCreateNote,
+  useDeleteNote,
+} from "../hooks/useProductivityMutations";
+import { useGetNotes } from "../hooks/useProductivityQueries";
+import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 export function NotesTab() {
   const { identity } = useInternetIdentity();
@@ -21,8 +32,8 @@ export function NotesTab() {
   const deleteMutation = useDeleteNote();
 
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [title, setTitle] = useState('');
-  const [content, setContent] = useState('');
+  const [title, setTitle] = useState("");
+  const [content, setContent] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const handleCreate = async () => {
@@ -32,17 +43,17 @@ export function NotesTab() {
     try {
       await createMutation.mutateAsync({ title, content });
       setDialogOpen(false);
-      setTitle('');
-      setContent('');
+      setTitle("");
+      setContent("");
     } catch (err) {
       const message = getUserFriendlyError(err);
       setError(message);
-      console.error('Failed to create note:', err);
+      console.error("Failed to create note:", err);
     }
   };
 
   const handleDelete = async (id: bigint) => {
-    if (!confirm('Delete this note?')) return;
+    if (!confirm("Delete this note?")) return;
     setError(null);
 
     try {
@@ -50,7 +61,7 @@ export function NotesTab() {
     } catch (err) {
       const message = getUserFriendlyError(err);
       setError(message);
-      console.error('Failed to delete note:', err);
+      console.error("Failed to delete note:", err);
     }
   };
 
@@ -68,7 +79,9 @@ export function NotesTab() {
   }
 
   // Sort notes by lastUpdated (most recent first)
-  const sortedNotes = [...notes].sort((a, b) => Number(b.lastUpdated - a.lastUpdated));
+  const sortedNotes = [...notes].sort((a, b) =>
+    Number(b.lastUpdated - a.lastUpdated),
+  );
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
@@ -120,8 +133,11 @@ export function NotesTab() {
               </div>
             </div>
             <DialogFooter>
-              <Button onClick={handleCreate} disabled={createMutation.isPending || !title.trim()}>
-                {createMutation.isPending ? 'Creating...' : 'Create'}
+              <Button
+                onClick={handleCreate}
+                disabled={createMutation.isPending || !title.trim()}
+              >
+                {createMutation.isPending ? "Creating..." : "Create"}
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -138,13 +154,17 @@ export function NotesTab() {
       {isLoading ? (
         <Card>
           <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">Loading notes...</p>
+            <p className="text-center text-muted-foreground">
+              Loading notes...
+            </p>
           </CardContent>
         </Card>
       ) : sortedNotes.length === 0 ? (
         <Card>
           <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">No notes yet. Create your first note above.</p>
+            <p className="text-center text-muted-foreground">
+              No notes yet. Create your first note above.
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -152,7 +172,9 @@ export function NotesTab() {
           {sortedNotes.map((note) => (
             <Card key={Number(note.id)} className="flex flex-col">
               <CardHeader className="flex-row items-start justify-between space-y-0 pb-2">
-                <CardTitle className="text-lg line-clamp-1">{note.title || 'Untitled'}</CardTitle>
+                <CardTitle className="text-lg line-clamp-1">
+                  {note.title || "Untitled"}
+                </CardTitle>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -165,10 +187,12 @@ export function NotesTab() {
               </CardHeader>
               <CardContent className="flex-1">
                 <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-wrap">
-                  {note.content || 'No content'}
+                  {note.content || "No content"}
                 </p>
                 <p className="text-xs text-muted-foreground mt-3">
-                  {new Date(Number(note.lastUpdated) / 1_000_000).toLocaleDateString()}
+                  {new Date(
+                    Number(note.lastUpdated) / 1_000_000,
+                  ).toLocaleDateString()}
                 </p>
               </CardContent>
             </Card>

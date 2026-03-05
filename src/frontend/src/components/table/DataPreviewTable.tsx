@@ -1,7 +1,14 @@
-import { SheetData } from '../../state/appState';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
-import { ScrollArea } from '../ui/scroll-area';
-import { HorizontalTableScroll } from './HorizontalTableScroll';
+import type { SheetData } from "../../state/appState";
+import { ScrollArea } from "../ui/scroll-area";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "../ui/table";
+import { HorizontalTableScroll } from "./HorizontalTableScroll";
 
 interface DataPreviewTableProps {
   data: SheetData;
@@ -24,7 +31,11 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
             <TableRow>
               <TableHead className="w-12 bg-muted/50">#</TableHead>
               {data.headers.map((header, idx) => (
-                <TableHead key={idx} className="bg-muted/50 font-semibold whitespace-nowrap">
+                <TableHead
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                  key={idx}
+                  className="bg-muted/50 font-semibold whitespace-nowrap"
+                >
                   {header || `Column ${idx + 1}`}
                 </TableHead>
               ))}
@@ -33,18 +44,32 @@ export function DataPreviewTable({ data }: DataPreviewTableProps) {
           <TableBody>
             {data.rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={data.headers.length + 1} className="text-center text-muted-foreground">
+                <TableCell
+                  colSpan={data.headers.length + 1}
+                  className="text-center text-muted-foreground"
+                >
                   No data rows found
                 </TableCell>
               </TableRow>
             ) : (
               data.rows.map((row, rowIdx) => (
-                <TableRow key={rowIdx}>
-                  <TableCell className="font-medium text-muted-foreground">{rowIdx + 1}</TableCell>
+                <TableRow
+                  // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                  key={rowIdx}
+                >
+                  <TableCell className="font-medium text-muted-foreground">
+                    {rowIdx + 1}
+                  </TableCell>
                   {row.map((cell, cellIdx) => (
-                    <TableCell key={cellIdx} className="whitespace-nowrap">
+                    <TableCell
+                      // biome-ignore lint/suspicious/noArrayIndexKey: stable positional list
+                      key={cellIdx}
+                      className="whitespace-nowrap"
+                    >
                       {cell === null || cell === undefined ? (
-                        <span className="text-muted-foreground italic">empty</span>
+                        <span className="text-muted-foreground italic">
+                          empty
+                        </span>
                       ) : (
                         String(cell)
                       )}

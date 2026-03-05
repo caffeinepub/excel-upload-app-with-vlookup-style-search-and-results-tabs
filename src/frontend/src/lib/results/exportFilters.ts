@@ -11,17 +11,18 @@ export function getAvailableFilterColumns(headers: string[]): string[] {
 export function getAvailableFilterValues(
   rows: (string | number | boolean | null)[][],
   headers: string[],
-  columnName: string
+  columnName: string,
 ): string[] {
   const columnIndex = headers.indexOf(columnName);
   if (columnIndex === -1) return [];
 
   const uniqueValues = new Set<string>();
-  rows.forEach((row) => {
+  for (const row of rows) {
     const value = row[columnIndex];
-    const stringValue = value === null || value === undefined ? '' : String(value);
+    const stringValue =
+      value === null || value === undefined ? "" : String(value);
     uniqueValues.add(stringValue);
-  });
+  }
 
   return Array.from(uniqueValues).sort();
 }
@@ -38,7 +39,7 @@ export function filterExportRows(
   rows: (string | number | boolean | null)[][],
   headers: string[],
   filterColumn: string,
-  filterValue: string
+  filterValue: string,
 ): (string | number | boolean | null)[][] {
   // If no filter is set, return all rows
   if (!filterColumn || !filterValue) {
@@ -52,7 +53,8 @@ export function filterExportRows(
 
   return rows.filter((row) => {
     const cellValue = row[columnIndex];
-    const stringValue = cellValue === null || cellValue === undefined ? '' : String(cellValue);
+    const stringValue =
+      cellValue === null || cellValue === undefined ? "" : String(cellValue);
     return stringValue === filterValue;
   });
 }
