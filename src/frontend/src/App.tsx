@@ -3,11 +3,13 @@ import type React from "react";
 import { useEffect, useState } from "react";
 import { ApprovalGate } from "./components/auth/ApprovalGate";
 import UserProfileSetup from "./components/auth/UserProfileSetup";
+import BroadcastModal from "./components/broadcast/BroadcastModal";
 import { AppErrorBoundary } from "./components/errors/AppErrorBoundary";
 import { AppLayout } from "./components/layout/AppLayout";
 import DailyRemindersStartupModal from "./components/reminders/DailyRemindersStartupModal";
 import { ReminderEventsProvider } from "./context/ReminderEventsContext";
 import { useIsCallerAdmin } from "./hooks/useApproval";
+import { useGetActiveBroadcasts } from "./hooks/useBroadcasts";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "./hooks/useUserProfile";
 import { AdminUsersTab } from "./pages/AdminUsersTab";
@@ -150,6 +152,15 @@ function AppContent() {
 
   const [activeTab, setActiveTab] = useState<TabId>("deskboard");
 
+  // Broadcast popup tracking
+  const { data: activeBroadcasts = [] } =
+    useGetActiveBroadcasts(isAuthenticated);
+  const [broadcastIndex, setBroadcastIndex] = useState(0);
+  const currentBroadcast =
+    isAuthenticated && activeBroadcasts.length > 0
+      ? (activeBroadcasts[broadcastIndex] ?? null)
+      : null;
+
   // Redirect to deskboard if not authenticated
   useEffect(() => {
     if (!isAuthenticated && activeTab !== "deskboard") {
@@ -232,6 +243,12 @@ function AppContent() {
     <ReminderEventsProvider>
       <UserProfileSetup open={showProfileSetup} />
       {isAuthenticated && <DailyRemindersStartupModal />}
+      {currentBroadcast && (
+        <BroadcastModal
+          broadcast={currentBroadcast}
+          onDismissed={() => setBroadcastIndex((i) => i + 1)}
+        />
+      )}
       <AppLayout
         activeTab={activeTab}
         onNavigate={handleTabChange}

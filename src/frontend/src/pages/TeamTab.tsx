@@ -142,12 +142,17 @@ export default function TeamTab() {
     (u) => u.principalStr === selectedDmPrincipal,
   );
 
-  const filteredUsers = allUsers.filter(
-    (u) =>
-      u.principalStr !== callerPrincipal &&
-      (u.displayName.toLowerCase().includes(dmSearchQuery.toLowerCase()) ||
-        u.principalStr.toLowerCase().includes(dmSearchQuery.toLowerCase())),
-  );
+  // Filter out the caller themselves; if search query is empty show all users
+  const filteredUsers = allUsers.filter((u) => {
+    if (u.principalStr === callerPrincipal) return false;
+    if (!dmSearchQuery.trim()) return true;
+    const q = dmSearchQuery.toLowerCase();
+    const nameMatch = u.displayName.toLowerCase().includes(q);
+    const principalMatch = u.principalStr.toLowerCase().includes(q);
+    // Also match the formatted fallback "User-XXXX"
+    const shortId = `user-${u.principalStr.slice(-4).toLowerCase()}`;
+    return nameMatch || principalMatch || shortId.includes(q);
+  });
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
@@ -318,47 +323,61 @@ export default function TeamTab() {
           <DialogHeader>
             <DialogTitle>New Direct Message</DialogTitle>
           </DialogHeader>
+          <p className="text-xs text-muted-foreground -mt-2">
+            Search all registered users to start a conversation
+          </p>
           <div className="space-y-3 py-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or principal…"
+                placeholder="Search by name or ID…"
                 value={dmSearchQuery}
                 onChange={(e) => setDmSearchQuery(e.target.value)}
                 className="pl-8"
                 autoFocus
+                data-ocid="dm.search_input"
               />
             </div>
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide px-1">
+              All registered users ({filteredUsers.length})
+            </p>
             <div className="max-h-60 overflow-y-auto space-y-1">
               {filteredUsers.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">
                   {dmSearchQuery
-                    ? "No users found"
+                    ? "No users match your search"
                     : "No other users registered yet"}
                 </p>
               ) : (
-                filteredUsers.map((u) => (
-                  <button
-                    type="button"
-                    key={u.principalStr}
-                    onClick={() => handleStartDm(u.principalStr, u.displayName)}
-                    className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left"
-                  >
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                        {getInitials(u.displayName)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="text-sm font-medium">
-                        {u.displayName || "Unknown User"}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        {u.principalStr.slice(0, 20)}…
-                      </p>
-                    </div>
-                  </button>
-                ))
+                filteredUsers.map((u) => {
+                  const displayLabel =
+                    u.displayName ||
+                    `User-${u.principalStr.slice(-4).toUpperCase()}`;
+                  return (
+                    <button
+                      type="button"
+                      key={u.principalStr}
+                      onClick={() =>
+                        handleStartDm(u.principalStr, displayLabel)
+                      }
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                    >
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getInitials(displayLabel)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {displayLabel}
+                        </p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {u.principalStr.slice(0, 16)}…
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>

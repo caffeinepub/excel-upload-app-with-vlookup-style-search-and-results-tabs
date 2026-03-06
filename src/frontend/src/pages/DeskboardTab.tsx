@@ -1,15 +1,46 @@
 import {
+  Bell,
+  CalendarDays,
   ChevronDown,
   ChevronUp,
   LayoutDashboard,
   Telescope,
 } from "lucide-react";
 import { useState } from "react";
+import AdminBroadcastComposer from "../components/broadcast/AdminBroadcastComposer";
 import ClockCalendarWidget from "../components/deskboard/ClockCalendarWidget";
 import ExploreHerePanel from "../components/search/ExploreHerePanel";
+import { useIsCallerAdmin } from "../hooks/useApproval";
+import { useGetCalendarEvents } from "../hooks/useCalendarEvents";
+import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useGetReminders } from "../hooks/useProductivityQueries";
 
 export default function DeskboardTab() {
   const [exploreOpen, setExploreOpen] = useState(false);
+  const { identity } = useInternetIdentity();
+  const isAuthenticated = !!identity;
+  const { data: isAdmin = false } = useIsCallerAdmin();
+
+  const { data: reminders = [] } = useGetReminders();
+  const { data: calendarEvents = [] } = useGetCalendarEvents();
+
+  const today = new Date().toISOString().split("T")[0];
+  const now = Date.now();
+
+  const todayReminders = reminders.filter((r) => r.date === today);
+
+  const upcomingEvents = calendarEvents
+    .filter((e) => Number(e.dateTime) / 1_000_000 > now)
+    .sort((a, b) => Number(a.dateTime) - Number(b.dateTime))
+    .slice(0, 3);
+
+  const formatEventDate = (dateTimeBigint: bigint) => {
+    const ms = Number(dateTimeBigint) / 1_000_000;
+    return new Date(ms).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
+  };
 
   return (
     <div className="min-h-full bg-background p-4 md:p-6 space-y-6">
@@ -25,6 +56,39 @@ export default function DeskboardTab() {
           </p>
         </div>
       </div>
+
+      {/* Reminder Notification Bar */}
+      {isAuthenticated && todayReminders.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 overflow-hidden">
+          <Bell className="w-4 h-4 flex-shrink-0 text-amber-500" />
+          <div className="overflow-x-auto whitespace-nowrap scrollbar-none flex-1">
+            <span className="text-xs font-semibold mr-2">
+              Today's Reminders:
+            </span>
+            <span className="text-xs">
+              {todayReminders.map((r) => r.message).join(" • ")}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Upcoming Events Bar */}
+      {isAuthenticated && upcomingEvents.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 overflow-hidden">
+          <CalendarDays className="w-4 h-4 flex-shrink-0 text-blue-500" />
+          <div className="overflow-x-auto whitespace-nowrap scrollbar-none flex-1">
+            <span className="text-xs font-semibold mr-2">Upcoming:</span>
+            <span className="text-xs">
+              {upcomingEvents
+                .map((e) => `${e.title} (${formatEventDate(e.dateTime)})`)
+                .join(" • ")}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Broadcast Composer */}
+      {isAuthenticated && isAdmin && <AdminBroadcastComposer />}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

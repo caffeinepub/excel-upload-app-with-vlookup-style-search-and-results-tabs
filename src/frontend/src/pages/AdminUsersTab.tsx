@@ -22,6 +22,7 @@ import {
   Calendar,
   CheckCircle,
   Clock,
+  Trash2,
   Users,
   XCircle,
 } from "lucide-react";
@@ -29,7 +30,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { ApprovalStatus } from "../backend";
 import { useIsCallerAdmin, useListApprovals } from "../hooks/useApproval";
-import { useSetApproval } from "../hooks/useApprovalMutations";
+import { useDeleteUser, useSetApproval } from "../hooks/useApprovalMutations";
 import {
   useGrantCustomDatePermission,
   useRevokeCustomDatePermission,
@@ -44,6 +45,7 @@ export function AdminUsersTab() {
     refetch,
   } = useListApprovals();
   const setApprovalMutation = useSetApproval();
+  const deleteUserMutation = useDeleteUser();
   const grantPermission = useGrantCustomDatePermission();
   const revokePermission = useRevokeCustomDatePermission();
 
@@ -103,6 +105,33 @@ export function AdminUsersTab() {
     } catch (error) {
       console.error("Failed to grant permission:", error);
       const message = getUserFriendlyError(error);
+      setActionError(message);
+      toast.error(message);
+    } finally {
+      setProcessingUser(null);
+    }
+  };
+
+  const handleDeleteUser = async (principal: Principal) => {
+    if (
+      !confirm(
+        "Are you sure you want to permanently delete this user? This action cannot be undone.",
+      )
+    )
+      return;
+
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
+    try {
+      await deleteUserMutation.mutateAsync(principal);
+      await refetch();
+      toast.success("User deleted successfully");
+    } catch (error) {
+      console.error("Failed to delete user:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to delete user";
       setActionError(message);
       toast.error(message);
     } finally {
@@ -297,6 +326,19 @@ export function AdminUsersTab() {
                                 </Button>
                               </>
                             )}
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() =>
+                                handleDeleteUser(approval.principal)
+                              }
+                              disabled={isProcessing}
+                              title="Permanently delete this user"
+                              data-ocid="admin.users.delete_button"
+                            >
+                              <Trash2 className="w-3 h-3 mr-1" />
+                              Delete User
+                            </Button>
                           </div>
                         </TableCell>
                       </TableRow>

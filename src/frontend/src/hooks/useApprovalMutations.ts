@@ -88,3 +88,30 @@ export function useSetApproval() {
     },
   });
 }
+
+/**
+ * Mutation to delete a user (admin only).
+ * Calls actor.deleteUser if it exists; otherwise throws a graceful error.
+ */
+export function useDeleteUser() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (principal: Principal) => {
+      if (!actor) throw new Error("Actor not available");
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (typeof (actor as any).deleteUser === "function") {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        return (actor as any).deleteUser(principal);
+      }
+      throw new Error("Delete user not supported by backend");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error) => {
+      console.error("Failed to delete user:", error);
+    },
+  });
+}

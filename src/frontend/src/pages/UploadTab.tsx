@@ -130,13 +130,15 @@ export function UploadTab() {
         <Card className="border-2 border-dashed">
           <CardHeader className="text-center">
             <div className="flex justify-center mb-4">
-              <div className="relative">
-                <img
-                  src="/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
-                  alt="Crystal Atlas"
-                  className="max-w-xs w-full h-auto animate-flip-and-rotate motion-reduce:animate-none"
-                />
-              </div>
+              <img
+                src="/assets/generated/patented-round-red-cutout.dim_1200x1200.png"
+                alt="Patent Logo"
+                className="w-32 h-32 object-contain animate-spin motion-reduce:animate-none"
+                style={{
+                  animationDuration: "8s",
+                  animationTimingFunction: "linear",
+                }}
+              />
             </div>
             <CardTitle className="text-2xl">Upload Excel File</CardTitle>
             <CardDescription>
