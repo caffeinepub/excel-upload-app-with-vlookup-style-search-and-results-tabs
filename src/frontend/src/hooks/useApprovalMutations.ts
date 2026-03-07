@@ -1,6 +1,6 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { ApprovalStatus } from "../backend";
+import { ApprovalStatus } from "../backend";
 import { parsePrincipal } from "../utils/principal/parsePrincipal";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
@@ -91,7 +91,7 @@ export function useSetApproval() {
 
 /**
  * Mutation to delete a user (admin only).
- * Calls actor.deleteUser if it exists; otherwise throws a graceful error.
+ * Uses setApproval with rejected status as a workaround since no deleteUser endpoint exists.
  */
 export function useDeleteUser() {
   const { actor } = useActor();
@@ -100,15 +100,13 @@ export function useDeleteUser() {
   return useMutation({
     mutationFn: async (principal: Principal) => {
       if (!actor) throw new Error("Actor not available");
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (typeof (actor as any).deleteUser === "function") {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        return (actor as any).deleteUser(principal);
-      }
-      throw new Error("Delete user not supported by backend");
+      // Use setApproval(rejected) as a way to effectively remove user access
+      await actor.setApproval(principal, ApprovalStatus.rejected);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["allRegisteredUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["observeUsers"] });
     },
     onError: (error) => {
       console.error("Failed to delete user:", error);

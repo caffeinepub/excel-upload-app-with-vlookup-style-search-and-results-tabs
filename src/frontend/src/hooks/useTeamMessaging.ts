@@ -1,10 +1,5 @@
 import type { Principal } from "@dfinity/principal";
-import {
-  useMutation,
-  useQueries,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
   Channel,
   ChannelMessage,
@@ -13,7 +8,6 @@ import type {
   UserStatusKind,
 } from "../backend";
 import { useActor } from "./useActor";
-import { useListApprovals } from "./useApproval";
 
 export function useListChannels() {
   const { actor, isFetching } = useActor();
@@ -212,45 +206,72 @@ export interface TeamUser {
 }
 
 /**
- * Returns all approved users enriched with their display names.
- * Uses useQueries to batch-fetch profiles for all approved users.
+ * Returns all registered users using the public endpoint (accessible to all users, not admin-only).
  */
 export function useGetAllUsers(): { data: TeamUser[]; isLoading: boolean } {
   const { actor, isFetching } = useActor();
-  const { data: approvals = [], isLoading: approvalsLoading } =
-    useListApprovals();
 
-  const principalStrs = approvals.map((a) => a.principal.toString());
-
-  const profileResults = useQueries({
-    queries: principalStrs.map((pStr) => ({
-      queryKey: ["userProfile", pStr],
-      queryFn: async () => {
-        if (!actor) return null;
-        const { Principal } = await import("@dfinity/principal");
-        try {
-          return actor.getUserProfile(Principal.fromText(pStr));
-        } catch {
-          return null;
-        }
-      },
-      enabled: !!actor && !isFetching && !!pStr,
-      staleTime: 1000 * 60 * 5,
-    })),
-  });
-
-  const isLoadingProfiles = profileResults.some((r) => r.isLoading);
-
-  const users: TeamUser[] = principalStrs.map((pStr, idx) => {
-    const profile = profileResults[idx]?.data;
-    return {
-      principalStr: pStr,
-      displayName: profile?.displayName ?? "",
-    };
+  const result = useQuery<TeamUser[]>({
+    queryKey: ["allRegisteredUsers"],
+    queryFn: async () => {
+      if (!actor) return [];
+      const users = await actor.getAllRegisteredUsersPublic();
+      return users.map((u) => ({
+        principalStr: u.principal.toString(),
+        displayName: u.displayName,
+      }));
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 30000,
+    refetchInterval: 30000,
   });
 
   return {
-    data: users,
-    isLoading: approvalsLoading || isLoadingProfiles,
+    data: result.data ?? [],
+    isLoading: result.isLoading,
   };
+}
+
+export function useEditChannelMessage() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      newText,
+    }: { channelId: bigint; messageId: bigint; newText: string }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.editChannelMessage(messageId, newText);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["channelMessages", variables.channelId.toString()],
+      });
+    },
+  });
+}
+
+export function useEditDirectMessage() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      messageId,
+      newText,
+    }: {
+      otherPrincipalStr: string;
+      messageId: bigint;
+      newText: string;
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.editDirectMessage(messageId, newText);
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["directMessages", variables.otherPrincipalStr],
+      });
+    },
+  });
 }

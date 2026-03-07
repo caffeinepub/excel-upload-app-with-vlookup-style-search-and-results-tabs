@@ -151,6 +151,10 @@ export interface HolidayEntry { 'holidayType' : HolidayType, 'date' : string }
 export type HolidayType = { 'festival' : null } |
   { 'companyLeave' : null };
 export interface Note { 'id' : bigint, 'text' : string, 'lastUpdated' : Time }
+export interface PublicUserInfo {
+  'principal' : Principal,
+  'displayName' : string,
+}
 export interface Reminder {
   'id' : bigint,
   'date' : string,
@@ -258,8 +262,11 @@ export interface _SERVICE {
   'deleteReminder' : ActorMethod<[bigint], undefined>,
   'deleteTodo' : ActorMethod<[bigint], undefined>,
   'dismissBroadcast' : ActorMethod<[bigint], undefined>,
+  'editChannelMessage' : ActorMethod<[bigint, string], undefined>,
+  'editDirectMessage' : ActorMethod<[bigint, string], undefined>,
   'getActiveBroadcasts' : ActorMethod<[], Array<BroadcastMessage>>,
   'getAllCalendarEvents' : ActorMethod<[], Array<CalendarEvent>>,
+  'getAllRegisteredUsersPublic' : ActorMethod<[], Array<PublicUserInfo>>,
   'getAttendanceConfig' : ActorMethod<[], [] | [AttendanceConfig]>,
   'getAttendanceEntries' : ActorMethod<[], Array<[string, AttendanceDayEntry]>>,
   'getAttendanceRecords' : ActorMethod<[], Array<[string, AttendanceRecord]>>,
@@ -290,6 +297,7 @@ export interface _SERVICE {
   'getUserStatuses' : ActorMethod<[], Array<UserStatusEntry>>,
   'grantCustomDatePermission' : ActorMethod<[Principal], undefined>,
   'hasCustomDatePermission' : ActorMethod<[], boolean>,
+  'isAdminInitialized' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerApproved' : ActorMethod<[], boolean>,
   'listApprovals' : ActorMethod<[], Array<UserApprovalInfo>>,

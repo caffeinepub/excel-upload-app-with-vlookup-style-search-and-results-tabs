@@ -19,7 +19,7 @@ import {
   UserPlus,
   Video,
 } from "lucide-react";
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react";
 import { UserStatusKind } from "../backend";
 import CallPlaceholderModal from "../components/team/CallPlaceholderModal";
 import ChannelView from "../components/team/ChannelView";
@@ -62,6 +62,30 @@ function CallerAvatarButton({ onClick }: { onClick: () => void }) {
   );
 }
 
+// Key used to persist DM conversation list in localStorage
+const DM_USERS_KEY_PREFIX = "dmUsers_";
+
+function loadDmUsers(principal: string): TeamUser[] {
+  try {
+    const raw = localStorage.getItem(`${DM_USERS_KEY_PREFIX}${principal}`);
+    if (!raw) return [];
+    return JSON.parse(raw) as TeamUser[];
+  } catch {
+    return [];
+  }
+}
+
+function saveDmUsers(principal: string, users: TeamUser[]) {
+  try {
+    localStorage.setItem(
+      `${DM_USERS_KEY_PREFIX}${principal}`,
+      JSON.stringify(users),
+    );
+  } catch {
+    // ignore
+  }
+}
+
 export default function TeamTab() {
   const { identity } = useInternetIdentity();
   const callerPrincipal = identity?.getPrincipal().toString() ?? "";
@@ -79,7 +103,37 @@ export default function TeamTab() {
   const [selectedDmPrincipal, setSelectedDmPrincipal] = useState<string | null>(
     null,
   );
-  const [dmUsers, setDmUsers] = useState<TeamUser[]>([]);
+
+  // Persist DM user list so conversations survive page refresh
+  const [dmUsers, setDmUsers] = useState<TeamUser[]>(() =>
+    callerPrincipal ? loadDmUsers(callerPrincipal) : [],
+  );
+
+  // Reload persisted DM list when caller principal is resolved
+  useEffect(() => {
+    if (callerPrincipal) {
+      setDmUsers(loadDmUsers(callerPrincipal));
+    }
+  }, [callerPrincipal]);
+
+  // Sync allUsers displayNames into dmUsers so names update if profile changes
+  useEffect(() => {
+    if (allUsers.length === 0) return;
+    setDmUsers((prev) => {
+      const updated = prev.map((dm) => {
+        const fresh = allUsers.find((u) => u.principalStr === dm.principalStr);
+        if (fresh?.displayName && fresh.displayName !== dm.displayName) {
+          return { ...dm, displayName: fresh.displayName };
+        }
+        return dm;
+      });
+      // Only update if something changed
+      if (updated.some((u, i) => u.displayName !== prev[i]?.displayName)) {
+        return updated;
+      }
+      return prev;
+    });
+  }, [allUsers]);
 
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
@@ -102,13 +156,13 @@ export default function TeamTab() {
       setDmUsers((prev) => {
         if (prev.find((u) => u.principalStr === principalStr)) return prev;
         const found = allUsers.find((u) => u.principalStr === principalStr);
-        return [
-          ...prev,
-          { principalStr, displayName: found?.displayName ?? "" },
-        ];
+        const newUser = { principalStr, displayName: found?.displayName ?? "" };
+        const updated = [...prev, newUser];
+        if (callerPrincipal) saveDmUsers(callerPrincipal, updated);
+        return updated;
       });
     },
-    [allUsers],
+    [allUsers, callerPrincipal],
   );
 
   const handleCreateChannel = async () => {
@@ -122,8 +176,11 @@ export default function TeamTab() {
 
   const handleStartDm = (principalStr: string, displayName: string) => {
     setDmUsers((prev) => {
-      if (prev.find((u) => u.principalStr === principalStr)) return prev;
-      return [...prev, { principalStr, displayName }];
+      const exists = prev.find((u) => u.principalStr === principalStr);
+      if (exists) return prev;
+      const updated = [...prev, { principalStr, displayName }];
+      if (callerPrincipal) saveDmUsers(callerPrincipal, updated);
+      return updated;
     });
     setSelectedDmPrincipal(principalStr);
     setSelectedChannelId(null);
@@ -142,16 +199,22 @@ export default function TeamTab() {
     (u) => u.principalStr === selectedDmPrincipal,
   );
 
-  // Filter out the caller themselves; if search query is empty show all users
+  // If selected DM user's display name is empty, try to get it from allUsers
+  const selectedDmDisplayName =
+    selectedDmUser?.displayName ||
+    allUsers.find((u) => u.principalStr === selectedDmPrincipal)?.displayName ||
+    (selectedDmPrincipal
+      ? `User-${selectedDmPrincipal.slice(-4).toUpperCase()}`
+      : "");
+
+  // Filter out the caller; if search query is empty show all registered users
   const filteredUsers = allUsers.filter((u) => {
     if (u.principalStr === callerPrincipal) return false;
     if (!dmSearchQuery.trim()) return true;
     const q = dmSearchQuery.toLowerCase();
     const nameMatch = u.displayName.toLowerCase().includes(q);
     const principalMatch = u.principalStr.toLowerCase().includes(q);
-    // Also match the formatted fallback "User-XXXX"
-    const shortId = `user-${u.principalStr.slice(-4).toLowerCase()}`;
-    return nameMatch || principalMatch || shortId.includes(q);
+    return nameMatch || principalMatch;
   });
 
   return (
@@ -168,6 +231,8 @@ export default function TeamTab() {
         onStartNewDm={() => setShowNewDm(true)}
         onlineUsers={userStatuses}
         callerPrincipal={callerPrincipal}
+        allUsers={allUsers}
+        unreadCounts={{}}
       />
 
       {/* Main content */}
@@ -182,12 +247,11 @@ export default function TeamTab() {
                   {selectedChannel.name}
                 </span>
               </>
-            ) : selectedDmUser ? (
+            ) : selectedDmPrincipal !== null ? (
               <>
                 <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                 <span className="font-semibold text-sm truncate">
-                  {selectedDmUser.displayName ||
-                    `${selectedDmUser.principalStr.slice(0, 12)}…`}
+                  {selectedDmDisplayName}
                 </span>
               </>
             ) : (
@@ -198,13 +262,14 @@ export default function TeamTab() {
           </div>
 
           <div className="flex items-center gap-1 flex-shrink-0">
-            {(selectedChannel || selectedDmUser) && (
+            {(selectedChannel || selectedDmPrincipal !== null) && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => setCallModal("voice")}
+                  data-ocid="team.voice.button"
                 >
                   <Phone className="h-4 w-4" />
                 </Button>
@@ -213,6 +278,7 @@ export default function TeamTab() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => setCallModal("video")}
+                  data-ocid="team.video.button"
                 >
                   <Video className="h-4 w-4" />
                 </Button>
@@ -223,6 +289,7 @@ export default function TeamTab() {
               size="icon"
               className="h-8 w-8"
               onClick={() => setShowInviteDialog(true)}
+              data-ocid="team.invite.button"
             >
               <UserPlus className="h-4 w-4" />
             </Button>
@@ -263,6 +330,7 @@ export default function TeamTab() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowCreateChannel(true)}
+                  data-ocid="team.create-channel.button"
                 >
                   <Hash className="h-4 w-4 mr-1" />
                   Create Channel
@@ -271,11 +339,45 @@ export default function TeamTab() {
                   variant="outline"
                   size="sm"
                   onClick={() => setShowNewDm(true)}
+                  data-ocid="team.new-dm.button"
                 >
                   <MessageSquare className="h-4 w-4 mr-1" />
                   New Message
                 </Button>
               </div>
+              {allUsers.filter((u) => u.principalStr !== callerPrincipal)
+                .length > 0 && (
+                <div className="mt-4 w-full max-w-sm">
+                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">
+                    Registered Users — click to start a DM
+                  </p>
+                  <div className="space-y-1">
+                    {allUsers
+                      .filter((u) => u.principalStr !== callerPrincipal)
+                      .slice(0, 5)
+                      .map((u) => {
+                        const label =
+                          u.displayName ||
+                          `User-${u.principalStr.slice(-4).toUpperCase()}`;
+                        return (
+                          <button
+                            key={u.principalStr}
+                            type="button"
+                            onClick={() => handleStartDm(u.principalStr, label)}
+                            className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors text-left"
+                          >
+                            <Avatar className="h-6 w-6">
+                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                                {getInitials(label)}
+                              </AvatarFallback>
+                            </Avatar>
+                            <span className="text-sm">{label}</span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -294,18 +396,21 @@ export default function TeamTab() {
               onChange={(e) => setNewChannelName(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleCreateChannel()}
               autoFocus
+              data-ocid="team.channel.input"
             />
           </div>
           <DialogFooter>
             <Button
               variant="outline"
               onClick={() => setShowCreateChannel(false)}
+              data-ocid="team.channel.cancel_button"
             >
               Cancel
             </Button>
             <Button
               onClick={handleCreateChannel}
               disabled={createChannel.isPending || !newChannelName.trim()}
+              data-ocid="team.channel.submit_button"
             >
               {createChannel.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -319,7 +424,7 @@ export default function TeamTab() {
 
       {/* New DM Dialog */}
       <Dialog open={showNewDm} onOpenChange={setShowNewDm}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm" data-ocid="team.dm.dialog">
           <DialogHeader>
             <DialogTitle>New Direct Message</DialogTitle>
           </DialogHeader>
@@ -330,12 +435,12 @@ export default function TeamTab() {
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by name or ID…"
+                placeholder="Search by name…"
                 value={dmSearchQuery}
                 onChange={(e) => setDmSearchQuery(e.target.value)}
                 className="pl-8"
                 autoFocus
-                data-ocid="dm.search_input"
+                data-ocid="team.dm.search_input"
               />
             </div>
             <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide px-1">
@@ -343,7 +448,10 @@ export default function TeamTab() {
             </p>
             <div className="max-h-60 overflow-y-auto space-y-1">
               {filteredUsers.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
+                <p
+                  className="text-sm text-muted-foreground text-center py-4"
+                  data-ocid="team.dm.empty_state"
+                >
                   {dmSearchQuery
                     ? "No users match your search"
                     : "No other users registered yet"}
@@ -361,6 +469,7 @@ export default function TeamTab() {
                         handleStartDm(u.principalStr, displayLabel)
                       }
                       className="w-full flex items-center gap-3 px-3 py-2 rounded-md hover:bg-accent transition-colors text-left"
+                      data-ocid="team.dm.user.button"
                     >
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
@@ -381,12 +490,21 @@ export default function TeamTab() {
               )}
             </div>
           </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowNewDm(false)}
+              data-ocid="team.dm.cancel_button"
+            >
+              Cancel
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Invite Dialog */}
       <Dialog open={showInviteDialog} onOpenChange={setShowInviteDialog}>
-        <DialogContent className="sm:max-w-sm">
+        <DialogContent className="sm:max-w-sm" data-ocid="team.invite.dialog">
           <DialogHeader>
             <DialogTitle>Invite to Team</DialogTitle>
           </DialogHeader>
@@ -400,7 +518,12 @@ export default function TeamTab() {
                 readOnly
                 className="text-xs"
               />
-              <Button variant="outline" size="icon" onClick={copyInviteLink}>
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={copyInviteLink}
+                data-ocid="team.invite.button"
+              >
                 {copiedInvite ? (
                   <Check className="h-4 w-4 text-green-500" />
                 ) : (
@@ -410,7 +533,12 @@ export default function TeamTab() {
             </div>
           </div>
           <DialogFooter>
-            <Button onClick={() => setShowInviteDialog(false)}>Done</Button>
+            <Button
+              onClick={() => setShowInviteDialog(false)}
+              data-ocid="team.invite.close_button"
+            >
+              Done
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

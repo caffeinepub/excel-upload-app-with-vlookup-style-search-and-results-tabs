@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { AlertCircle, CheckCircle, Clock } from "lucide-react";
+import { AlertCircle, CheckCircle, Clock, RefreshCw } from "lucide-react";
 import type { ReactNode } from "react";
 import { useIsCallerAdmin, useIsCallerApproved } from "../../hooks/useApproval";
 import { useRequestApproval } from "../../hooks/useApprovalMutations";
@@ -20,13 +20,25 @@ interface ApprovalGateProps {
 
 export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
   const { identity } = useInternetIdentity();
-  const { data: isApproved, isLoading: approvalLoading } =
-    useIsCallerApproved();
-  const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
+  const {
+    data: isApproved,
+    isLoading: approvalLoading,
+    refetch: refetchApproved,
+  } = useIsCallerApproved();
+  const {
+    data: isAdmin,
+    isLoading: adminLoading,
+    refetch: refetchAdmin,
+  } = useIsCallerAdmin();
   const requestApprovalMutation = useRequestApproval();
 
   const isAuthenticated = !!identity;
   const isLoading = approvalLoading || adminLoading;
+
+  const handleCheckAgain = () => {
+    void refetchAdmin();
+    void refetchApproved();
+  };
 
   // Not authenticated - show nothing (login required)
   if (!isAuthenticated) {
@@ -104,12 +116,23 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
               requestApprovalMutation.isSuccess
             }
             className="w-full"
+            data-ocid="approval.request_button"
           >
             {requestApprovalMutation.isPending
               ? "Submitting Request..."
               : requestApprovalMutation.isSuccess
                 ? "Request Submitted"
                 : "Request Access"}
+          </Button>
+
+          <Button
+            variant="outline"
+            onClick={handleCheckAgain}
+            className="w-full gap-2"
+            data-ocid="approval.check_again_button"
+          >
+            <RefreshCw className="h-4 w-4" />
+            Check Again
           </Button>
         </CardContent>
       </Card>

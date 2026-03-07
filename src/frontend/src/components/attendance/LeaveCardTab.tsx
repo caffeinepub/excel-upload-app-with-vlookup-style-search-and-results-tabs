@@ -846,11 +846,20 @@ export default function LeaveCardTab() {
     principal ? loadLeaveCards(principal) : [],
   );
 
-  // Load cards when principal changes
+  // Load cards when principal changes — also reload to pick up admin approvals/rejections
   useEffect(() => {
     if (principal) {
       setCards(loadLeaveCards(principal));
     }
+  }, [principal]);
+
+  // Periodically refresh to pick up admin status changes
+  useEffect(() => {
+    if (!principal) return;
+    const interval = setInterval(() => {
+      setCards(loadLeaveCards(principal));
+    }, 5000);
+    return () => clearInterval(interval);
   }, [principal]);
 
   const handleSave = (card: LeaveCardData) => {

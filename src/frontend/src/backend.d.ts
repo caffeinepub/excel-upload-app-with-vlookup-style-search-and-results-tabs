@@ -30,6 +30,11 @@ export interface HistoryEntry {
     timestamp: Time;
     details: string;
 }
+export interface AttendanceConfig {
+    leavePolicy: bigint;
+    weeklyOffDays: Array<bigint>;
+    regularWorkingTime: bigint;
+}
 export interface FileData {
     id: bigint;
     content: Uint8Array;
@@ -151,10 +156,9 @@ export interface TodoItem {
     completed: boolean;
     timestamp: Time;
 }
-export interface AttendanceConfig {
-    leavePolicy: bigint;
-    weeklyOffDays: Array<bigint>;
-    regularWorkingTime: bigint;
+export interface PublicUserInfo {
+    principal: Principal;
+    displayName: string;
 }
 export interface Holiday {
     id: bigint;
@@ -238,8 +242,11 @@ export interface backendInterface {
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;
+    editChannelMessage(messageId: bigint, newText: string): Promise<void>;
+    editDirectMessage(messageId: bigint, newText: string): Promise<void>;
     getActiveBroadcasts(): Promise<Array<BroadcastMessage>>;
     getAllCalendarEvents(): Promise<Array<CalendarEvent>>;
+    getAllRegisteredUsersPublic(): Promise<Array<PublicUserInfo>>;
     getAttendanceConfig(): Promise<AttendanceConfig | null>;
     getAttendanceEntries(): Promise<Array<[string, AttendanceDayEntry]>>;
     getAttendanceRecords(): Promise<Array<[string, AttendanceRecord]>>;
@@ -267,6 +274,7 @@ export interface backendInterface {
     getUserStatuses(): Promise<Array<UserStatusEntry>>;
     grantCustomDatePermission(user: Principal): Promise<void>;
     hasCustomDatePermission(): Promise<boolean>;
+    isAdminInitialized(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerApproved(): Promise<boolean>;
     listApprovals(): Promise<Array<UserApprovalInfo>>;

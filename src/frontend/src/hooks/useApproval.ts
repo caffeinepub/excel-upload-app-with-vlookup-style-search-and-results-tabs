@@ -12,7 +12,11 @@ export function useIsCallerApproved() {
     queryKey: ["isCallerApproved"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerApproved();
+      try {
+        return await actor.isCallerApproved();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
     retry: 1,
@@ -29,7 +33,11 @@ export function useIsCallerAdmin() {
     queryKey: ["isCallerAdmin"],
     queryFn: async () => {
       if (!actor) return false;
-      return actor.isCallerAdmin();
+      try {
+        return await actor.isCallerAdmin();
+      } catch {
+        return false;
+      }
     },
     enabled: !!actor && !isFetching,
     retry: 1,

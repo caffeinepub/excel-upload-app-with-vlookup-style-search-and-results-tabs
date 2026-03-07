@@ -112,6 +112,11 @@ export interface HistoryEntry {
     timestamp: Time;
     details: string;
 }
+export interface AttendanceConfig {
+    leavePolicy: bigint;
+    weeklyOffDays: Array<bigint>;
+    regularWorkingTime: bigint;
+}
 export interface _CaffeineStorageRefillInformation {
     proposed_top_up_amount?: bigint;
 }
@@ -240,10 +245,9 @@ export interface TodoItem {
     completed: boolean;
     timestamp: Time;
 }
-export interface AttendanceConfig {
-    leavePolicy: bigint;
-    weeklyOffDays: Array<bigint>;
-    regularWorkingTime: bigint;
+export interface PublicUserInfo {
+    principal: Principal;
+    displayName: string;
 }
 export interface Holiday {
     id: bigint;
@@ -338,8 +342,11 @@ export interface backendInterface {
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;
+    editChannelMessage(messageId: bigint, newText: string): Promise<void>;
+    editDirectMessage(messageId: bigint, newText: string): Promise<void>;
     getActiveBroadcasts(): Promise<Array<BroadcastMessage>>;
     getAllCalendarEvents(): Promise<Array<CalendarEvent>>;
+    getAllRegisteredUsersPublic(): Promise<Array<PublicUserInfo>>;
     getAttendanceConfig(): Promise<AttendanceConfig | null>;
     getAttendanceEntries(): Promise<Array<[string, AttendanceDayEntry]>>;
     getAttendanceRecords(): Promise<Array<[string, AttendanceRecord]>>;
@@ -367,6 +374,7 @@ export interface backendInterface {
     getUserStatuses(): Promise<Array<UserStatusEntry>>;
     grantCustomDatePermission(user: Principal): Promise<void>;
     hasCustomDatePermission(): Promise<boolean>;
+    isAdminInitialized(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerApproved(): Promise<boolean>;
     listApprovals(): Promise<Array<UserApprovalInfo>>;
@@ -856,6 +864,34 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async editChannelMessage(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editChannelMessage(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editChannelMessage(arg0, arg1);
+            return result;
+        }
+    }
+    async editDirectMessage(arg0: bigint, arg1: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.editDirectMessage(arg0, arg1);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.editDirectMessage(arg0, arg1);
+            return result;
+        }
+    }
     async getActiveBroadcasts(): Promise<Array<BroadcastMessage>> {
         if (this.processError) {
             try {
@@ -881,6 +917,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.getAllCalendarEvents();
+            return result;
+        }
+    }
+    async getAllRegisteredUsersPublic(): Promise<Array<PublicUserInfo>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getAllRegisteredUsersPublic();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getAllRegisteredUsersPublic();
             return result;
         }
     }
@@ -1259,6 +1309,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.hasCustomDatePermission();
+            return result;
+        }
+    }
+    async isAdminInitialized(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.isAdminInitialized();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.isAdminInitialized();
             return result;
         }
     }

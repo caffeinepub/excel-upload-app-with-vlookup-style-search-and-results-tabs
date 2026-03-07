@@ -56,6 +56,10 @@ export const CalendarEvent = IDL.Record({
   'description' : IDL.Text,
   'dateTime' : IDL.Nat,
 });
+export const PublicUserInfo = IDL.Record({
+  'principal' : IDL.Principal,
+  'displayName' : IDL.Text,
+});
 export const AttendanceConfig = IDL.Record({
   'leavePolicy' : IDL.Nat,
   'weeklyOffDays' : IDL.Vec(IDL.Nat),
@@ -299,8 +303,15 @@ export const idlService = IDL.Service({
   'deleteReminder' : IDL.Func([IDL.Nat], [], []),
   'deleteTodo' : IDL.Func([IDL.Nat], [], []),
   'dismissBroadcast' : IDL.Func([IDL.Nat], [], []),
+  'editChannelMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+  'editDirectMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
   'getActiveBroadcasts' : IDL.Func([], [IDL.Vec(BroadcastMessage)], ['query']),
   'getAllCalendarEvents' : IDL.Func([], [IDL.Vec(CalendarEvent)], ['query']),
+  'getAllRegisteredUsersPublic' : IDL.Func(
+      [],
+      [IDL.Vec(PublicUserInfo)],
+      ['query'],
+    ),
   'getAttendanceConfig' : IDL.Func([], [IDL.Opt(AttendanceConfig)], ['query']),
   'getAttendanceEntries' : IDL.Func(
       [],
@@ -352,6 +363,7 @@ export const idlService = IDL.Service({
   'getUserStatuses' : IDL.Func([], [IDL.Vec(UserStatusEntry)], ['query']),
   'grantCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
   'hasCustomDatePermission' : IDL.Func([], [IDL.Bool], ['query']),
+  'isAdminInitialized' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
   'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
@@ -444,6 +456,10 @@ export const idlFactory = ({ IDL }) => {
     'isAdminOnly' : IDL.Bool,
     'description' : IDL.Text,
     'dateTime' : IDL.Nat,
+  });
+  const PublicUserInfo = IDL.Record({
+    'principal' : IDL.Principal,
+    'displayName' : IDL.Text,
   });
   const AttendanceConfig = IDL.Record({
     'leavePolicy' : IDL.Nat,
@@ -688,12 +704,19 @@ export const idlFactory = ({ IDL }) => {
     'deleteReminder' : IDL.Func([IDL.Nat], [], []),
     'deleteTodo' : IDL.Func([IDL.Nat], [], []),
     'dismissBroadcast' : IDL.Func([IDL.Nat], [], []),
+    'editChannelMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
+    'editDirectMessage' : IDL.Func([IDL.Nat, IDL.Text], [], []),
     'getActiveBroadcasts' : IDL.Func(
         [],
         [IDL.Vec(BroadcastMessage)],
         ['query'],
       ),
     'getAllCalendarEvents' : IDL.Func([], [IDL.Vec(CalendarEvent)], ['query']),
+    'getAllRegisteredUsersPublic' : IDL.Func(
+        [],
+        [IDL.Vec(PublicUserInfo)],
+        ['query'],
+      ),
     'getAttendanceConfig' : IDL.Func(
         [],
         [IDL.Opt(AttendanceConfig)],
@@ -757,6 +780,7 @@ export const idlFactory = ({ IDL }) => {
     'getUserStatuses' : IDL.Func([], [IDL.Vec(UserStatusEntry)], ['query']),
     'grantCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
     'hasCustomDatePermission' : IDL.Func([], [IDL.Bool], ['query']),
+    'isAdminInitialized' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
     'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),

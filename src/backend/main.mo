@@ -5,15 +5,13 @@ import Array "mo:core/Array";
 import Nat "mo:core/Nat";
 import Blob "mo:core/Blob";
 import Principal "mo:core/Principal";
-import Runtime "mo:core/Runtime";
 import Iter "mo:core/Iter";
-
+import Runtime "mo:core/Runtime";
 
 import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
-
 
 actor {
   include MixinStorage();
@@ -249,6 +247,11 @@ actor {
     description : Text;
   };
 
+  public type PublicUserInfo = {
+    principal : Principal;
+    displayName : Text;
+  };
+
   // ── State ─────────────────────────────────────────────────────────────────
 
   var nextCustomerId = 0;
@@ -405,8 +408,8 @@ actor {
 
   // --- User Profile (Persist Display Name) ----
   public query ({ caller }) func getCallerUserProfile() : async ?UserProfile {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can get profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous callers cannot get profiles");
     };
     userProfiles.get(caller);
   };
@@ -419,8 +422,8 @@ actor {
   };
 
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can save profiles");
+    if (caller.isAnonymous()) {
+      Runtime.trap("Unauthorized: Anonymous callers cannot save profiles");
     };
     userProfiles.add(caller, profile);
   };
@@ -1568,5 +1571,63 @@ actor {
       Runtime.trap("Unauthorized: Only users can download files");
     };
     files.get(id);
+  };
+
+  // === Additions from latest user request ===
+
+  public query ({ caller }) func getAllRegisteredUsersPublic() : async [PublicUserInfo] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only approved users can list users");
+    };
+
+    let userRolesIter = accessControlState.userRoles.keys();
+    let profilesIter = userRolesIter.map(
+      func(principal) {
+        let displayName = switch (userProfiles.get(principal)) {
+          case (?profile) { profile.displayName };
+          case (null) { "Employee" };
+        };
+        { principal; displayName };
+      }
+    );
+    profilesIter.toArray();
+  };
+
+  public query func isAdminInitialized() : async Bool {
+    accessControlState.adminAssigned;
+  };
+
+  public shared ({ caller }) func editChannelMessage(messageId : Nat, newText : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can edit messages");
+    };
+
+    switch (channelMessages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?existing) {
+        if (existing.senderId != caller) {
+          Runtime.trap("Unauthorized: Only the sender can edit this message");
+        };
+        let updatedMessage = { existing with text = newText };
+        channelMessages.add(messageId, updatedMessage);
+      };
+    };
+  };
+
+  public shared ({ caller }) func editDirectMessage(messageId : Nat, newText : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can edit messages");
+    };
+
+    switch (directMessages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?existing) {
+        if (existing.fromPrincipal != caller) {
+          Runtime.trap("Unauthorized: Only the sender can edit this message");
+        };
+        let updatedMessage = { existing with text = newText };
+        directMessages.add(messageId, updatedMessage);
+      };
+    };
   };
 };

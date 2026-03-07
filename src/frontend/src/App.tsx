@@ -148,6 +148,7 @@ function AppContent() {
     data: userProfile,
     isLoading: profileLoading,
     isFetched: profileFetched,
+    isError: profileError,
   } = useGetCallerUserProfile();
 
   const [activeTab, setActiveTab] = useState<TabId>("deskboard");
@@ -168,11 +169,13 @@ function AppContent() {
     }
   }, [isAuthenticated, activeTab]);
 
+  // Show profile setup if authenticated and profile is null, undefined, or errored.
+  // This ensures the admin token section is reachable even when the backend traps.
   const showProfileSetup =
     isAuthenticated &&
     !profileLoading &&
-    profileFetched &&
-    userProfile === null;
+    (profileFetched || profileError) &&
+    (userProfile === null || userProfile === undefined || profileError);
 
   const handleTabChange = (tab: TabId) => setActiveTab(tab);
 
