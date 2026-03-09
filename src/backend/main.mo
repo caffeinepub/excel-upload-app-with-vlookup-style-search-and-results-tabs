@@ -7,12 +7,14 @@ import Blob "mo:core/Blob";
 import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
-
 import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+import Migration "migration";
 
+// Run migration from persistence (after download and before execution)
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -250,6 +252,12 @@ actor {
   public type PublicUserInfo = {
     principal : Principal;
     displayName : Text;
+  };
+
+  public type AdminUserInfo = {
+    principal : Principal;
+    displayName : Text;
+    status : UserApproval.ApprovalStatus;
   };
 
   // ── State ─────────────────────────────────────────────────────────────────
@@ -1629,5 +1637,76 @@ actor {
         directMessages.add(messageId, updatedMessage);
       };
     };
+  };
+
+  // New admin endpoints
+  public shared ({ caller }) func deleteChannelMessage(messageId : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can delete channel messages");
+    };
+
+    switch (channelMessages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?existing) {
+        if (existing.senderId != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Only the sender or an admin can delete this message");
+        };
+        channelMessages.remove(messageId);
+      };
+    };
+  };
+
+  public shared ({ caller }) func deleteDirectMessage(messageId : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can delete direct messages");
+    };
+
+    switch (directMessages.get(messageId)) {
+      case (null) { Runtime.trap("Message not found") };
+      case (?existing) {
+        if (existing.fromPrincipal != caller and not AccessControl.isAdmin(accessControlState, caller)) {
+          Runtime.trap("Unauthorized: Only the sender or an admin can delete this message");
+        };
+        directMessages.remove(messageId);
+      };
+    };
+  };
+
+  public query ({ caller }) func getAllUsersForAdmin() : async [AdminUserInfo] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view all users");
+    };
+
+    let approvalStatusIter = approvalState.approvalStatus.entries();
+    let approvalStatusArray = approvalStatusIter.toArray();
+
+    let result = approvalStatusArray.reverse();
+
+    let resultIter = result.values();
+    let adminUserInfosIter = resultIter.map(
+      func((principal, status)) {
+        let displayName = switch (userProfiles.get(principal)) {
+          case (?profile) { profile.displayName };
+          case (null) { "" };
+        };
+        {
+          principal;
+          displayName;
+          status;
+        };
+      }
+    );
+    adminUserInfosIter.toArray();
+  };
+
+  public shared ({ caller }) func removeUserCompletely(user : Principal) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can remove users");
+    };
+
+    approvalState.approvalStatus.remove(user);
+    accessControlState.userRoles.remove(user);
+    userProfiles.remove(user);
+    customDatePermissions.remove(user);
   };
 };

@@ -41,8 +41,11 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import { ApprovalStatus } from "../backend";
-import { useIsCallerAdmin, useListApprovals } from "../hooks/useApproval";
-import { useDeleteUser, useSetApproval } from "../hooks/useApprovalMutations";
+import { useGetAllUsersForAdmin, useIsCallerAdmin } from "../hooks/useApproval";
+import {
+  useRemoveUserCompletely,
+  useSetApproval,
+} from "../hooks/useApprovalMutations";
 import {
   useGrantCustomDatePermission,
   useRevokeCustomDatePermission,
@@ -469,12 +472,12 @@ function AdminEmployeeAttendancePanel() {
 export function AdminUsersTab() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const {
-    data: approvals = [],
+    data: allUsers = [],
     isLoading: approvalsLoading,
     refetch,
-  } = useListApprovals();
+  } = useGetAllUsersForAdmin();
   const setApprovalMutation = useSetApproval();
-  const deleteUserMutation = useDeleteUser();
+  const removeUserMutation = useRemoveUserCompletely();
   const grantPermission = useGrantCustomDatePermission();
   const revokePermission = useRevokeCustomDatePermission();
 
@@ -492,10 +495,12 @@ export function AdminUsersTab() {
         status: ApprovalStatus.approved,
       });
       await refetch();
-      toast.success("User approved successfully");
+      toast.success("User approved — they can now access the app");
     } catch (error) {
       console.error("Failed to approve user:", error);
-      setActionError(getUserFriendlyError(error));
+      const msg = getUserFriendlyError(error);
+      setActionError(msg);
+      toast.error(`Failed to approve user: ${msg}`);
     } finally {
       setProcessingUser(null);
     }
@@ -517,7 +522,9 @@ export function AdminUsersTab() {
       toast.success("User rejected");
     } catch (error) {
       console.error("Failed to reject user:", error);
-      setActionError(getUserFriendlyError(error));
+      const msg = getUserFriendlyError(error);
+      setActionError(msg);
+      toast.error(`Failed to reject user: ${msg}`);
     } finally {
       setProcessingUser(null);
     }
@@ -530,12 +537,14 @@ export function AdminUsersTab() {
 
     try {
       await grantPermission.mutateAsync(principal);
-      toast.success("Custom date permission granted");
+      toast.success(
+        "Date access granted — user can now edit past/future attendance",
+      );
     } catch (error) {
       console.error("Failed to grant permission:", error);
       const message = getUserFriendlyError(error);
       setActionError(message);
-      toast.error(message);
+      toast.error(`Failed to grant date access: ${message}`);
     } finally {
       setProcessingUser(null);
     }
@@ -544,7 +553,7 @@ export function AdminUsersTab() {
   const handleDeleteUser = async (principal: Principal) => {
     if (
       !confirm(
-        "Are you sure you want to permanently delete this user? This will revoke their access.",
+        "Are you sure you want to permanently delete this user? This will remove them from the system completely.",
       )
     )
       return;
@@ -554,7 +563,7 @@ export function AdminUsersTab() {
     setActionError(null);
 
     try {
-      await deleteUserMutation.mutateAsync(principal);
+      await removeUserMutation.mutateAsync(principal);
       await refetch();
       toast.success("User deleted successfully");
     } catch (error) {
@@ -582,12 +591,14 @@ export function AdminUsersTab() {
 
     try {
       await revokePermission.mutateAsync(principal);
-      toast.success("Custom date permission revoked");
+      toast.success(
+        "Date access revoked — user can no longer edit past/future attendance",
+      );
     } catch (error) {
       console.error("Failed to revoke permission:", error);
       const message = getUserFriendlyError(error);
       setActionError(message);
-      toast.error(message);
+      toast.error(`Failed to revoke date access: ${message}`);
     } finally {
       setProcessingUser(null);
     }
@@ -670,6 +681,18 @@ export function AdminUsersTab() {
           >
             <Users className="h-3.5 w-3.5" />
             User Management
+            {allUsers.filter((u) => u.status === ApprovalStatus.pending)
+              .length > 0 && (
+              <Badge
+                variant="secondary"
+                className="text-xs h-4 px-1.5 ml-1 bg-amber-500 text-white"
+              >
+                {
+                  allUsers.filter((u) => u.status === ApprovalStatus.pending)
+                    .length
+                }
+              </Badge>
+            )}
           </TabsTrigger>
           <TabsTrigger
             value="attendance"
@@ -705,8 +728,20 @@ export function AdminUsersTab() {
             <CardHeader>
               <CardTitle>All Users</CardTitle>
               <CardDescription>
-                {approvals.length} {approvals.length === 1 ? "user" : "users"}{" "}
+                {allUsers.length} {allUsers.length === 1 ? "user" : "users"}{" "}
                 registered
+                {allUsers.filter((u) => u.status === ApprovalStatus.pending)
+                  .length > 0 && (
+                  <span className="ml-2 text-amber-600 font-medium">
+                    ·{" "}
+                    {
+                      allUsers.filter(
+                        (u) => u.status === ApprovalStatus.pending,
+                      ).length
+                    }{" "}
+                    pending approval
+                  </span>
+                )}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -714,7 +749,7 @@ export function AdminUsersTab() {
                 <p className="text-center text-muted-foreground py-8">
                   Loading users...
                 </p>
-              ) : approvals.length === 0 ? (
+              ) : allUsers.length === 0 ? (
                 <p
                   className="text-center text-muted-foreground py-8"
                   data-ocid="admin.users.empty_state"
@@ -726,36 +761,43 @@ export function AdminUsersTab() {
                   <Table data-ocid="admin.users.table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Principal ID</TableHead>
+                        <TableHead>User</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {approvals.map((approval, idx) => {
-                        const principalStr = approval.principal.toString();
+                      {allUsers.map((user, idx) => {
+                        const principalStr = user.principal.toString();
                         const isProcessing = processingUser === principalStr;
+                        const displayName =
+                          user.displayName ||
+                          `User-${principalStr.slice(-6).toUpperCase()}`;
 
                         return (
                           <TableRow
                             key={principalStr}
                             data-ocid={`admin.users.row.${idx + 1}`}
                           >
-                            <TableCell className="font-mono text-xs">
-                              {principalStr.slice(0, 20)}...
-                            </TableCell>
                             <TableCell>
-                              {getStatusBadge(approval.status)}
+                              <div className="flex flex-col gap-0.5">
+                                <span className="font-medium text-sm">
+                                  {displayName}
+                                </span>
+                                <span className="font-mono text-xs text-muted-foreground">
+                                  {principalStr.slice(0, 20)}...
+                                </span>
+                              </div>
                             </TableCell>
+                            <TableCell>{getStatusBadge(user.status)}</TableCell>
                             <TableCell className="text-right">
                               <div className="flex gap-2 justify-end flex-wrap">
-                                {approval.status !==
-                                  ApprovalStatus.approved && (
+                                {user.status !== ApprovalStatus.approved && (
                                   <Button
                                     size="sm"
                                     variant="default"
                                     onClick={() =>
-                                      handleApprove(approval.principal)
+                                      handleApprove(user.principal)
                                     }
                                     disabled={isProcessing}
                                     data-ocid={`admin.users.confirm_button.${idx + 1}`}
@@ -768,14 +810,11 @@ export function AdminUsersTab() {
                                     Approve
                                   </Button>
                                 )}
-                                {approval.status !==
-                                  ApprovalStatus.rejected && (
+                                {user.status !== ApprovalStatus.rejected && (
                                   <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={() =>
-                                      handleReject(approval.principal)
-                                    }
+                                    onClick={() => handleReject(user.principal)}
                                     disabled={isProcessing}
                                     data-ocid={`admin.users.cancel_button.${idx + 1}`}
                                   >
@@ -787,15 +826,14 @@ export function AdminUsersTab() {
                                     Reject
                                   </Button>
                                 )}
-                                {approval.status ===
-                                  ApprovalStatus.approved && (
+                                {user.status === ApprovalStatus.approved && (
                                   <>
                                     <Button
                                       size="sm"
                                       variant="outline"
                                       onClick={() =>
                                         handleGrantCustomDatePermission(
-                                          approval.principal,
+                                          user.principal,
                                         )
                                       }
                                       disabled={isProcessing}
@@ -814,7 +852,7 @@ export function AdminUsersTab() {
                                       variant="outline"
                                       onClick={() =>
                                         handleRevokeCustomDatePermission(
-                                          approval.principal,
+                                          user.principal,
                                         )
                                       }
                                       disabled={isProcessing}
@@ -833,7 +871,7 @@ export function AdminUsersTab() {
                                   size="sm"
                                   variant="destructive"
                                   onClick={() =>
-                                    handleDeleteUser(approval.principal)
+                                    handleDeleteUser(user.principal)
                                   }
                                   disabled={isProcessing}
                                   title="Permanently delete this user"

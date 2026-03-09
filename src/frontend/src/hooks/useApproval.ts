@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import type { UserApprovalInfo } from "../backend";
+import type { AdminUserInfo, UserApprovalInfo } from "../backend";
 import { useActor } from "./useActor";
 
 /**
@@ -68,4 +68,23 @@ export function useListApprovals() {
 export function useApproval() {
   const { data: isAdmin = false, isLoading } = useIsCallerAdmin();
   return { isAdmin, isLoading };
+}
+
+/**
+ * Query to get ALL users for the admin panel — includes display names and
+ * merges users who have profiles but haven't been added to the approval map yet.
+ */
+export function useGetAllUsersForAdmin() {
+  const { actor, isFetching } = useActor();
+
+  return useQuery<AdminUserInfo[]>({
+    queryKey: ["allUsersForAdmin"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getAllUsersForAdmin();
+    },
+    enabled: !!actor && !isFetching,
+    retry: 1,
+    refetchInterval: 10000,
+  });
 }

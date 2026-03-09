@@ -113,3 +113,28 @@ export function useDeleteUser() {
     },
   });
 }
+
+/**
+ * Mutation to permanently and completely remove a user (admin only).
+ * Removes from approval state, roles, profiles, and permissions.
+ */
+export function useRemoveUserCompletely() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (principal: Principal) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.removeUserCompletely(principal);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["approvals"] });
+      queryClient.invalidateQueries({ queryKey: ["allUsersForAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["allRegisteredUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["observeUsers"] });
+    },
+    onError: (error) => {
+      console.error("Failed to remove user:", error);
+    },
+  });
+}

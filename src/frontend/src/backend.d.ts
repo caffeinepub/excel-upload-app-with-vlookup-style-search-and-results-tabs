@@ -60,6 +60,11 @@ export interface Reminder {
     updatedAt?: Time;
     message: string;
 }
+export interface AdminUserInfo {
+    status: ApprovalStatus;
+    principal: Principal;
+    displayName: string;
+}
 export interface ExpenseEntry {
     id: bigint;
     date: string;
@@ -234,8 +239,10 @@ export interface backendInterface {
     createReminder(message: string, date: string, time: string, repeatUntilDate: bigint | null): Promise<bigint>;
     deleteCalendarEvent(id: bigint): Promise<void>;
     deleteChannel(id: bigint): Promise<void>;
+    deleteChannelMessage(messageId: bigint): Promise<void>;
     deleteCustomer(id: bigint): Promise<void>;
     deleteDepartment(id: bigint): Promise<void>;
+    deleteDirectMessage(messageId: bigint): Promise<void>;
     deleteExpense(id: bigint): Promise<void>;
     deleteHoliday(id: bigint): Promise<void>;
     deleteNote(id: bigint): Promise<void>;
@@ -247,6 +254,7 @@ export interface backendInterface {
     getActiveBroadcasts(): Promise<Array<BroadcastMessage>>;
     getAllCalendarEvents(): Promise<Array<CalendarEvent>>;
     getAllRegisteredUsersPublic(): Promise<Array<PublicUserInfo>>;
+    getAllUsersForAdmin(): Promise<Array<AdminUserInfo>>;
     getAttendanceConfig(): Promise<AttendanceConfig | null>;
     getAttendanceEntries(): Promise<Array<[string, AttendanceDayEntry]>>;
     getAttendanceRecords(): Promise<Array<[string, AttendanceRecord]>>;
@@ -282,6 +290,7 @@ export interface backendInterface {
     listDepartments(): Promise<Array<Department>>;
     postChannelMessage(channelId: bigint, senderName: string, text: string, fileUrl: string | null, fileName: string | null): Promise<bigint>;
     removeGlobalHoliday(date: string): Promise<void>;
+    removeUserCompletely(user: Principal): Promise<void>;
     requestApproval(): Promise<void>;
     revokeCustomDatePermission(user: Principal): Promise<void>;
     saveAttendanceConfig(config: AttendanceConfig): Promise<void>;

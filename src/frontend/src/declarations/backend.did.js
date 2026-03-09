@@ -60,6 +60,16 @@ export const PublicUserInfo = IDL.Record({
   'principal' : IDL.Principal,
   'displayName' : IDL.Text,
 });
+export const ApprovalStatus = IDL.Variant({
+  'pending' : IDL.Null,
+  'approved' : IDL.Null,
+  'rejected' : IDL.Null,
+});
+export const AdminUserInfo = IDL.Record({
+  'status' : ApprovalStatus,
+  'principal' : IDL.Principal,
+  'displayName' : IDL.Text,
+});
 export const AttendanceConfig = IDL.Record({
   'leavePolicy' : IDL.Nat,
   'weeklyOffDays' : IDL.Vec(IDL.Nat),
@@ -209,11 +219,6 @@ export const UserStatusEntry = IDL.Record({
   'principal' : IDL.Principal,
   'updatedAt' : Time,
 });
-export const ApprovalStatus = IDL.Variant({
-  'pending' : IDL.Null,
-  'approved' : IDL.Null,
-  'rejected' : IDL.Null,
-});
 export const UserApprovalInfo = IDL.Record({
   'status' : ApprovalStatus,
   'principal' : IDL.Principal,
@@ -295,8 +300,10 @@ export const idlService = IDL.Service({
     ),
   'deleteCalendarEvent' : IDL.Func([IDL.Nat], [], []),
   'deleteChannel' : IDL.Func([IDL.Nat], [], []),
+  'deleteChannelMessage' : IDL.Func([IDL.Nat], [], []),
   'deleteCustomer' : IDL.Func([IDL.Nat], [], []),
   'deleteDepartment' : IDL.Func([IDL.Nat], [], []),
+  'deleteDirectMessage' : IDL.Func([IDL.Nat], [], []),
   'deleteExpense' : IDL.Func([IDL.Nat], [], []),
   'deleteHoliday' : IDL.Func([IDL.Nat], [], []),
   'deleteNote' : IDL.Func([IDL.Nat], [], []),
@@ -312,6 +319,7 @@ export const idlService = IDL.Service({
       [IDL.Vec(PublicUserInfo)],
       ['query'],
     ),
+  'getAllUsersForAdmin' : IDL.Func([], [IDL.Vec(AdminUserInfo)], ['query']),
   'getAttendanceConfig' : IDL.Func([], [IDL.Opt(AttendanceConfig)], ['query']),
   'getAttendanceEntries' : IDL.Func(
       [],
@@ -375,6 +383,7 @@ export const idlService = IDL.Service({
       [],
     ),
   'removeGlobalHoliday' : IDL.Func([IDL.Text], [], []),
+  'removeUserCompletely' : IDL.Func([IDL.Principal], [], []),
   'requestApproval' : IDL.Func([], [], []),
   'revokeCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
   'saveAttendanceConfig' : IDL.Func([AttendanceConfig], [], []),
@@ -458,6 +467,16 @@ export const idlFactory = ({ IDL }) => {
     'dateTime' : IDL.Nat,
   });
   const PublicUserInfo = IDL.Record({
+    'principal' : IDL.Principal,
+    'displayName' : IDL.Text,
+  });
+  const ApprovalStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const AdminUserInfo = IDL.Record({
+    'status' : ApprovalStatus,
     'principal' : IDL.Principal,
     'displayName' : IDL.Text,
   });
@@ -610,11 +629,6 @@ export const idlFactory = ({ IDL }) => {
     'principal' : IDL.Principal,
     'updatedAt' : Time,
   });
-  const ApprovalStatus = IDL.Variant({
-    'pending' : IDL.Null,
-    'approved' : IDL.Null,
-    'rejected' : IDL.Null,
-  });
   const UserApprovalInfo = IDL.Record({
     'status' : ApprovalStatus,
     'principal' : IDL.Principal,
@@ -696,8 +710,10 @@ export const idlFactory = ({ IDL }) => {
       ),
     'deleteCalendarEvent' : IDL.Func([IDL.Nat], [], []),
     'deleteChannel' : IDL.Func([IDL.Nat], [], []),
+    'deleteChannelMessage' : IDL.Func([IDL.Nat], [], []),
     'deleteCustomer' : IDL.Func([IDL.Nat], [], []),
     'deleteDepartment' : IDL.Func([IDL.Nat], [], []),
+    'deleteDirectMessage' : IDL.Func([IDL.Nat], [], []),
     'deleteExpense' : IDL.Func([IDL.Nat], [], []),
     'deleteHoliday' : IDL.Func([IDL.Nat], [], []),
     'deleteNote' : IDL.Func([IDL.Nat], [], []),
@@ -717,6 +733,7 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(PublicUserInfo)],
         ['query'],
       ),
+    'getAllUsersForAdmin' : IDL.Func([], [IDL.Vec(AdminUserInfo)], ['query']),
     'getAttendanceConfig' : IDL.Func(
         [],
         [IDL.Opt(AttendanceConfig)],
@@ -792,6 +809,7 @@ export const idlFactory = ({ IDL }) => {
         [],
       ),
     'removeGlobalHoliday' : IDL.Func([IDL.Text], [], []),
+    'removeUserCompletely' : IDL.Func([IDL.Principal], [], []),
     'requestApproval' : IDL.Func([], [], []),
     'revokeCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
     'saveAttendanceConfig' : IDL.Func([AttendanceConfig], [], []),

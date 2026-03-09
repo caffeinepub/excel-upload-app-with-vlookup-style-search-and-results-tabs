@@ -97,33 +97,49 @@ export function usePostChannelMessage() {
 }
 
 export function useDeleteChannelMessage() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       channelId,
       messageId,
     }: { channelId: bigint; messageId: bigint }) => {
-      // Optimistically remove from cache (no backend delete API available)
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteChannelMessage(messageId);
+      // Also remove from cache immediately for snappy UX
       queryClient.setQueryData<ChannelMessage[]>(
         ["channelMessages", channelId.toString()],
         (old) => old?.filter((m) => m.id !== messageId) ?? [],
       );
     },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["channelMessages", variables.channelId.toString()],
+      });
+    },
   });
 }
 
 export function useDeleteDirectMessage() {
+  const { actor } = useActor();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({
       otherPrincipalStr,
       messageId,
     }: { otherPrincipalStr: string; messageId: bigint }) => {
-      // Optimistically remove from cache (no backend delete API available)
+      if (!actor) throw new Error("Actor not available");
+      await actor.deleteDirectMessage(messageId);
+      // Also remove from cache immediately for snappy UX
       queryClient.setQueryData<DirectMessage[]>(
         ["directMessages", otherPrincipalStr],
         (old) => old?.filter((m) => m.id !== messageId) ?? [],
       );
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["directMessages", variables.otherPrincipalStr],
+      });
     },
   });
 }

@@ -10,6 +10,11 @@ import type { ActorMethod } from '@icp-sdk/core/agent';
 import type { IDL } from '@icp-sdk/core/candid';
 import type { Principal } from '@icp-sdk/core/principal';
 
+export interface AdminUserInfo {
+  'status' : ApprovalStatus,
+  'principal' : Principal,
+  'displayName' : string,
+}
 export type ApprovalStatus = { 'pending' : null } |
   { 'approved' : null } |
   { 'rejected' : null };
@@ -254,8 +259,10 @@ export interface _SERVICE {
   >,
   'deleteCalendarEvent' : ActorMethod<[bigint], undefined>,
   'deleteChannel' : ActorMethod<[bigint], undefined>,
+  'deleteChannelMessage' : ActorMethod<[bigint], undefined>,
   'deleteCustomer' : ActorMethod<[bigint], undefined>,
   'deleteDepartment' : ActorMethod<[bigint], undefined>,
+  'deleteDirectMessage' : ActorMethod<[bigint], undefined>,
   'deleteExpense' : ActorMethod<[bigint], undefined>,
   'deleteHoliday' : ActorMethod<[bigint], undefined>,
   'deleteNote' : ActorMethod<[bigint], undefined>,
@@ -267,6 +274,7 @@ export interface _SERVICE {
   'getActiveBroadcasts' : ActorMethod<[], Array<BroadcastMessage>>,
   'getAllCalendarEvents' : ActorMethod<[], Array<CalendarEvent>>,
   'getAllRegisteredUsersPublic' : ActorMethod<[], Array<PublicUserInfo>>,
+  'getAllUsersForAdmin' : ActorMethod<[], Array<AdminUserInfo>>,
   'getAttendanceConfig' : ActorMethod<[], [] | [AttendanceConfig]>,
   'getAttendanceEntries' : ActorMethod<[], Array<[string, AttendanceDayEntry]>>,
   'getAttendanceRecords' : ActorMethod<[], Array<[string, AttendanceRecord]>>,
@@ -308,6 +316,7 @@ export interface _SERVICE {
     bigint
   >,
   'removeGlobalHoliday' : ActorMethod<[string], undefined>,
+  'removeUserCompletely' : ActorMethod<[Principal], undefined>,
   'requestApproval' : ActorMethod<[], undefined>,
   'revokeCustomDatePermission' : ActorMethod<[Principal], undefined>,
   'saveAttendanceConfig' : ActorMethod<[AttendanceConfig], undefined>,
