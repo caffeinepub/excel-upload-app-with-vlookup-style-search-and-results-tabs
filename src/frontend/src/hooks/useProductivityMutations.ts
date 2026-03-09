@@ -194,3 +194,25 @@ export function useDeleteNote() {
     },
   });
 }
+
+export function useUpdateNote() {
+  const { actor } = useActor();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      id,
+      title,
+      content,
+    }: { id: bigint; title: string; content: string }) => {
+      if (!actor || !identity) throw new Error("Not authenticated");
+      const sep = "||TITLE||";
+      const text = `${title}${sep}${content}`;
+      return actor.saveNote(id, text);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["notes"] });
+    },
+  });
+}

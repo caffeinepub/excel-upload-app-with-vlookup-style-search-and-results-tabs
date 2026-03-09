@@ -1,36 +1,24 @@
 # Crystal Atlas
 
 ## Current State
-Multi-feature web app (patent data, attendance, team chat, expenses, etc.) running on ICP with Motoko backend + React frontend.
-
-Three specific bugs reported:
-1. Admin cannot see user approval requests — new users who log in and request approval don't appear in the Admin Users tab because `listApprovals` only shows users already in the approval state map, and display names are not shown (only principal IDs truncated).
-2. Team Chat DM and channel message delete/edit not working persistently — `deleteChannelMessage` and `deleteDirectMessage` only update the local React Query cache but there are NO backend delete endpoints. After refresh messages reappear. Edit works for channel messages but the UI delete is frontend-only.
-3. "Grant Date Access" / "Revoke Date Access" buttons silently fail — the mutations call correct backend endpoints but error feedback is swallowed; also the "Delete User" currently only sets approval to rejected instead of fully removing the user.
+Version 77 live. Admin login has been broken — authenticated users see "Request Access" even with valid admin tokens because the profile setup dialog is the only place to enter the admin token, with no fallback after profile is saved. Additionally, there is no way for an admin to promote another user to admin role from the Admin Panel.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Backend: `deleteChannelMessage(messageId)` — sender or admin can delete; removes from `channelMessages` map
-- Backend: `deleteDirectMessage(messageId)` — sender or admin can delete; removes from `directMessages` map
-- Backend: `getAllUsersForAdmin()` — returns all users with principal, displayName, and approval status. Merges `approvalState.approvalStatus` map with `userProfiles` map so users who saved a profile but haven't been added to approval state yet still appear
-- Backend: `removeUserCompletely(user)` — removes user from `approvalState.approvalStatus`, `accessControlState.userRoles`, `userProfiles`, and `customDatePermissions`
-- Frontend: `useDeleteChannelMessage` now calls real `actor.deleteChannelMessage(messageId)` backend endpoint
-- Frontend: `useDeleteDirectMessage` now calls real `actor.deleteDirectMessage(messageId)` backend endpoint
-- Frontend: `useGetAllUsersForAdmin` hook using the new `getAllUsersForAdmin()` backend endpoint
-- Frontend: `useRemoveUserCompletely` mutation hook
+- **ApprovalGate admin claim panel**: A collapsible "Are you an administrator?" section shown on the Access Request Pending screen, allowing the user to enter the admin token at any time (not just during profile setup). Includes real-time refetch after token acceptance.
+- **"Make Admin" button in AdminUsersTab**: A purple "Make Admin" button appears for each approved user, allowing the current admin to promote them to full admin role (calls `assignCallerUserRole` with `#admin`).
+- **`useGrantAdminRole` mutation hook**: New mutation that calls `assignCallerUserRole` to promote a user to admin.
 
 ### Modify
-- Backend: `requestApproval` — when a user calls it, also ensure they are registered in `userProfiles` lookup so admin can see their name. No functional change needed but rely on `getAllUsersForAdmin` to merge data.
-- Frontend `AdminUsersTab`: Replace `useListApprovals` with `useGetAllUsersForAdmin` so all registered users are visible with their display names. Show display name in the table (with principal as a tooltip / secondary line). Ensure Grant Date Access, Revoke Date Access, and Delete buttons all show `toast.success` and `toast.error` properly (already attempted but error path needs to be more visible). Replace `useDeleteUser` (which just rejects) with `useRemoveUserCompletely` for the Delete button.
-- Frontend `useTeamMessaging.ts`: `useDeleteChannelMessage` and `useDeleteDirectMessage` now call real backend endpoints and invalidate the correct query cache keys.
+- **ApprovalGate**: Refactored to include admin claim flow with token input, error/success states, and forced re-fetch after claiming admin. Added loading state on "Check Again" button.
+- **AdminUsersTab**: Added `useGrantAdminRole` import and usage, `handleGrantAdminRole` function, "Make Admin" button in each user row's actions, and updated help text.
+- **useApprovalMutations.ts**: Added `useGrantAdminRole` export and `UserRole` import.
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Generate updated Motoko backend with `deleteChannelMessage`, `deleteDirectMessage`, `getAllUsersForAdmin`, and `removeUserCompletely` endpoints.
-2. Update `useTeamMessaging.ts` — `useDeleteChannelMessage` and `useDeleteDirectMessage` call real backend endpoints.
-3. Add `useGetAllUsersForAdmin` and `useRemoveUserCompletely` hooks in `useApproval.ts` / `useApprovalMutations.ts`.
-4. Update `AdminUsersTab.tsx` — use `useGetAllUsersForAdmin`, display names, fix delete to use `useRemoveUserCompletely`, ensure all action toasts are visible.
-5. Validate and deploy.
+1. Updated `ApprovalGate.tsx` — added collapsible admin claim section with token input and live re-fetch.
+2. Added `useGrantAdminRole` to `useApprovalMutations.ts`.
+3. Updated `AdminUsersTab.tsx` — imported `useGrantAdminRole`, `Crown` icon; added `handleGrantAdminRole`; added "Make Admin" button per user row.

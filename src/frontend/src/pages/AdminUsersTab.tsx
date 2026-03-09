@@ -28,21 +28,28 @@ import type { Principal } from "@icp-sdk/core/principal";
 import {
   AlertCircle,
   Calendar,
+  CalendarMinus,
+  CalendarPlus,
   CheckCircle,
   ClipboardList,
   Clock,
+  Crown,
   Download,
   FileText,
   Loader2,
+  RefreshCw,
   Trash2,
   Users,
   XCircle,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ApprovalStatus } from "../backend";
+import { ApprovalStatus, AttendanceStatus } from "../backend";
+import type { AttendanceDayEntry } from "../backend";
+import { useActor } from "../hooks/useActor";
 import { useGetAllUsersForAdmin, useIsCallerAdmin } from "../hooks/useApproval";
 import {
+  useGrantAdminRole,
   useRemoveUserCompletely,
   useSetApproval,
 } from "../hooks/useApprovalMutations";
@@ -55,7 +62,6 @@ import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
-// leave card stored in localStorage
 type LeaveCardData = {
   id: string;
   employeeName: string;
@@ -285,63 +291,140 @@ function AdminLeaveCardsPanel() {
   );
 }
 
+// Status label/color helpers for attendance
+const ATTENDANCE_STATUS_LABELS: Record<string, string> = {
+  [AttendanceStatus.present]: "Present",
+  [AttendanceStatus.leave]: "Leave",
+  [AttendanceStatus.halfDay]: "Half Day",
+  [AttendanceStatus.weeklyOff]: "Weekly Off",
+  [AttendanceStatus.festival]: "Festival Leave",
+  [AttendanceStatus.companyLeave]: "Company Leave",
+  [AttendanceStatus.holiday]: "Holiday",
+};
+
+function formatNsTimeAdmin(ns?: bigint): string {
+  if (!ns) return "—";
+  return new Date(Number(ns) / 1_000_000).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatWorkingTimeAdmin(seconds: bigint): string {
+  const s = Number(seconds);
+  if (s === 0) return "—";
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  return `${h}h ${m}m`;
+}
+
 // ── Admin Employee Attendance Panel ───────────────────────────────────────────
 
 function AdminEmployeeAttendancePanel() {
   const { data: allUsers = [], isLoading: usersLoading } = useGetAllUsers();
+  const { actor } = useActor();
   const [selectedPrincipal, setSelectedPrincipal] = useState<string>("");
+  const [selectedDisplayName, setSelectedDisplayName] = useState<string>("");
   const [attendanceData, setAttendanceData] = useState<
-    Array<
-      [
-        string,
-        {
-          status: string;
-          checkIn?: bigint;
-          checkOut?: bigint;
-          note: string;
-          workingTime: bigint;
-        },
-      ]
-    >
+    Array<[string, AttendanceDayEntry]>
   >([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // We need the actor directly for admin endpoint
   const fetchAttendance = async (principalStr: string) => {
-    if (!principalStr) return;
+    if (!principalStr || !actor) return;
     setIsLoading(true);
     setError(null);
+    setAttendanceData([]);
     try {
-      // We use a workaround: call getAttendanceEntries which returns the current user's data
-      // For admin, getEmployeeAttendanceRecords is available
-      // But we need the actor — fetch via a manual approach using the actor hook pattern
-      // For now we'll show a note that this requires admin backend access
-      setAttendanceData([]);
-      setError(
-        "Employee attendance data is fetched via getEmployeeAttendanceRecords. Please use the Attendance tab to view records.",
+      const { parsePrincipal } = await import(
+        "../utils/principal/parsePrincipal"
       );
+      const parsed = parsePrincipal(principalStr);
+      if (!parsed.success) {
+        setError("Invalid principal ID");
+        return;
+      }
+      // Use getEmployeeAttendanceRecords to get the attendance records
+      const records = await actor.getEmployeeAttendanceRecords(
+        parsed.principal,
+      );
+
+      // Convert AttendanceRecord to AttendanceDayEntry display format
+      const entries: Array<[string, AttendanceDayEntry]> = records.map(
+        ([date, record]) => {
+          const lastShift =
+            record.shifts.length > 0
+              ? record.shifts[record.shifts.length - 1]
+              : null;
+
+          // Calculate working time from shifts
+          let totalWorkingNs = BigInt(0);
+          for (const shift of record.shifts) {
+            if (shift.clockIn && shift.clockOut) {
+              const diff = shift.clockOut - shift.clockIn;
+              if (diff > BigInt(0)) totalWorkingNs += diff;
+            }
+          }
+          const workingSeconds = totalWorkingNs / BigInt(1_000_000_000);
+
+          const entry: AttendanceDayEntry = {
+            status: AttendanceStatus.present,
+            checkIn: lastShift?.clockIn,
+            checkOut: lastShift?.clockOut ?? undefined,
+            note: record.notes ?? "",
+            workingTime: workingSeconds,
+          };
+          return [date, entry];
+        },
+      );
+
+      // Sort descending by date
+      entries.sort(([a], [b]) => b.localeCompare(a));
+      setAttendanceData(entries);
+
+      if (entries.length === 0) {
+        setError("No attendance records found for this employee.");
+      }
     } catch (e) {
-      setError(String(e));
+      setError(getUserFriendlyError(e));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const formatTime = (timeNs?: bigint) => {
-    if (!timeNs) return "—";
-    return new Date(Number(timeNs) / 1_000_000).toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  };
+  const handleDownloadPdf = async () => {
+    if (attendanceData.length === 0) return;
+    setIsDownloading(true);
+    try {
+      const { mapAttendanceDayEntriesToPdfDataFull } = await import(
+        "../lib/attendance/attendancePdfExportMapping"
+      );
+      const { exportToPdf } = await import("../lib/export/exportPdf");
 
-  const formatWorkingTime = (seconds: bigint) => {
-    const s = Number(seconds);
-    if (s === 0) return "—";
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return `${h}h ${m}m`;
+      const enriched: Array<
+        [string, AttendanceDayEntry & { employeeName?: string }]
+      > = attendanceData.map(([date, entry]) => [
+        date,
+        { ...entry, employeeName: selectedDisplayName },
+      ]);
+
+      const pdfData = mapAttendanceDayEntriesToPdfDataFull(
+        enriched,
+        `Attendance Report — ${selectedDisplayName}`,
+        "Full History",
+      );
+      await exportToPdf(
+        pdfData,
+        `attendance-${selectedDisplayName.replace(/\s+/g, "-")}.pdf`,
+      );
+      toast.success("PDF downloaded successfully");
+    } catch (e) {
+      toast.error(`Failed to generate PDF: ${getUserFriendlyError(e)}`);
+    } finally {
+      setIsDownloading(false);
+    }
   };
 
   return (
@@ -361,7 +444,11 @@ function AdminEmployeeAttendancePanel() {
               value={selectedPrincipal}
               onValueChange={(v) => {
                 setSelectedPrincipal(v);
-                fetchAttendance(v);
+                const user = allUsers.find((u) => u.principalStr === v);
+                setSelectedDisplayName(
+                  user?.displayName || `User-${v.slice(-4).toUpperCase()}`,
+                );
+                void fetchAttendance(v);
               }}
             >
               <SelectTrigger
@@ -383,21 +470,40 @@ function AdminEmployeeAttendancePanel() {
           )}
         </div>
         {selectedPrincipal && (
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-2 h-9"
-            onClick={() => fetchAttendance(selectedPrincipal)}
-            disabled={isLoading}
-            data-ocid="admin.employee-attendance.button"
-          >
-            {isLoading ? (
-              <Loader2 className="h-3.5 w-3.5 animate-spin" />
-            ) : (
-              <Download className="h-3.5 w-3.5" />
+          <>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2 h-9"
+              onClick={() => void fetchAttendance(selectedPrincipal)}
+              disabled={isLoading}
+              data-ocid="admin.employee-attendance.button"
+            >
+              {isLoading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <RefreshCw className="h-3.5 w-3.5" />
+              )}
+              Refresh
+            </Button>
+            {attendanceData.length > 0 && (
+              <Button
+                variant="default"
+                size="sm"
+                className="gap-2 h-9"
+                onClick={handleDownloadPdf}
+                disabled={isDownloading}
+                data-ocid="admin.employee-attendance.download_button"
+              >
+                {isDownloading ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Download className="h-3.5 w-3.5" />
+                )}
+                Download PDF
+              </Button>
             )}
-            Load Records
-          </Button>
+          </>
         )}
       </div>
 
@@ -408,58 +514,76 @@ function AdminEmployeeAttendancePanel() {
         </Alert>
       )}
 
-      {attendanceData.length > 0 && (
-        <div className="overflow-x-auto rounded-lg border border-border">
-          <Table data-ocid="admin.employee-attendance.table">
-            <TableHeader>
-              <TableRow>
-                <TableHead className="text-xs">Date</TableHead>
-                <TableHead className="text-xs">Status</TableHead>
-                <TableHead className="text-xs">Check In</TableHead>
-                <TableHead className="text-xs">Check Out</TableHead>
-                <TableHead className="text-xs">Working Time</TableHead>
-                <TableHead className="text-xs">Work Details</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {attendanceData.map(([date, entry], idx) => (
-                <TableRow
-                  key={date}
-                  data-ocid={`admin.employee-attendance.row.${idx + 1}`}
-                >
-                  <TableCell className="text-sm font-mono">{date}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary" className="text-xs capitalize">
-                      {entry.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatTime(entry.checkIn)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatTime(entry.checkOut)}
-                  </TableCell>
-                  <TableCell className="text-sm">
-                    {formatWorkingTime(entry.workingTime)}
-                  </TableCell>
-                  <TableCell className="text-sm max-w-xs truncate">
-                    {entry.note || "—"}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+      {isLoading && (
+        <div
+          className="flex items-center justify-center py-8 gap-2"
+          data-ocid="admin.employee-attendance.loading_state"
+        >
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">
+            Loading attendance records...
+          </span>
         </div>
       )}
 
-      {!selectedPrincipal && (
+      {!isLoading && attendanceData.length > 0 && (
+        <>
+          <p className="text-xs text-muted-foreground">
+            Showing {attendanceData.length} records for{" "}
+            <strong>{selectedDisplayName}</strong>
+          </p>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <Table data-ocid="admin.employee-attendance.table">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs">Date</TableHead>
+                  <TableHead className="text-xs">Status</TableHead>
+                  <TableHead className="text-xs">Check In</TableHead>
+                  <TableHead className="text-xs">Check Out</TableHead>
+                  <TableHead className="text-xs">Working Time</TableHead>
+                  <TableHead className="text-xs">Work Details</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {attendanceData.map(([date, entry], idx) => (
+                  <TableRow
+                    key={date}
+                    data-ocid={`admin.employee-attendance.row.${idx + 1}`}
+                  >
+                    <TableCell className="text-sm font-mono">{date}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="text-xs capitalize">
+                        {ATTENDANCE_STATUS_LABELS[entry.status] ?? entry.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatNsTimeAdmin(entry.checkIn)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatNsTimeAdmin(entry.checkOut)}
+                    </TableCell>
+                    <TableCell className="text-sm">
+                      {formatWorkingTimeAdmin(entry.workingTime)}
+                    </TableCell>
+                    <TableCell className="text-sm max-w-xs truncate">
+                      {entry.note || "—"}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        </>
+      )}
+
+      {!isLoading && !selectedPrincipal && (
         <div
           className="flex flex-col items-center justify-center py-10 gap-2 text-center"
           data-ocid="admin.employee-attendance.empty_state"
         >
           <Calendar className="h-8 w-8 text-muted-foreground" />
           <p className="text-sm text-muted-foreground">
-            Select an employee to view their attendance records
+            Select an employee to view their full attendance records
           </p>
         </div>
       )}
@@ -480,9 +604,51 @@ export function AdminUsersTab() {
   const removeUserMutation = useRemoveUserCompletely();
   const grantPermission = useGrantCustomDatePermission();
   const revokePermission = useRevokeCustomDatePermission();
+  const grantAdminRoleMutation = useGrantAdminRole();
 
   const [processingUser, setProcessingUser] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Track which users have been granted custom date permission
+  // Key: principalStr, Value: true = granted, false = revoked
+  const [userDatePermissions, setUserDatePermissions] = useState<
+    Record<string, boolean>
+  >(() => {
+    try {
+      const stored = localStorage.getItem("userDatePermissions");
+      return stored ? (JSON.parse(stored) as Record<string, boolean>) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  const saveUserDatePermissions = (perms: Record<string, boolean>) => {
+    setUserDatePermissions(perms);
+    try {
+      localStorage.setItem("userDatePermissions", JSON.stringify(perms));
+    } catch {
+      // ignore
+    }
+  };
+
+  // Auto-refresh every 8 seconds to pick up new requests
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void refetch();
+    }, 8000);
+    return () => clearInterval(interval);
+  }, [refetch]);
+
+  const handleManualRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await refetch();
+      toast.success("User list refreshed");
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   const handleApprove = async (principal: Principal) => {
     const principalStr = principal.toString();
@@ -537,6 +703,10 @@ export function AdminUsersTab() {
 
     try {
       await grantPermission.mutateAsync(principal);
+      saveUserDatePermissions({
+        ...userDatePermissions,
+        [principalStr]: true,
+      });
       toast.success(
         "Date access granted — user can now edit past/future attendance",
       );
@@ -550,10 +720,41 @@ export function AdminUsersTab() {
     }
   };
 
+  const handleRevokeCustomDatePermission = async (principal: Principal) => {
+    if (
+      !confirm(
+        "Are you sure you want to revoke custom date permission for this user?",
+      )
+    )
+      return;
+
+    const principalStr = principal.toString();
+    setProcessingUser(principalStr);
+    setActionError(null);
+
+    try {
+      await revokePermission.mutateAsync(principal);
+      saveUserDatePermissions({
+        ...userDatePermissions,
+        [principalStr]: false,
+      });
+      toast.success(
+        "Date access revoked — user can no longer edit past/future attendance",
+      );
+    } catch (error) {
+      console.error("Failed to revoke permission:", error);
+      const message = getUserFriendlyError(error);
+      setActionError(message);
+      toast.error(`Failed to revoke date access: ${message}`);
+    } finally {
+      setProcessingUser(null);
+    }
+  };
+
   const handleDeleteUser = async (principal: Principal) => {
     if (
       !confirm(
-        "Are you sure you want to permanently delete this user? This will remove them from the system completely.",
+        "Are you sure you want to permanently delete this user? This cannot be undone.",
       )
     )
       return;
@@ -577,10 +778,10 @@ export function AdminUsersTab() {
     }
   };
 
-  const handleRevokeCustomDatePermission = async (principal: Principal) => {
+  const handleGrantAdminRole = async (principal: Principal) => {
     if (
       !confirm(
-        "Are you sure you want to revoke custom date permission for this user?",
+        "Are you sure you want to grant ADMIN role to this user? They will have full admin privileges.",
       )
     )
       return;
@@ -590,15 +791,20 @@ export function AdminUsersTab() {
     setActionError(null);
 
     try {
-      await revokePermission.mutateAsync(principal);
-      toast.success(
-        "Date access revoked — user can no longer edit past/future attendance",
-      );
+      await grantAdminRoleMutation.mutateAsync(principal);
+      // Also approve them in the approval system
+      await setApprovalMutation.mutateAsync({
+        user: principal,
+        status: ApprovalStatus.approved,
+      });
+      await refetch();
+      toast.success("Admin role granted — this user is now an administrator");
     } catch (error) {
-      console.error("Failed to revoke permission:", error);
-      const message = getUserFriendlyError(error);
+      console.error("Failed to grant admin role:", error);
+      const message =
+        error instanceof Error ? error.message : "Failed to grant admin role";
       setActionError(message);
-      toast.error(`Failed to revoke date access: ${message}`);
+      toast.error(message);
     } finally {
       setProcessingUser(null);
     }
@@ -631,7 +837,7 @@ export function AdminUsersTab() {
     switch (status) {
       case ApprovalStatus.approved:
         return (
-          <Badge variant="default" className="bg-green-500">
+          <Badge variant="default" className="bg-green-500 text-white">
             <CheckCircle className="w-3 h-3 mr-1" />
             Approved
           </Badge>
@@ -645,7 +851,7 @@ export function AdminUsersTab() {
         );
       case ApprovalStatus.pending:
         return (
-          <Badge variant="secondary">
+          <Badge className="bg-amber-500 text-white">
             <Clock className="w-3 h-3 mr-1" />
             Pending
           </Badge>
@@ -653,16 +859,22 @@ export function AdminUsersTab() {
     }
   };
 
+  const pendingCount = allUsers.filter(
+    (u) => u.status === ApprovalStatus.pending,
+  ).length;
+
   return (
     <div className="max-w-6xl mx-auto space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold flex items-center gap-2">
-          <Users className="w-8 h-8" />
-          Admin Panel
-        </h1>
-        <p className="text-muted-foreground mt-1">
-          Manage users, attendance, and leave requests
-        </p>
+      <div className="flex items-start justify-between gap-4 flex-wrap">
+        <div>
+          <h1 className="text-3xl font-bold flex items-center gap-2">
+            <Users className="w-8 h-8" />
+            Admin Panel
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Manage users, attendance, and leave requests
+          </p>
+        </div>
       </div>
 
       {actionError && (
@@ -681,16 +893,12 @@ export function AdminUsersTab() {
           >
             <Users className="h-3.5 w-3.5" />
             User Management
-            {allUsers.filter((u) => u.status === ApprovalStatus.pending)
-              .length > 0 && (
+            {pendingCount > 0 && (
               <Badge
                 variant="secondary"
                 className="text-xs h-4 px-1.5 ml-1 bg-amber-500 text-white"
               >
-                {
-                  allUsers.filter((u) => u.status === ApprovalStatus.pending)
-                    .length
-                }
+                {pendingCount}
               </Badge>
             )}
           </TabsTrigger>
@@ -726,44 +934,74 @@ export function AdminUsersTab() {
         <TabsContent value="users" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>All Users</CardTitle>
-              <CardDescription>
-                {allUsers.length} {allUsers.length === 1 ? "user" : "users"}{" "}
-                registered
-                {allUsers.filter((u) => u.status === ApprovalStatus.pending)
-                  .length > 0 && (
-                  <span className="ml-2 text-amber-600 font-medium">
-                    ·{" "}
-                    {
-                      allUsers.filter(
-                        (u) => u.status === ApprovalStatus.pending,
-                      ).length
-                    }{" "}
-                    pending approval
-                  </span>
-                )}
-              </CardDescription>
+              <div className="flex items-center justify-between gap-3 flex-wrap">
+                <div>
+                  <CardTitle className="text-xl">All Users</CardTitle>
+                  <CardDescription className="mt-0.5">
+                    {allUsers.length} {allUsers.length === 1 ? "user" : "users"}{" "}
+                    registered
+                    {pendingCount > 0 && (
+                      <span className="ml-2 text-amber-600 font-semibold">
+                        · {pendingCount} pending approval
+                      </span>
+                    )}
+                  </CardDescription>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 shrink-0"
+                  onClick={() => void handleManualRefresh()}
+                  disabled={isRefreshing || approvalsLoading}
+                  data-ocid="admin.users.button"
+                >
+                  <RefreshCw
+                    className={`h-3.5 w-3.5 ${isRefreshing ? "animate-spin" : ""}`}
+                  />
+                  Refresh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {approvalsLoading ? (
-                <p className="text-center text-muted-foreground py-8">
-                  Loading users...
-                </p>
+                <div
+                  className="flex items-center justify-center py-10 gap-2"
+                  data-ocid="admin.users.loading_state"
+                >
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                  <p className="text-muted-foreground">Loading users…</p>
+                </div>
               ) : allUsers.length === 0 ? (
-                <p
-                  className="text-center text-muted-foreground py-8"
+                <div
+                  className="flex flex-col items-center justify-center py-12 gap-3 border-2 border-dashed border-border rounded-xl"
                   data-ocid="admin.users.empty_state"
                 >
-                  No users found
-                </p>
+                  <Users className="h-10 w-10 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground text-center">
+                    No users found.
+                    <br />
+                    New users will appear here after they log in and request
+                    access.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => void handleManualRefresh()}
+                    data-ocid="admin.users.secondary_button"
+                  >
+                    <RefreshCw className="h-3.5 w-3.5" />
+                    Check for New Requests
+                  </Button>
+                </div>
               ) : (
                 <div className="overflow-x-auto">
                   <Table data-ocid="admin.users.table">
                     <TableHeader>
                       <TableRow>
-                        <TableHead>User</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
+                        <TableHead className="w-48">User</TableHead>
+                        <TableHead className="w-28">Status</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -773,114 +1011,159 @@ export function AdminUsersTab() {
                         const displayName =
                           user.displayName ||
                           `User-${principalStr.slice(-6).toUpperCase()}`;
+                        const isApproved =
+                          user.status === ApprovalStatus.approved;
+                        const isRejected =
+                          user.status === ApprovalStatus.rejected;
 
                         return (
                           <TableRow
                             key={principalStr}
                             data-ocid={`admin.users.row.${idx + 1}`}
+                            className={
+                              user.status === ApprovalStatus.pending
+                                ? "bg-amber-50/40 dark:bg-amber-950/20"
+                                : ""
+                            }
                           >
                             <TableCell>
                               <div className="flex flex-col gap-0.5">
-                                <span className="font-medium text-sm">
+                                <span className="font-semibold text-sm">
                                   {displayName}
                                 </span>
                                 <span className="font-mono text-xs text-muted-foreground">
-                                  {principalStr.slice(0, 20)}...
+                                  {principalStr.slice(0, 18)}…
                                 </span>
                               </div>
                             </TableCell>
                             <TableCell>{getStatusBadge(user.status)}</TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex gap-2 justify-end flex-wrap">
-                                {user.status !== ApprovalStatus.approved && (
+                            <TableCell>
+                              <div className="flex gap-2 flex-wrap items-center">
+                                {/* Approve — shown for pending/rejected */}
+                                {!isApproved && (
                                   <Button
                                     size="sm"
                                     variant="default"
+                                    className="h-8 text-xs gap-1 bg-green-600 hover:bg-green-700"
                                     onClick={() =>
-                                      handleApprove(user.principal)
+                                      void handleApprove(user.principal)
                                     }
                                     disabled={isProcessing}
                                     data-ocid={`admin.users.confirm_button.${idx + 1}`}
                                   >
                                     {isProcessing ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      <Loader2 className="h-3 w-3 animate-spin" />
                                     ) : (
-                                      <CheckCircle className="h-3 w-3 mr-1" />
+                                      <CheckCircle className="h-3 w-3" />
                                     )}
                                     Approve
                                   </Button>
                                 )}
-                                {user.status !== ApprovalStatus.rejected && (
+
+                                {/* Reject — shown for pending/approved */}
+                                {!isRejected && (
                                   <Button
                                     size="sm"
                                     variant="destructive"
-                                    onClick={() => handleReject(user.principal)}
+                                    className="h-8 text-xs gap-1"
+                                    onClick={() =>
+                                      void handleReject(user.principal)
+                                    }
                                     disabled={isProcessing}
                                     data-ocid={`admin.users.cancel_button.${idx + 1}`}
                                   >
                                     {isProcessing ? (
-                                      <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                      <Loader2 className="h-3 w-3 animate-spin" />
                                     ) : (
-                                      <XCircle className="h-3 w-3 mr-1" />
+                                      <XCircle className="h-3 w-3" />
                                     )}
                                     Reject
                                   </Button>
                                 )}
-                                {user.status === ApprovalStatus.approved && (
-                                  <>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() =>
-                                        handleGrantCustomDatePermission(
-                                          user.principal,
-                                        )
-                                      }
-                                      disabled={isProcessing}
-                                      title="Grant permission to edit past/future attendance"
-                                      data-ocid={`admin.users.edit_button.${idx + 1}`}
-                                    >
-                                      {isProcessing ? (
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      ) : (
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                      )}
-                                      Grant Date Access
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() =>
-                                        handleRevokeCustomDatePermission(
-                                          user.principal,
-                                        )
-                                      }
-                                      disabled={isProcessing}
-                                      title="Revoke permission to edit past/future attendance"
-                                    >
-                                      {isProcessing ? (
-                                        <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                      ) : (
-                                        <Calendar className="w-3 h-3 mr-1" />
-                                      )}
-                                      Revoke Date Access
-                                    </Button>
-                                  </>
+
+                                {/* Make Admin — shown only for approved non-admin users */}
+                                {isApproved && (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs gap-1 border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950"
+                                    onClick={() =>
+                                      void handleGrantAdminRole(user.principal)
+                                    }
+                                    disabled={isProcessing}
+                                    title="Promote this user to Administrator"
+                                    data-ocid={`admin.users.secondary_button.${idx + 1}`}
+                                  >
+                                    {isProcessing ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <Crown className="h-3 w-3" />
+                                    )}
+                                    Make Admin
+                                  </Button>
                                 )}
+
+                                {/* Grant / Revoke Date Access — toggle based on current permission state */}
+                                {userDatePermissions[principalStr] === true ? (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs gap-1 border-orange-300 text-orange-700 hover:bg-orange-50 dark:border-orange-700 dark:text-orange-400 dark:hover:bg-orange-950"
+                                    onClick={() =>
+                                      void handleRevokeCustomDatePermission(
+                                        user.principal,
+                                      )
+                                    }
+                                    disabled={isProcessing}
+                                    title="Remove this user's permission to edit past/future attendance"
+                                    data-ocid={`admin.users.save_button.${idx + 1}`}
+                                  >
+                                    {isProcessing ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CalendarMinus className="h-3 w-3" />
+                                    )}
+                                    Revoke Date Access
+                                  </Button>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs gap-1 border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+                                    onClick={() =>
+                                      void handleGrantCustomDatePermission(
+                                        user.principal,
+                                      )
+                                    }
+                                    disabled={isProcessing}
+                                    title="Allow this user to edit past/future attendance dates"
+                                    data-ocid={`admin.users.edit_button.${idx + 1}`}
+                                  >
+                                    {isProcessing ? (
+                                      <Loader2 className="h-3 w-3 animate-spin" />
+                                    ) : (
+                                      <CalendarPlus className="h-3 w-3" />
+                                    )}
+                                    Grant Date Access
+                                  </Button>
+                                )}
+
+                                {/* Delete — always shown */}
                                 <Button
                                   size="sm"
                                   variant="destructive"
+                                  className="h-8 text-xs gap-1 bg-red-700 hover:bg-red-800"
                                   onClick={() =>
-                                    handleDeleteUser(user.principal)
+                                    void handleDeleteUser(user.principal)
                                   }
                                   disabled={isProcessing}
-                                  title="Permanently delete this user"
+                                  title="Permanently delete this user from the system"
                                   data-ocid={`admin.users.delete_button.${idx + 1}`}
                                 >
                                   {isProcessing ? (
-                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                    <Loader2 className="h-3 w-3 animate-spin" />
                                   ) : (
-                                    <Trash2 className="w-3 h-3 mr-1" />
+                                    <Trash2 className="h-3 w-3" />
                                   )}
                                   Delete
                                 </Button>
@@ -899,9 +1182,13 @@ export function AdminUsersTab() {
           <Alert className="mt-4">
             <AlertCircle className="h-4 w-4" />
             <AlertDescription>
-              <strong>Custom Date Permission:</strong> Allows approved users to
-              create and edit attendance entries for past or future dates. By
-              default, users can only edit today's attendance.
+              <strong>Make Admin:</strong> Promotes an approved user to full
+              Administrator role with all admin privileges.{" "}
+              <strong>Grant Date Access:</strong> Allows a user to create and
+              edit attendance entries for any past or future date.{" "}
+              <strong>Revoke Date Access:</strong> Restricts them back to
+              today-only editing. <strong>Delete:</strong> Permanently removes
+              the user from the system.
             </AlertDescription>
           </Alert>
         </TabsContent>

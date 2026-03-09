@@ -316,12 +316,12 @@ function MessageBubble({
         )}
       </div>
 
-      {/* Hover action buttons */}
-      {hovered && !isEditing && (
+      {/* Action buttons — visible on hover (desktop) or always for own messages on touch */}
+      {!isEditing && (canEdit || canDelete) && (
         <div
-          className={`absolute top-0 flex items-center gap-0.5 z-10 ${
-            isOwn ? "right-full mr-2" : "left-full ml-2"
-          }`}
+          className={`absolute top-0 flex items-center gap-0.5 z-10 transition-opacity ${
+            hovered ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+          } ${isOwn ? "right-full mr-2" : "left-full ml-2"}`}
         >
           {showEmojiPicker ? (
             <EmojiPicker onSelect={handleEmojiSelect} />
@@ -331,7 +331,7 @@ function MessageBubble({
                 type="button"
                 onClick={() => setShowEmojiPicker(true)}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                title="React"
+                title="React with emoji"
               >
                 😊
               </button>
@@ -355,7 +355,11 @@ function MessageBubble({
                   variant="ghost"
                   size="icon"
                   className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                  onClick={() => onDeleteMessage(msg.id)}
+                  onClick={() => {
+                    if (confirm("Delete this message?")) {
+                      onDeleteMessage(msg.id);
+                    }
+                  }}
                   data-ocid={`team.message.delete_button.${markerIndex}`}
                   title="Delete message"
                 >

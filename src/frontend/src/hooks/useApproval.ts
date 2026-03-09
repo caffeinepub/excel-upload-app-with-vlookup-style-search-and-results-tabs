@@ -81,10 +81,24 @@ export function useGetAllUsersForAdmin() {
     queryKey: ["allUsersForAdmin"],
     queryFn: async () => {
       if (!actor) return [];
-      return actor.getAllUsersForAdmin();
+      try {
+        return await actor.getAllUsersForAdmin();
+      } catch {
+        // Fall back to listApprovals if getAllUsersForAdmin fails
+        try {
+          const approvals = await actor.listApprovals();
+          return approvals.map((a) => ({
+            principal: a.principal,
+            status: a.status,
+            displayName: "",
+          }));
+        } catch {
+          return [];
+        }
+      }
     },
     enabled: !!actor && !isFetching,
-    retry: 1,
-    refetchInterval: 10000,
+    retry: 2,
+    refetchInterval: 8000, // Poll every 8 seconds to catch new requests
   });
 }

@@ -11,10 +11,10 @@ import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
-import Migration "migration";
+
 
 // Run migration from persistence (after download and before execution)
-(with migration = Migration.run)
+
 actor {
   include MixinStorage();
 

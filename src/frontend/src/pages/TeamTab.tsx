@@ -95,6 +95,12 @@ export default function TeamTab() {
   const { data: channels = [] } = useListChannels();
   const { data: userStatuses = [] } = useGetUserStatuses();
   const { data: allUsers = [] } = useGetAllUsers();
+
+  // Resolve caller's current status from polling data
+  const callerStatusEntry = userStatuses.find(
+    (s) => s.principal.toString() === callerPrincipal,
+  );
+  const callerStatus = callerStatusEntry?.status;
   const createChannel = useCreateChannel();
 
   const [selectedChannelId, setSelectedChannelId] = useState<bigint | null>(
@@ -293,7 +299,7 @@ export default function TeamTab() {
             >
               <UserPlus className="h-4 w-4" />
             </Button>
-            <StatusSelector />
+            <StatusSelector currentStatus={callerStatus} />
             <CallerAvatarButton onClick={() => setShowProfileEditor(true)} />
           </div>
         </div>

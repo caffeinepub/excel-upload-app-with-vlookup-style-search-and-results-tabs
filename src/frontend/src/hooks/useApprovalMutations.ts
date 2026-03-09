@@ -1,6 +1,6 @@
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApprovalStatus } from "../backend";
+import { ApprovalStatus, UserRole } from "../backend";
 import { parsePrincipal } from "../utils/principal/parsePrincipal";
 import { useActor } from "./useActor";
 import { useInternetIdentity } from "./useInternetIdentity";
@@ -110,6 +110,34 @@ export function useDeleteUser() {
     },
     onError: (error) => {
       console.error("Failed to delete user:", error);
+    },
+  });
+}
+
+/**
+ * Mutation to grant admin role to another user (admin only).
+ * Uses assignCallerUserRole to promote a user to #admin.
+ */
+export function useGrantAdminRole() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (principal: Principal) => {
+      if (!actor) throw new Error("Actor not available");
+      const parseResult = parsePrincipal(principal);
+      if (!parseResult.success) {
+        throw new Error(`Invalid Principal ID. ${parseResult.error}`);
+      }
+      // assignCallerUserRole(user, #admin) — caller must be admin
+      await actor.assignCallerUserRole(parseResult.principal, UserRole.admin);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["allUsersForAdmin"] });
+      queryClient.invalidateQueries({ queryKey: ["approvals"] });
+    },
+    onError: (error) => {
+      console.error("Failed to grant admin role:", error);
     },
   });
 }
