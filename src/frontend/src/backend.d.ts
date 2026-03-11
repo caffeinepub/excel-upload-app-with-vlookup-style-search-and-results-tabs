@@ -269,6 +269,7 @@ export interface backendInterface {
     getDepartment(departmentId: bigint): Promise<Department | null>;
     getDirectMessages(otherPrincipal: Principal): Promise<Array<DirectMessage>>;
     getEmployeeAttendanceRecords(employee: Principal): Promise<Array<[string, AttendanceRecord]>>;
+    getEmployeeAttendanceDayEntries(employee: Principal): Promise<Array<[string, AttendanceDayEntry]>>;
     getExpenses(): Promise<Array<ExpenseEntry>>;
     getFile(id: bigint): Promise<FileData | null>;
     getGlobalHolidays(): Promise<Array<HolidayEntry>>;

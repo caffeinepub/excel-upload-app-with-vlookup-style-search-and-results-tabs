@@ -27,6 +27,7 @@ export const TAB_ANIMATION_MAP: Record<TabId, AnimationType> = {
   adminUsers: "celebrate",
   observeUsers: "thinking",
   departments: "idle",
+  userProfile: "idle",
 };
 
 export function getAnimationForTab(tabId: string): AnimationType {

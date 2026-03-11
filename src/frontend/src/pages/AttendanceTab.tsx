@@ -14,6 +14,7 @@ import {
   useEditAttendanceEntry,
   useGetAttendanceEntries,
   useGetAttendanceEntry,
+  useHasCustomDatePermission,
 } from "../hooks/useAttendance";
 import { useGetHolidays } from "../hooks/useHolidays";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -22,6 +23,7 @@ import { useGetCallerUserProfile } from "../hooks/useUserProfile";
 export default function AttendanceTab() {
   const { identity } = useInternetIdentity();
   const { isAdmin } = useApproval();
+  const { data: hasCustomDatePerm = false } = useHasCustomDatePermission();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -135,9 +137,10 @@ export default function AttendanceTab() {
                   isSaving={editEntry.isPending}
                   canEditSelectedDate={
                     isAdmin ||
+                    hasCustomDatePerm ||
                     selectedDate === new Date().toISOString().slice(0, 10)
                   }
-                  permissionMessage="You do not have permission to edit this date. Only admins can edit past or future entries."
+                  permissionMessage="You do not have permission to edit this date. Ask an admin to grant you Date Access permission."
                 />
               </div>
             )}

@@ -9,9 +9,21 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Bell, Loader2, Plus, RefreshCw, Repeat, Trash2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Bell,
+  Loader2,
+  Plus,
+  RefreshCw,
+  Repeat,
+  Shield,
+  Trash2,
+  Users,
+} from "lucide-react";
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
+import { useIsCallerAdmin } from "../hooks/useApproval";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateReminder,
@@ -25,7 +37,30 @@ export default function RemindersTab() {
   const isAuthenticated = !!identity;
   const isReady = !!actor && !actorLoading;
 
+  const { data: isAdmin = false } = useIsCallerAdmin();
   const { data: reminders, isLoading, error, refetch } = useGetReminders();
+  const [showRemindAdmin, setShowRemindAdmin] = useState(false);
+  const [showRemindAll, setShowRemindAll] = useState(false);
+  const [broadcastMsg, setBroadcastMsg] = useState("");
+  const [isSendingBroadcast, setIsSendingBroadcast] = useState(false);
+
+  const handleSendBroadcast = async (toAdmin: boolean) => {
+    if (!broadcastMsg.trim() || !actor) return;
+    setIsSendingBroadcast(true);
+    try {
+      await actor.createBroadcast(broadcastMsg.trim());
+      setBroadcastMsg("");
+      if (toAdmin) setShowRemindAdmin(false);
+      else setShowRemindAll(false);
+      toast.success(
+        toAdmin ? "Admin reminder sent!" : "Reminder sent to all users!",
+      );
+    } catch {
+      toast.error("Failed to send reminder.");
+    } finally {
+      setIsSendingBroadcast(false);
+    }
+  };
   const createMutation = useCreateReminder();
   const deleteMutation = useDeleteReminder();
 
@@ -117,6 +152,36 @@ export default function RemindersTab() {
           >
             <RefreshCw className="w-4 h-4" />
           </Button>
+          {isAdmin && (
+            <>
+              <Button
+                variant="outline"
+                className="gap-2 border-amber-300 text-amber-700 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-400 dark:hover:bg-amber-950"
+                onClick={() => {
+                  setBroadcastMsg("");
+                  setShowRemindAdmin(true);
+                }}
+                disabled={!isReady}
+                data-ocid="reminders.secondary_button"
+              >
+                <Shield className="w-4 h-4" />
+                Remind Admin
+              </Button>
+              <Button
+                variant="outline"
+                className="gap-2 border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-950"
+                onClick={() => {
+                  setBroadcastMsg("");
+                  setShowRemindAll(true);
+                }}
+                disabled={!isReady}
+                data-ocid="reminders.primary_button"
+              >
+                <Users className="w-4 h-4" />
+                Remind All
+              </Button>
+            </>
+          )}
           <Button
             onClick={() => setShowAdd(true)}
             disabled={!isReady}
@@ -301,6 +366,92 @@ export default function RemindersTab() {
                 <Loader2 className="w-4 h-4 animate-spin" />
               )}
               Add Reminder
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showRemindAdmin} onOpenChange={setShowRemindAdmin}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Shield className="h-4 w-4 text-amber-500" />
+              Send Reminder to Admin
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">
+              This will notify the admin team via broadcast.
+            </p>
+            <Textarea
+              placeholder="Enter your reminder message..."
+              value={broadcastMsg}
+              onChange={(e) => setBroadcastMsg(e.target.value)}
+              rows={3}
+              data-ocid="reminders.textarea"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRemindAdmin(false)}
+              data-ocid="reminders.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSendBroadcast(true)}
+              disabled={!broadcastMsg.trim() || isSendingBroadcast}
+              className="gap-2 bg-amber-600 hover:bg-amber-700"
+              data-ocid="reminders.submit_button"
+            >
+              {isSendingBroadcast ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
+              Send to Admin
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={showRemindAll} onOpenChange={setShowRemindAll}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-4 w-4 text-blue-500" />
+              Send Reminder to All Users
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Textarea
+              placeholder="Enter your reminder message for all users..."
+              value={broadcastMsg}
+              onChange={(e) => setBroadcastMsg(e.target.value)}
+              rows={3}
+              data-ocid="reminders.textarea"
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShowRemindAll(false)}
+              data-ocid="reminders.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => void handleSendBroadcast(false)}
+              disabled={!broadcastMsg.trim() || isSendingBroadcast}
+              className="gap-2"
+              data-ocid="reminders.submit_button"
+            >
+              {isSendingBroadcast ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Bell className="h-4 w-4" />
+              )}
+              Send to All
             </Button>
           </DialogFooter>
         </DialogContent>

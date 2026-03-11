@@ -1147,6 +1147,16 @@ actor {
     };
   };
 
+  public query ({ caller }) func getEmployeeAttendanceDayEntries(employee : Principal) : async [(Text, AttendanceDayEntry)] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view other employees' attendance entries");
+    };
+    switch (attendanceEntries.get(employee)) {
+      case (null) { [] };
+      case (?userEntries) { userEntries.entries().toArray() };
+    };
+  };
+
   // === Holiday Management ===
 
   public shared ({ caller }) func addGlobalHoliday(date : Text, holidayType : HolidayType) : async () {

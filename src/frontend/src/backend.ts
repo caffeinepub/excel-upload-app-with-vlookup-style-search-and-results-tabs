@@ -369,6 +369,7 @@ export interface backendInterface {
     getDepartment(departmentId: bigint): Promise<Department | null>;
     getDirectMessages(otherPrincipal: Principal): Promise<Array<DirectMessage>>;
     getEmployeeAttendanceRecords(employee: Principal): Promise<Array<[string, AttendanceRecord]>>;
+    getEmployeeAttendanceDayEntries(employee: Principal): Promise<Array<[string, AttendanceDayEntry]>>;
     getExpenses(): Promise<Array<ExpenseEntry>>;
     getFile(id: bigint): Promise<FileData | null>;
     getGlobalHolidays(): Promise<Array<HolidayEntry>>;
@@ -1179,6 +1180,20 @@ export class Backend implements backendInterface {
         } else {
             const result = await this.actor.getEmployeeAttendanceRecords(arg0);
             return from_candid_vec_n31(this._uploadFile, this._downloadFile, result);
+        }
+    }
+    async getEmployeeAttendanceDayEntries(arg0: Principal): Promise<Array<[string, AttendanceDayEntry]>> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.getEmployeeAttendanceDayEntries(arg0);
+                return from_candid_vec_n24(this._uploadFile, this._downloadFile, result);
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.getEmployeeAttendanceDayEntries(arg0);
+            return from_candid_vec_n24(this._uploadFile, this._downloadFile, result);
         }
     }
     async getExpenses(): Promise<Array<ExpenseEntry>> {

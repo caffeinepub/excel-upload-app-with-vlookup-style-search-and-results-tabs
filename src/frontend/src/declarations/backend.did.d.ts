@@ -292,6 +292,7 @@ export interface _SERVICE {
     [Principal],
     Array<[string, AttendanceRecord]>
   >,
+  'getEmployeeAttendanceDayEntries' : ActorMethod<[Principal], Array<[string, AttendanceDayEntry]>>,
   'getExpenses' : ActorMethod<[], Array<ExpenseEntry>>,
   'getFile' : ActorMethod<[bigint], [] | [FileData]>,
   'getGlobalHolidays' : ActorMethod<[], Array<HolidayEntry>>,

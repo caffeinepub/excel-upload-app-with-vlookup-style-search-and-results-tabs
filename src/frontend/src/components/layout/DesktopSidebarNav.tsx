@@ -19,6 +19,7 @@ import {
   StickyNote,
   Table2,
   Upload,
+  UserCircle,
   UserCog,
   Users,
   Wallet,
@@ -72,6 +73,7 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
   adminUsers: <UserCog className="h-4 w-4" />,
   observeUsers: <Eye className="h-4 w-4" />,
   departments: <Building2 className="h-4 w-4" />,
+  userProfile: <UserCircle className="h-4 w-4" />,
 };
 
 function NavButton({

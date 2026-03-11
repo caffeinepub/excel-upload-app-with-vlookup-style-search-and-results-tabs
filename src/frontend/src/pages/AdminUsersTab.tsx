@@ -9,6 +9,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -37,6 +43,7 @@ import {
   Download,
   FileText,
   Loader2,
+  MoreHorizontal,
   RefreshCw,
   Trash2,
   Users,
@@ -338,57 +345,16 @@ function AdminEmployeeAttendancePanel() {
     setError(null);
     setAttendanceData([]);
     try {
-      const { parsePrincipal } = await import(
-        "../utils/principal/parsePrincipal"
-      );
-      const parsed = parsePrincipal(principalStr);
-      if (!parsed.success) {
-        setError("Invalid principal ID");
-        return;
-      }
-      // Use getEmployeeAttendanceRecords to get the attendance records
-      const records = await actor.getEmployeeAttendanceRecords(
-        parsed.principal,
-      );
-
-      // Convert AttendanceRecord to AttendanceDayEntry display format
-      const entries: Array<[string, AttendanceDayEntry]> = records.map(
-        ([date, record]) => {
-          const lastShift =
-            record.shifts.length > 0
-              ? record.shifts[record.shifts.length - 1]
-              : null;
-
-          // Calculate working time from shifts
-          let totalWorkingNs = BigInt(0);
-          for (const shift of record.shifts) {
-            if (shift.clockIn && shift.clockOut) {
-              const diff = shift.clockOut - shift.clockIn;
-              if (diff > BigInt(0)) totalWorkingNs += diff;
-            }
-          }
-          const workingSeconds = totalWorkingNs / BigInt(1_000_000_000);
-
-          const entry: AttendanceDayEntry = {
-            status: AttendanceStatus.present,
-            checkIn: lastShift?.clockIn,
-            checkOut: lastShift?.clockOut ?? undefined,
-            note: record.notes ?? "",
-            workingTime: workingSeconds,
-          };
-          return [date, entry];
-        },
-      );
-
-      // Sort descending by date
-      entries.sort(([a], [b]) => b.localeCompare(a));
-      setAttendanceData(entries);
-
-      if (entries.length === 0) {
+      const { Principal } = await import("@dfinity/principal");
+      const principal = Principal.fromText(principalStr);
+      const entries = await actor.getEmployeeAttendanceDayEntries(principal);
+      const sorted = [...entries].sort(([a], [b]) => b.localeCompare(a));
+      setAttendanceData(sorted);
+      if (sorted.length === 0) {
         setError("No attendance records found for this employee.");
       }
     } catch (e) {
-      setError(getUserFriendlyError(e));
+      setError(e instanceof Error ? e.message : "Failed to fetch attendance");
     } finally {
       setIsLoading(false);
     }
@@ -1081,26 +1047,34 @@ export function AdminUsersTab() {
                                   </Button>
                                 )}
 
-                                {/* Make Admin — shown only for approved non-admin users */}
+                                {/* Make Admin — hidden in 3-dot dropdown */}
                                 {isApproved && (
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-8 text-xs gap-1 border-purple-300 text-purple-700 hover:bg-purple-50 dark:border-purple-700 dark:text-purple-400 dark:hover:bg-purple-950"
-                                    onClick={() =>
-                                      void handleGrantAdminRole(user.principal)
-                                    }
-                                    disabled={isProcessing}
-                                    title="Promote this user to Administrator"
-                                    data-ocid={`admin.users.secondary_button.${idx + 1}`}
-                                  >
-                                    {isProcessing ? (
-                                      <Loader2 className="h-3 w-3 animate-spin" />
-                                    ) : (
-                                      <Crown className="h-3 w-3" />
-                                    )}
-                                    Make Admin
-                                  </Button>
+                                  <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="h-8 w-8 p-0"
+                                        disabled={isProcessing}
+                                        data-ocid={`admin.users.dropdown_menu.${idx + 1}`}
+                                      >
+                                        <MoreHorizontal className="h-3.5 w-3.5" />
+                                      </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                      <DropdownMenuItem
+                                        className="text-purple-700 dark:text-purple-400 gap-2 cursor-pointer"
+                                        onClick={() =>
+                                          void handleGrantAdminRole(
+                                            user.principal,
+                                          )
+                                        }
+                                      >
+                                        <Crown className="h-3.5 w-3.5" />
+                                        Make Admin
+                                      </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                  </DropdownMenu>
                                 )}
 
                                 {/* Grant / Revoke Date Access — toggle based on current permission state */}

@@ -29,6 +29,7 @@ import TeamTab from "./pages/TeamTab";
 import { TodoTab } from "./pages/TodoTab";
 import { UpdateCheckingTab } from "./pages/UpdateCheckingTab";
 import { UploadTab } from "./pages/UploadTab";
+import UserProfileTab from "./pages/UserProfileTab";
 import { AppStateProvider, useAppState } from "./state/appState";
 
 import {
@@ -46,6 +47,7 @@ import {
   StickyNote,
   Table2,
   Upload,
+  UserCircle,
   UserCog,
   Users,
   Wallet,
@@ -74,7 +76,8 @@ export type TabId =
   | "adminUsers"
   | "observeUsers"
   | "team"
-  | "departments";
+  | "departments"
+  | "userProfile";
 
 export interface TabDef {
   id: TabId;
@@ -129,6 +132,11 @@ export const ALL_TABS: TabDef[] = [
     label: "Observe Users",
     icon: <Eye className="h-4 w-4" />,
     adminOnly: true,
+  },
+  {
+    id: "userProfile",
+    label: "My Profile",
+    icon: <UserCircle className="h-4 w-4" />,
   },
   {
     id: "departments",
@@ -223,6 +231,8 @@ function AppContent() {
         return <ObserveUsersTab />;
       case "departments":
         return <DepartmentsAdminTab />;
+      case "userProfile":
+        return <UserProfileTab />;
       default:
         return <DeskboardTab />;
     }
