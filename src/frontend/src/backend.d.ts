@@ -7,20 +7,22 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
+export interface UserProfile {
+    displayName: string;
+    profilePicture?: Uint8Array;
+    departmentId?: bigint;
+}
 export interface Budget {
     monthlyLimit: bigint;
     lastUpdated: string;
     dayLimit: bigint;
     savingsGoal: bigint;
 }
-export interface UserProfile {
-    displayName: string;
-    profilePicture?: Uint8Array;
-    departmentId?: bigint;
-}
-export interface BreakPeriod {
-    end: Time;
-    start: Time;
+export interface BroadcastMessage {
+    id: bigint;
+    createdAt: Time;
+    createdBy: Principal;
+    text: string;
 }
 export type Time = bigint;
 export interface HistoryEntry {
@@ -30,10 +32,9 @@ export interface HistoryEntry {
     timestamp: Time;
     details: string;
 }
-export interface AttendanceConfig {
-    leavePolicy: bigint;
-    weeklyOffDays: Array<bigint>;
-    regularWorkingTime: bigint;
+export interface BreakPeriod {
+    end: Time;
+    start: Time;
 }
 export interface FileData {
     id: bigint;
@@ -45,6 +46,19 @@ export interface FileData {
 export interface Shift {
     clockOut?: Time;
     clockIn: Time;
+}
+export interface AttendanceConfig {
+    leavePolicy: bigint;
+    weeklyOffDays: Array<bigint>;
+    regularWorkingTime: bigint;
+}
+export interface SharedReport {
+    id: bigint;
+    recipientIds: Array<Principal>;
+    reportData: string;
+    timestamp: Time;
+    reportTitle: string;
+    senderId: Principal;
 }
 export interface UserStatusEntry {
     status: UserStatusKind;
@@ -80,6 +94,11 @@ export interface AttendanceRecord {
     employeePrincipal: Principal;
     notes?: string;
 }
+export interface Note {
+    id: bigint;
+    text: string;
+    lastUpdated: Time;
+}
 export interface DirectMessage {
     id: bigint;
     createdAt: Time;
@@ -88,11 +107,6 @@ export interface DirectMessage {
     toPrincipal: Principal;
     fromPrincipal: Principal;
     fileUrl?: string;
-}
-export interface Note {
-    id: bigint;
-    text: string;
-    lastUpdated: Time;
 }
 export interface ChannelMessage {
     id: bigint;
@@ -173,11 +187,14 @@ export interface Holiday {
     description: string;
     applicableDepartments: Array<bigint>;
 }
-export interface BroadcastMessage {
-    id: bigint;
-    createdAt: Time;
-    createdBy: Principal;
-    text: string;
+export interface UserProfileFull {
+    bio: string;
+    departments: Array<string>;
+    displayName: string;
+    email: string;
+    jobTitle: string;
+    avatarUrl: string;
+    phone: string;
 }
 export interface HolidayEntry {
     holidayType: HolidayType;
@@ -268,8 +285,8 @@ export interface backendInterface {
     getCustomers(): Promise<Array<Customer>>;
     getDepartment(departmentId: bigint): Promise<Department | null>;
     getDirectMessages(otherPrincipal: Principal): Promise<Array<DirectMessage>>;
-    getEmployeeAttendanceRecords(employee: Principal): Promise<Array<[string, AttendanceRecord]>>;
     getEmployeeAttendanceDayEntries(employee: Principal): Promise<Array<[string, AttendanceDayEntry]>>;
+    getEmployeeAttendanceRecords(employee: Principal): Promise<Array<[string, AttendanceRecord]>>;
     getExpenses(): Promise<Array<ExpenseEntry>>;
     getFile(id: bigint): Promise<FileData | null>;
     getGlobalHolidays(): Promise<Array<HolidayEntry>>;
@@ -278,14 +295,17 @@ export interface backendInterface {
     getNotes(): Promise<Array<Note>>;
     getReminders(): Promise<Array<Reminder>>;
     getRemindersForDate(dateMs: bigint): Promise<Array<Reminder>>;
+    getSharedReports(): Promise<Array<SharedReport>>;
     getTodos(): Promise<Array<TodoItem>>;
     getUserProfile(user: Principal): Promise<UserProfile | null>;
     getUserStatuses(): Promise<Array<UserStatusEntry>>;
+    getUsersInDepartment(departmentId: string): Promise<Array<UserProfileFull>>;
     grantCustomDatePermission(user: Principal): Promise<void>;
     hasCustomDatePermission(): Promise<boolean>;
     isAdminInitialized(): Promise<boolean>;
     isCallerAdmin(): Promise<boolean>;
     isCallerApproved(): Promise<boolean>;
+    isHolidayDate(dateStr: string): Promise<boolean>;
     listApprovals(): Promise<Array<UserApprovalInfo>>;
     listChannels(): Promise<Array<Channel>>;
     listDepartments(): Promise<Array<Department>>;
@@ -302,10 +322,12 @@ export interface backendInterface {
     sendDirectMessage(toPrincipal: Principal, text: string, fileUrl: string | null, fileName: string | null): Promise<bigint>;
     setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
     setUserStatus(status: UserStatusKind): Promise<void>;
+    shareExpenseReport(recipientIds: Array<Principal>, reportTitle: string, reportData: string): Promise<void>;
     toggleTodo(id: bigint): Promise<void>;
     updateCustomer(id: bigint, name: string, email: string, phoneNumber: string, address: string, company: string, workDetails: string): Promise<void>;
     updateDepartment(id: bigint, newName: string): Promise<void>;
     updateHoliday(id: bigint, name: string, date: bigint, holidayType: string, applicableDepartments: Array<bigint>, description: string): Promise<void>;
     updateReminder(id: bigint, message: string, date: string, time: string, repeatUntilDate: bigint | null): Promise<void>;
+    updateUserProfileFull(displayName: string, phone: string, email: string, jobTitle: string, bio: string, avatarUrl: string, departments: Array<string>): Promise<void>;
     uploadFile(filename: string, content: Uint8Array): Promise<bigint>;
 }

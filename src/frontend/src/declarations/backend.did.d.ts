@@ -169,6 +169,14 @@ export interface Reminder {
   'updatedAt' : [] | [Time],
   'message' : string,
 }
+export interface SharedReport {
+  'id' : bigint,
+  'recipientIds' : Array<Principal>,
+  'reportData' : string,
+  'timestamp' : Time,
+  'reportTitle' : string,
+  'senderId' : Principal,
+}
 export interface Shift { 'clockOut' : [] | [Time], 'clockIn' : Time }
 export type Time = bigint;
 export interface TodoItem {
@@ -185,6 +193,15 @@ export interface UserProfile {
   'displayName' : string,
   'profilePicture' : [] | [Uint8Array],
   'departmentId' : [] | [bigint],
+}
+export interface UserProfileFull {
+  'bio' : string,
+  'departments' : Array<string>,
+  'displayName' : string,
+  'email' : string,
+  'jobTitle' : string,
+  'avatarUrl' : string,
+  'phone' : string,
 }
 export type UserRole = { 'admin' : null } |
   { 'user' : null } |
@@ -288,11 +305,14 @@ export interface _SERVICE {
   'getCustomers' : ActorMethod<[], Array<Customer>>,
   'getDepartment' : ActorMethod<[bigint], [] | [Department]>,
   'getDirectMessages' : ActorMethod<[Principal], Array<DirectMessage>>,
+  'getEmployeeAttendanceDayEntries' : ActorMethod<
+    [Principal],
+    Array<[string, AttendanceDayEntry]>
+  >,
   'getEmployeeAttendanceRecords' : ActorMethod<
     [Principal],
     Array<[string, AttendanceRecord]>
   >,
-  'getEmployeeAttendanceDayEntries' : ActorMethod<[Principal], Array<[string, AttendanceDayEntry]>>,
   'getExpenses' : ActorMethod<[], Array<ExpenseEntry>>,
   'getFile' : ActorMethod<[bigint], [] | [FileData]>,
   'getGlobalHolidays' : ActorMethod<[], Array<HolidayEntry>>,
@@ -301,14 +321,17 @@ export interface _SERVICE {
   'getNotes' : ActorMethod<[], Array<Note>>,
   'getReminders' : ActorMethod<[], Array<Reminder>>,
   'getRemindersForDate' : ActorMethod<[bigint], Array<Reminder>>,
+  'getSharedReports' : ActorMethod<[], Array<SharedReport>>,
   'getTodos' : ActorMethod<[], Array<TodoItem>>,
   'getUserProfile' : ActorMethod<[Principal], [] | [UserProfile]>,
   'getUserStatuses' : ActorMethod<[], Array<UserStatusEntry>>,
+  'getUsersInDepartment' : ActorMethod<[string], Array<UserProfileFull>>,
   'grantCustomDatePermission' : ActorMethod<[Principal], undefined>,
   'hasCustomDatePermission' : ActorMethod<[], boolean>,
   'isAdminInitialized' : ActorMethod<[], boolean>,
   'isCallerAdmin' : ActorMethod<[], boolean>,
   'isCallerApproved' : ActorMethod<[], boolean>,
+  'isHolidayDate' : ActorMethod<[string], boolean>,
   'listApprovals' : ActorMethod<[], Array<UserApprovalInfo>>,
   'listChannels' : ActorMethod<[], Array<Channel>>,
   'listDepartments' : ActorMethod<[], Array<Department>>,
@@ -331,6 +354,10 @@ export interface _SERVICE {
   >,
   'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
   'setUserStatus' : ActorMethod<[UserStatusKind], undefined>,
+  'shareExpenseReport' : ActorMethod<
+    [Array<Principal>, string, string],
+    undefined
+  >,
   'toggleTodo' : ActorMethod<[bigint], undefined>,
   'updateCustomer' : ActorMethod<
     [bigint, string, string, string, string, string, string],
@@ -343,6 +370,10 @@ export interface _SERVICE {
   >,
   'updateReminder' : ActorMethod<
     [bigint, string, string, string, [] | [bigint]],
+    undefined
+  >,
+  'updateUserProfileFull' : ActorMethod<
+    [string, string, string, string, string, string, Array<string>],
     undefined
   >,
   'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,

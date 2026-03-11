@@ -1,5 +1,13 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Calendar, Clock, FileText, History, Palmtree } from "lucide-react";
+import {
+  AlertTriangle,
+  Calendar,
+  Clock,
+  FileText,
+  History,
+  Palmtree,
+} from "lucide-react";
 import React, { useState } from "react";
 import { toast } from "sonner";
 import type { AttendanceDayEntry } from "../backend";
@@ -9,6 +17,7 @@ import { AttendanceMonthCalendar } from "../components/attendance/AttendanceMont
 import { HolidayManager } from "../components/attendance/HolidayManager";
 import LeaveCardTab from "../components/attendance/LeaveCardTab";
 import TodayAttendanceView from "../components/attendance/TodayAttendanceView";
+import { useActor } from "../hooks/useActor";
 import { useApproval } from "../hooks/useApproval";
 import {
   useEditAttendanceEntry,
@@ -24,8 +33,10 @@ export default function AttendanceTab() {
   const { identity } = useInternetIdentity();
   const { isAdmin } = useApproval();
   const { data: hasCustomDatePerm = false } = useHasCustomDatePermission();
+  const { actor } = useActor();
 
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
+  const [holidayBlockDate, setHolidayBlockDate] = useState<string | null>(null);
 
   const today = new Date();
   const [calendarYear, setCalendarYear] = useState(today.getFullYear());
@@ -33,7 +44,6 @@ export default function AttendanceTab() {
 
   const userPrincipal = identity?.getPrincipal().toString() ?? "";
 
-  // Fetch holidays, attendance entries, and user profile
   const { data: holidays = [] } = useGetHolidays();
   const { data: attendanceEntriesRaw = [] } = useGetAttendanceEntries();
   const { data: userProfile } = useGetCallerUserProfile();
@@ -42,7 +52,6 @@ export default function AttendanceTab() {
   );
   const editEntry = useEditAttendanceEntry();
 
-  // Build attendance entries map for calendar
   const attendanceEntriesMap = new Map<string, AttendanceDayEntry>(
     attendanceEntriesRaw.map(([date, entry]) => [date, entry]),
   );
@@ -52,6 +61,34 @@ export default function AttendanceTab() {
   const handleMonthChange = (year: number, month: number) => {
     setCalendarYear(year);
     setCalendarMonth(month);
+  };
+
+  // Check if a date is a holiday
+  const checkIsHoliday = async (dateStr: string): Promise<boolean> => {
+    if (!actor) return false;
+    try {
+      return await actor.isHolidayDate(dateStr);
+    } catch {
+      // Fallback: check local holidays list
+      return holidays.some((h) => {
+        const hDate = new Date(Number(h.date)).toISOString().slice(0, 10);
+        return hDate === dateStr;
+      });
+    }
+  };
+
+  const handleDateSelect = async (date: string) => {
+    // Non-admin users: check if date is a holiday
+    if (!isAdmin) {
+      const isHoliday = await checkIsHoliday(date);
+      if (isHoliday) {
+        setHolidayBlockDate(date);
+        setSelectedDate(null);
+        return;
+      }
+    }
+    setHolidayBlockDate(null);
+    setSelectedDate(date);
   };
 
   const handleSaveAttendanceEntry = async (entry: AttendanceDayEntry) => {
@@ -68,96 +105,129 @@ export default function AttendanceTab() {
     }
   };
 
+  // Determine if user can edit selected date
+  const canEditSelectedDate = isAdmin || hasCustomDatePerm;
+
   return (
     <div className="space-y-4">
       <div>
         <h2 className="text-xl font-bold">Attendance</h2>
         <p className="text-sm text-muted-foreground">
-          Track your work hours, shifts, and breaks.
+          Track your daily attendance and work hours
         </p>
       </div>
 
+      {holidayBlockDate && (
+        <Alert variant="destructive" data-ocid="attendance.holiday-block">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>{holidayBlockDate}</strong> is a holiday — attendance
+            editing is not allowed on this date.
+          </AlertDescription>
+        </Alert>
+      )}
+
       <Tabs defaultValue="today">
-        <TabsList className="flex-wrap h-auto gap-1">
-          <TabsTrigger value="today" className="gap-1.5 text-xs">
-            <Clock className="h-3.5 w-3.5" />
+        <TabsList className="flex flex-wrap gap-1 h-auto">
+          <TabsTrigger
+            value="today"
+            className="gap-1"
+            data-ocid="attendance.today.tab"
+          >
+            <Clock className="h-3 w-3" />
             Today
           </TabsTrigger>
-          <TabsTrigger value="history" className="gap-1.5 text-xs">
-            <History className="h-3.5 w-3.5" />
-            History
-          </TabsTrigger>
-          <TabsTrigger value="calendar" className="gap-1.5 text-xs">
-            <Calendar className="h-3.5 w-3.5" />
+          <TabsTrigger
+            value="calendar"
+            className="gap-1"
+            data-ocid="attendance.calendar.tab"
+          >
+            <Calendar className="h-3 w-3" />
             Calendar
           </TabsTrigger>
-          <TabsTrigger value="holidays" className="gap-1.5 text-xs">
-            <Palmtree className="h-3.5 w-3.5" />
-            Holidays
+          <TabsTrigger
+            value="history"
+            className="gap-1"
+            data-ocid="attendance.history.tab"
+          >
+            <History className="h-3 w-3" />
+            History
           </TabsTrigger>
-          <TabsTrigger value="leavecard" className="gap-1.5 text-xs">
-            <FileText className="h-3.5 w-3.5" />
+          <TabsTrigger
+            value="leave"
+            className="gap-1"
+            data-ocid="attendance.leave.tab"
+          >
+            <FileText className="h-3 w-3" />
             Leave Card
           </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger
+              value="holidays"
+              className="gap-1"
+              data-ocid="attendance.holidays.tab"
+            >
+              <Palmtree className="h-3 w-3" />
+              Holidays
+            </TabsTrigger>
+          )}
         </TabsList>
 
+        {/* Today */}
         <TabsContent value="today" className="mt-4">
           <TodayAttendanceView userPrincipal={userPrincipal} />
         </TabsContent>
 
+        {/* Calendar */}
+        <TabsContent value="calendar" className="mt-4">
+          <AttendanceMonthCalendar
+            year={calendarYear}
+            month={calendarMonth}
+            attendanceEntries={attendanceEntriesMap}
+            holidays={holidays}
+            onMonthChange={handleMonthChange}
+            onDateSelect={handleDateSelect}
+            selectedDate={selectedDate}
+            userDepartmentId={userDepartmentId}
+          />
+          {selectedDate && (
+            <div className="mt-4">
+              <AttendanceDateEditor
+                date={selectedDate}
+                entry={selectedDateEntry}
+                onSave={handleSaveAttendanceEntry}
+                isSaving={editEntry.isPending}
+                canEditSelectedDate={canEditSelectedDate}
+                permissionMessage={
+                  !canEditSelectedDate
+                    ? "You don't have permission to edit this date."
+                    : undefined
+                }
+              />
+            </div>
+          )}
+        </TabsContent>
+
+        {/* History */}
         <TabsContent value="history" className="mt-4">
           <AttendanceHistoryView />
         </TabsContent>
 
-        <TabsContent value="calendar" className="mt-4">
-          <div className="space-y-4">
-            <AttendanceMonthCalendar
-              year={calendarYear}
-              month={calendarMonth}
-              onMonthChange={handleMonthChange}
-              onDateSelect={setSelectedDate}
-              selectedDate={selectedDate}
-              attendanceEntries={attendanceEntriesMap}
-              holidays={holidays}
-              userDepartmentId={userDepartmentId}
-            />
-            {selectedDate && (
-              <div className="relative">
-                <button
-                  type="button"
-                  className="absolute top-2 right-2 text-muted-foreground hover:text-foreground z-10 text-xs"
-                  onClick={() => setSelectedDate(null)}
-                >
-                  ✕ Close
-                </button>
-                <AttendanceDateEditor
-                  date={selectedDate}
-                  entry={selectedDateEntry}
-                  onSave={handleSaveAttendanceEntry}
-                  isSaving={editEntry.isPending}
-                  canEditSelectedDate={
-                    isAdmin ||
-                    hasCustomDatePerm ||
-                    selectedDate === new Date().toISOString().slice(0, 10)
-                  }
-                  permissionMessage="You do not have permission to edit this date. Ask an admin to grant you Date Access permission."
-                />
-              </div>
-            )}
-          </div>
-        </TabsContent>
-
-        <TabsContent value="holidays" className="mt-4">
-          <HolidayManager
-            holidays={holidays}
-            currentMonth={calendarMonth}
-            currentYear={calendarYear}
-          />
-        </TabsContent>
-
-        <TabsContent value="leavecard" className="mt-4">
+        {/* Leave Card */}
+        <TabsContent value="leave" className="mt-4">
           <LeaveCardTab />
         </TabsContent>
+
+        {/* Holidays (admin only) */}
+        {isAdmin && (
+          <TabsContent value="holidays" className="mt-4">
+            <HolidayManager
+              holidays={holidays}
+              currentMonth={calendarMonth}
+              currentYear={calendarYear}
+            />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );

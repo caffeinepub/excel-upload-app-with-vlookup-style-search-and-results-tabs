@@ -11,10 +11,9 @@ import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
+import Migration "migration";
 
-
-// Run migration from persistence (after download and before execution)
-
+(with migration = Migration.run)
 actor {
   include MixinStorage();
 
@@ -260,6 +259,26 @@ actor {
     status : UserApproval.ApprovalStatus;
   };
 
+  // -- New Module Types --
+  public type SharedReport = {
+    id : Nat;
+    senderId : Principal;
+    recipientIds : [Principal];
+    reportTitle : Text;
+    reportData : Text;
+    timestamp : Time.Time;
+  };
+
+  public type UserProfileFull = {
+    displayName : Text;
+    phone : Text;
+    email : Text;
+    jobTitle : Text;
+    bio : Text;
+    avatarUrl : Text;
+    departments : [Text];
+  };
+
   // ── State ─────────────────────────────────────────────────────────────────
 
   var nextCustomerId = 0;
@@ -320,6 +339,13 @@ actor {
   // New state for holidays
   let holidays = Map.empty<Nat, Holiday>();
   var nextHolidayId = 0;
+
+  // New state for shared reports
+  var nextSharedReportId = 0;
+  let sharedReports = Map.empty<Nat, SharedReport>();
+
+  // New state for extended user profiles
+  let fullUserProfiles = Map.empty<Principal, UserProfileFull>();
 
   // Use Authorization & Approval mixins
   let accessControlState = AccessControl.initState();
@@ -1718,5 +1744,106 @@ actor {
     accessControlState.userRoles.remove(user);
     userProfiles.remove(user);
     customDatePermissions.remove(user);
+  };
+
+  // New Endpoints
+
+  public shared ({ caller }) func shareExpenseReport(recipientIds : [Principal], reportTitle : Text, reportData : Text) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can share expense reports");
+    };
+
+    if (recipientIds.size() == 0 or reportTitle.isEmpty() or reportData.isEmpty()) {
+      Runtime.trap("Invalid input for report sharing");
+    };
+
+    let report : SharedReport = {
+      id = nextSharedReportId;
+      senderId = caller;
+      recipientIds;
+      reportTitle;
+      reportData;
+      timestamp = Time.now();
+    };
+
+    sharedReports.add(nextSharedReportId, report);
+    nextSharedReportId += 1;
+  };
+
+  public query ({ caller }) func getSharedReports() : async [SharedReport] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view shared reports");
+    };
+
+    let allReports = sharedReports.values().toArray();
+    let filteredView = allReports.filter(
+      func(report) {
+        var found = false;
+        for (recipient in report.recipientIds.values()) {
+          if (recipient == caller) { found := true };
+        };
+        found or report.senderId == caller;
+      }
+    );
+    filteredView;
+  };
+
+  public query ({ caller }) func isHolidayDate(dateStr : Text) : async Bool {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can check holiday dates");
+    };
+
+    for ((_, entry) in globalHolidays.entries()) {
+      if (entry.date == dateStr) { return true };
+    };
+
+    for ((_, holiday) in holidays.entries()) {
+      if (holiday.date.toText() == dateStr) { return true };
+    };
+
+    false;
+  };
+
+  public shared ({ caller }) func updateUserProfileFull(
+    displayName : Text,
+    phone : Text,
+    email : Text,
+    jobTitle : Text,
+    bio : Text,
+    avatarUrl : Text,
+    departments : [Text],
+  ) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can update full profiles");
+    };
+
+    let profile : UserProfileFull = {
+      displayName;
+      phone;
+      email;
+      jobTitle;
+      bio;
+      avatarUrl;
+      departments;
+    };
+
+    fullUserProfiles.add(caller, profile);
+  };
+
+  public query ({ caller }) func getUsersInDepartment(departmentId : Text) : async [UserProfileFull] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view department users");
+    };
+
+    let allProfiles = fullUserProfiles.values().toArray();
+    let filtered = allProfiles.filter(
+      func(profile) {
+        for (dept in profile.departments.values()) {
+          if (dept == departmentId) { return true };
+        };
+        false;
+      }
+    );
+    filtered;
   };
 };

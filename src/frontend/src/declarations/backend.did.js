@@ -202,6 +202,14 @@ export const Reminder = IDL.Record({
   'updatedAt' : IDL.Opt(Time),
   'message' : IDL.Text,
 });
+export const SharedReport = IDL.Record({
+  'id' : IDL.Nat,
+  'recipientIds' : IDL.Vec(IDL.Principal),
+  'reportData' : IDL.Text,
+  'timestamp' : Time,
+  'reportTitle' : IDL.Text,
+  'senderId' : IDL.Principal,
+});
 export const TodoItem = IDL.Record({
   'id' : IDL.Nat,
   'text' : IDL.Text,
@@ -218,6 +226,15 @@ export const UserStatusEntry = IDL.Record({
   'status' : UserStatusKind,
   'principal' : IDL.Principal,
   'updatedAt' : Time,
+});
+export const UserProfileFull = IDL.Record({
+  'bio' : IDL.Text,
+  'departments' : IDL.Vec(IDL.Text),
+  'displayName' : IDL.Text,
+  'email' : IDL.Text,
+  'jobTitle' : IDL.Text,
+  'avatarUrl' : IDL.Text,
+  'phone' : IDL.Text,
 });
 export const UserApprovalInfo = IDL.Record({
   'status' : ApprovalStatus,
@@ -349,12 +366,16 @@ export const idlService = IDL.Service({
       [IDL.Vec(DirectMessage)],
       ['query'],
     ),
+  'getEmployeeAttendanceDayEntries' : IDL.Func(
+      [IDL.Principal],
+      [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))],
+      ['query'],
+    ),
   'getEmployeeAttendanceRecords' : IDL.Func(
       [IDL.Principal],
       [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceRecord))],
       ['query'],
     ),
-  'getEmployeeAttendanceDayEntries' : IDL.Func([IDL.Principal], [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))], ['query']),
   'getExpenses' : IDL.Func([], [IDL.Vec(ExpenseEntry)], ['query']),
   'getFile' : IDL.Func([IDL.Nat], [IDL.Opt(FileData)], ['query']),
   'getGlobalHolidays' : IDL.Func([], [IDL.Vec(HolidayEntry)], ['query']),
@@ -363,6 +384,7 @@ export const idlService = IDL.Service({
   'getNotes' : IDL.Func([], [IDL.Vec(Note)], ['query']),
   'getReminders' : IDL.Func([], [IDL.Vec(Reminder)], ['query']),
   'getRemindersForDate' : IDL.Func([IDL.Int], [IDL.Vec(Reminder)], ['query']),
+  'getSharedReports' : IDL.Func([], [IDL.Vec(SharedReport)], ['query']),
   'getTodos' : IDL.Func([], [IDL.Vec(TodoItem)], ['query']),
   'getUserProfile' : IDL.Func(
       [IDL.Principal],
@@ -370,11 +392,17 @@ export const idlService = IDL.Service({
       ['query'],
     ),
   'getUserStatuses' : IDL.Func([], [IDL.Vec(UserStatusEntry)], ['query']),
+  'getUsersInDepartment' : IDL.Func(
+      [IDL.Text],
+      [IDL.Vec(UserProfileFull)],
+      ['query'],
+    ),
   'grantCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
   'hasCustomDatePermission' : IDL.Func([], [IDL.Bool], ['query']),
   'isAdminInitialized' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
   'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+  'isHolidayDate' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
   'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
   'listChannels' : IDL.Func([], [IDL.Vec(Channel)], ['query']),
   'listDepartments' : IDL.Func([], [IDL.Vec(Department)], ['query']),
@@ -399,6 +427,11 @@ export const idlService = IDL.Service({
     ),
   'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
   'setUserStatus' : IDL.Func([UserStatusKind], [], []),
+  'shareExpenseReport' : IDL.Func(
+      [IDL.Vec(IDL.Principal), IDL.Text, IDL.Text],
+      [],
+      [],
+    ),
   'toggleTodo' : IDL.Func([IDL.Nat], [], []),
   'updateCustomer' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
@@ -413,6 +446,19 @@ export const idlService = IDL.Service({
     ),
   'updateReminder' : IDL.Func(
       [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Int)],
+      [],
+      [],
+    ),
+  'updateUserProfileFull' : IDL.Func(
+      [
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Text,
+        IDL.Vec(IDL.Text),
+      ],
       [],
       [],
     ),
@@ -613,6 +659,14 @@ export const idlFactory = ({ IDL }) => {
     'updatedAt' : IDL.Opt(Time),
     'message' : IDL.Text,
   });
+  const SharedReport = IDL.Record({
+    'id' : IDL.Nat,
+    'recipientIds' : IDL.Vec(IDL.Principal),
+    'reportData' : IDL.Text,
+    'timestamp' : Time,
+    'reportTitle' : IDL.Text,
+    'senderId' : IDL.Principal,
+  });
   const TodoItem = IDL.Record({
     'id' : IDL.Nat,
     'text' : IDL.Text,
@@ -629,6 +683,15 @@ export const idlFactory = ({ IDL }) => {
     'status' : UserStatusKind,
     'principal' : IDL.Principal,
     'updatedAt' : Time,
+  });
+  const UserProfileFull = IDL.Record({
+    'bio' : IDL.Text,
+    'departments' : IDL.Vec(IDL.Text),
+    'displayName' : IDL.Text,
+    'email' : IDL.Text,
+    'jobTitle' : IDL.Text,
+    'avatarUrl' : IDL.Text,
+    'phone' : IDL.Text,
   });
   const UserApprovalInfo = IDL.Record({
     'status' : ApprovalStatus,
@@ -776,12 +839,16 @@ export const idlFactory = ({ IDL }) => {
         [IDL.Vec(DirectMessage)],
         ['query'],
       ),
+    'getEmployeeAttendanceDayEntries' : IDL.Func(
+        [IDL.Principal],
+        [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))],
+        ['query'],
+      ),
     'getEmployeeAttendanceRecords' : IDL.Func(
         [IDL.Principal],
         [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceRecord))],
         ['query'],
       ),
-    'getEmployeeAttendanceDayEntries' : IDL.Func([IDL.Principal], [IDL.Vec(IDL.Tuple(IDL.Text, AttendanceDayEntry))], ['query']),
     'getExpenses' : IDL.Func([], [IDL.Vec(ExpenseEntry)], ['query']),
     'getFile' : IDL.Func([IDL.Nat], [IDL.Opt(FileData)], ['query']),
     'getGlobalHolidays' : IDL.Func([], [IDL.Vec(HolidayEntry)], ['query']),
@@ -790,6 +857,7 @@ export const idlFactory = ({ IDL }) => {
     'getNotes' : IDL.Func([], [IDL.Vec(Note)], ['query']),
     'getReminders' : IDL.Func([], [IDL.Vec(Reminder)], ['query']),
     'getRemindersForDate' : IDL.Func([IDL.Int], [IDL.Vec(Reminder)], ['query']),
+    'getSharedReports' : IDL.Func([], [IDL.Vec(SharedReport)], ['query']),
     'getTodos' : IDL.Func([], [IDL.Vec(TodoItem)], ['query']),
     'getUserProfile' : IDL.Func(
         [IDL.Principal],
@@ -797,11 +865,17 @@ export const idlFactory = ({ IDL }) => {
         ['query'],
       ),
     'getUserStatuses' : IDL.Func([], [IDL.Vec(UserStatusEntry)], ['query']),
+    'getUsersInDepartment' : IDL.Func(
+        [IDL.Text],
+        [IDL.Vec(UserProfileFull)],
+        ['query'],
+      ),
     'grantCustomDatePermission' : IDL.Func([IDL.Principal], [], []),
     'hasCustomDatePermission' : IDL.Func([], [IDL.Bool], ['query']),
     'isAdminInitialized' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerAdmin' : IDL.Func([], [IDL.Bool], ['query']),
     'isCallerApproved' : IDL.Func([], [IDL.Bool], ['query']),
+    'isHolidayDate' : IDL.Func([IDL.Text], [IDL.Bool], ['query']),
     'listApprovals' : IDL.Func([], [IDL.Vec(UserApprovalInfo)], ['query']),
     'listChannels' : IDL.Func([], [IDL.Vec(Channel)], ['query']),
     'listDepartments' : IDL.Func([], [IDL.Vec(Department)], ['query']),
@@ -826,6 +900,11 @@ export const idlFactory = ({ IDL }) => {
       ),
     'setApproval' : IDL.Func([IDL.Principal, ApprovalStatus], [], []),
     'setUserStatus' : IDL.Func([UserStatusKind], [], []),
+    'shareExpenseReport' : IDL.Func(
+        [IDL.Vec(IDL.Principal), IDL.Text, IDL.Text],
+        [],
+        [],
+      ),
     'toggleTodo' : IDL.Func([IDL.Nat], [], []),
     'updateCustomer' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text],
@@ -840,6 +919,19 @@ export const idlFactory = ({ IDL }) => {
       ),
     'updateReminder' : IDL.Func(
         [IDL.Nat, IDL.Text, IDL.Text, IDL.Text, IDL.Opt(IDL.Int)],
+        [],
+        [],
+      ),
+    'updateUserProfileFull' : IDL.Func(
+        [
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Text,
+          IDL.Vec(IDL.Text),
+        ],
         [],
         [],
       ),

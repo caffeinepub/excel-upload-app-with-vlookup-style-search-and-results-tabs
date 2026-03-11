@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Budget, ExpenseEntry } from "../backend";
+import type { Budget, ExpenseEntry, SharedReport } from "../backend";
 import { HistoryType } from "../backend";
 import { parseNatBigInt } from "../utils/number/parseNatBigInt";
 import { useActor } from "./useActor";
@@ -260,5 +260,66 @@ export function useDeleteExpense() {
     onError: (error) => {
       console.error("Failed to delete expense:", error);
     },
+  });
+}
+
+/**
+ * Mutation to share an expense report with specific users
+ */
+export function useShareExpenseReport() {
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      recipientIds: string[];
+      reportTitle: string;
+      reportData: string;
+    }) => {
+      if (!identity) throw new Error("Please log in to share reports");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
+      const { Principal } = await import("@dfinity/principal");
+      const principals = params.recipientIds.map((id) =>
+        Principal.fromText(id),
+      );
+      await actor.shareExpenseReport(
+        principals,
+        params.reportTitle,
+        params.reportData,
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sharedReports"] });
+    },
+    onError: (error) => {
+      console.error("Failed to share expense report:", error);
+    },
+  });
+}
+
+/**
+ * Query to fetch expense reports shared with the current user
+ */
+export function useGetSharedReports() {
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+
+  return useQuery<SharedReport[]>({
+    queryKey: ["sharedReports"],
+    queryFn: async () => {
+      if (!actor) return [];
+      return actor.getSharedReports();
+    },
+    enabled: !!actor && !isFetching && !!identity,
+    retry: 1,
+    refetchInterval: 30000,
   });
 }

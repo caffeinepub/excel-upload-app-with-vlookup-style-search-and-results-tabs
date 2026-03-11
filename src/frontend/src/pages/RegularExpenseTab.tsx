@@ -1,4 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -33,25 +35,32 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertCircle,
   DollarSign,
   Download,
   Edit,
+  Eye,
   Loader2,
   Plus,
+  Share2,
   Trash2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
+import { useObserveUsers } from "../hooks/useObserveUsers";
 import {
   useAddExpense,
   useDeleteExpense,
   useEditExpense,
   useGetBudget,
   useGetExpenses,
+  useGetSharedReports,
   useSaveBudget,
+  useShareExpenseReport,
 } from "../hooks/useRegularExpense";
 import {
   type ReportType,
@@ -94,13 +103,32 @@ export function RegularExpenseTab() {
   const [reportType, setReportType] = useState<ReportType>("monthly");
   const [isExporting, setIsExporting] = useState(false);
 
+  // Share dialog state
+  const [shareDialogOpen, setShareDialogOpen] = useState(false);
+  const [shareTitle, setShareTitle] = useState("");
+  const [shareSearch, setShareSearch] = useState("");
+  const [selectedRecipients, setSelectedRecipients] = useState<string[]>([]);
+
+  // View shared report dialog
+  const [viewReportOpen, setViewReportOpen] = useState(false);
+  const [viewReportData, setViewReportData] = useState<{
+    title: string;
+    data: string;
+  } | null>(null);
+
   // Queries and mutations
   const { data: budget, isLoading: budgetLoading } = useGetBudget();
   const { data: expenses = [], isLoading: expensesLoading } = useGetExpenses();
+  const { data: sharedReports = [], isLoading: sharedReportsLoading } =
+    useGetSharedReports();
+  const { data: allUsers = [] } = useObserveUsers();
   const saveBudgetMutation = useSaveBudget();
   const addExpenseMutation = useAddExpense();
   const editExpenseMutation = useEditExpense();
   const deleteExpenseMutation = useDeleteExpense();
+  const shareReportMutation = useShareExpenseReport();
+
+  const mySelfPrincipal = identity?.getPrincipal().toString() ?? "";
 
   // Initialize budget form from fetched data
   useEffect(() => {
@@ -212,7 +240,7 @@ export function RegularExpenseTab() {
     setEditDate(expense.date);
     setEditCategory(expense.category);
     setEditAmount(expense.amount.toString());
-    setEditDescription(expense.description);
+    setEditDescription(expense.description || "");
     setEditError("");
     setEditDialogOpen(true);
   };
@@ -243,40 +271,67 @@ export function RegularExpenseTab() {
     try {
       await deleteExpenseMutation.mutateAsync({
         id: expense.id,
-        details: `${expense.category} - $${expense.amount}`,
+        details: `${expense.category} - $${Number(expense.amount).toLocaleString()} (${expense.date})`,
       });
     } catch (error) {
       const friendlyError = getUserFriendlyError(error);
-      alert(friendlyError);
+      console.error("Failed to delete expense:", friendlyError);
     }
   };
 
   const handleDownloadReport = async () => {
-    if (expenses.length === 0) {
-      alert("No expenses to export");
-      return;
-    }
+    if (isExporting || expenses.length === 0) return;
 
-    setIsExporting(true);
     try {
+      setIsExporting(true);
       const reportData = buildExpenseReportData(expenses, reportType);
       const filename = generateReportFilename(reportType);
-      // Pass data as a single object with headers and rows
-      await exportToPdf(
-        { headers: reportData.headers, rows: reportData.rows },
-        filename,
-      );
+      await exportToPdf(reportData, filename);
     } catch (error) {
-      console.error("Failed to export report:", error);
-      alert("Failed to export report. Please try again.");
+      console.error("Export failed:", error);
     } finally {
       setIsExporting(false);
     }
   };
 
-  // Calculate totals
+  const handleShareReport = async () => {
+    if (!shareTitle.trim() || selectedRecipients.length === 0) {
+      toast.error("Please add a title and select at least one recipient.");
+      return;
+    }
+    try {
+      const reportData = buildExpenseReportData(expenses, reportType);
+      await shareReportMutation.mutateAsync({
+        recipientIds: selectedRecipients,
+        reportTitle: shareTitle.trim(),
+        reportData: JSON.stringify(reportData),
+      });
+      toast.success(`Report shared with ${selectedRecipients.length} user(s)!`);
+      setShareDialogOpen(false);
+      setShareTitle("");
+      setSelectedRecipients([]);
+      setShareSearch("");
+    } catch {
+      toast.error("Failed to share report. Please try again.");
+    }
+  };
+
+  const toggleRecipient = (principalStr: string) => {
+    setSelectedRecipients((prev) =>
+      prev.includes(principalStr)
+        ? prev.filter((p) => p !== principalStr)
+        : [...prev, principalStr],
+    );
+  };
+
+  const filteredUsers = allUsers.filter(
+    (u) =>
+      u.principal.toString() !== mySelfPrincipal &&
+      u.profile?.displayName?.toLowerCase().includes(shareSearch.toLowerCase()),
+  );
+
   const totalExpenses = expenses.reduce(
-    (sum, exp) => sum + Number(exp.amount),
+    (sum, expense) => sum + Number(expense.amount),
     0,
   );
   const monthlyBudget = budget ? Number(budget.monthlyLimit) : 0;
@@ -316,328 +371,488 @@ export function RegularExpenseTab() {
         </Alert>
       )}
 
-      {/* Budget Settings */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Budget Settings</CardTitle>
-          <CardDescription>
-            Set your monthly and daily spending limits
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="monthlyLimit">Monthly Limit ($)</Label>
-              <Input
-                id="monthlyLimit"
-                type="number"
-                min="0"
-                step="1"
-                value={monthlyLimit}
-                onChange={(e) => setMonthlyLimit(e.target.value)}
-                placeholder="5000"
-                disabled={budgetLoading || !isActorReady}
-              />
-            </div>
-            <div>
-              <Label htmlFor="dayLimit">Daily Limit ($)</Label>
-              <Input
-                id="dayLimit"
-                type="number"
-                min="0"
-                step="1"
-                value={dayLimit}
-                onChange={(e) => setDayLimit(e.target.value)}
-                placeholder="200"
-                disabled={budgetLoading || !isActorReady}
-              />
-            </div>
-            <div>
-              <Label htmlFor="savingsGoal">Savings Goal ($)</Label>
-              <Input
-                id="savingsGoal"
-                type="number"
-                min="0"
-                step="1"
-                value={savingsGoal}
-                onChange={(e) => setSavingsGoal(e.target.value)}
-                placeholder="10000"
-                disabled={budgetLoading || !isActorReady}
-              />
-            </div>
-          </div>
-          {budgetError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{budgetError}</AlertDescription>
-            </Alert>
-          )}
-          <Button
-            onClick={handleSaveBudget}
-            disabled={
-              saveBudgetMutation.isPending ||
-              !isActorReady ||
-              !monthlyLimit ||
-              !dayLimit ||
-              !savingsGoal
-            }
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            {saveBudgetMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Saving...
-              </>
-            ) : (
-              "Save Budget"
+      <Tabs defaultValue="expenses">
+        <TabsList>
+          <TabsTrigger value="expenses" data-ocid="expenses.tab">
+            My Expenses
+          </TabsTrigger>
+          <TabsTrigger value="shared" data-ocid="expenses.shared.tab">
+            Shared with Me
+            {sharedReports.length > 0 && (
+              <Badge variant="secondary" className="ml-2 text-xs">
+                {sharedReports.length}
+              </Badge>
             )}
-          </Button>
-        </CardContent>
-      </Card>
+          </TabsTrigger>
+        </TabsList>
 
-      {/* Budget Summary */}
-      {budget && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* My Expenses Tab */}
+        <TabsContent value="expenses" className="space-y-6 mt-4">
+          {/* Budget Settings */}
           <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Monthly Budget</CardDescription>
-              <CardTitle className="text-2xl text-emerald-600">
-                ${monthlyBudget.toLocaleString()}
-              </CardTitle>
+            <CardHeader>
+              <CardTitle>Budget Settings</CardTitle>
+              <CardDescription>
+                Set your monthly and daily spending limits
+              </CardDescription>
             </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Total Expenses</CardDescription>
-              <CardTitle className="text-2xl">
-                ${totalExpenses.toLocaleString()}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-          <Card>
-            <CardHeader className="pb-3">
-              <CardDescription>Remaining</CardDescription>
-              <CardTitle
-                className={`text-2xl ${remainingBudget < 0 ? "text-destructive" : "text-emerald-600"}`}
-              >
-                ${remainingBudget.toLocaleString()}
-              </CardTitle>
-            </CardHeader>
-          </Card>
-        </div>
-      )}
-
-      <Separator />
-
-      {/* Add Expense */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Add Expense</CardTitle>
-          <CardDescription>Record a new expense</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div>
-              <Label htmlFor="expenseDate">Date *</Label>
-              <Input
-                id="expenseDate"
-                type="date"
-                value={expenseDate}
-                onChange={(e) => setExpenseDate(e.target.value)}
-                disabled={!isActorReady}
-              />
-            </div>
-            <div>
-              <Label htmlFor="expenseCategory">Category *</Label>
-              <Select
-                value={expenseCategory}
-                onValueChange={setExpenseCategory}
-                disabled={!isActorReady}
-              >
-                <SelectTrigger id="expenseCategory">
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Food">Food</SelectItem>
-                  <SelectItem value="Transport">Transport</SelectItem>
-                  <SelectItem value="Entertainment">Entertainment</SelectItem>
-                  <SelectItem value="Shopping">Shopping</SelectItem>
-                  <SelectItem value="Bills">Bills</SelectItem>
-                  <SelectItem value="Healthcare">Healthcare</SelectItem>
-                  <SelectItem value="Other">Other</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="expenseAmount">Amount ($) *</Label>
-              <Input
-                id="expenseAmount"
-                type="number"
-                min="0"
-                step="1"
-                value={expenseAmount}
-                onChange={(e) => setExpenseAmount(e.target.value)}
-                placeholder="50"
-                disabled={!isActorReady}
-              />
-            </div>
-            <div>
-              <Label htmlFor="expenseDescription">Description</Label>
-              <Input
-                id="expenseDescription"
-                value={expenseDescription}
-                onChange={(e) => setExpenseDescription(e.target.value)}
-                placeholder="Lunch at cafe"
-                disabled={!isActorReady}
-              />
-            </div>
-          </div>
-          {expenseError && (
-            <Alert variant="destructive">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>{expenseError}</AlertDescription>
-            </Alert>
-          )}
-          <Button
-            onClick={handleAddExpense}
-            disabled={
-              addExpenseMutation.isPending ||
-              !isActorReady ||
-              !expenseDate ||
-              !expenseCategory ||
-              !expenseAmount
-            }
-            className="bg-emerald-600 hover:bg-emerald-700"
-          >
-            {addExpenseMutation.isPending ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Adding...
-              </>
-            ) : (
-              <>
-                <Plus className="w-4 h-4 mr-2" />
-                Add Expense
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
-
-      {/* Expense History */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Expense History</CardTitle>
-              <CardDescription>View and manage your expenses</CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select
-                value={reportType}
-                onValueChange={(v) => setReportType(v as ReportType)}
-              >
-                <SelectTrigger className="w-32">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="monthly">Monthly</SelectItem>
-                  <SelectItem value="weekly">Weekly</SelectItem>
-                  <SelectItem value="daily">Daily</SelectItem>
-                </SelectContent>
-              </Select>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="monthlyLimit">Monthly Limit ($)</Label>
+                  <Input
+                    id="monthlyLimit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={monthlyLimit}
+                    onChange={(e) => setMonthlyLimit(e.target.value)}
+                    placeholder="5000"
+                    disabled={budgetLoading || !isActorReady}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="dayLimit">Daily Limit ($)</Label>
+                  <Input
+                    id="dayLimit"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={dayLimit}
+                    onChange={(e) => setDayLimit(e.target.value)}
+                    placeholder="200"
+                    disabled={budgetLoading || !isActorReady}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="savingsGoal">Savings Goal ($)</Label>
+                  <Input
+                    id="savingsGoal"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={savingsGoal}
+                    onChange={(e) => setSavingsGoal(e.target.value)}
+                    placeholder="10000"
+                    disabled={budgetLoading || !isActorReady}
+                  />
+                </div>
+              </div>
+              {budgetError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{budgetError}</AlertDescription>
+                </Alert>
+              )}
               <Button
-                onClick={handleDownloadReport}
-                disabled={isExporting || expenses.length === 0}
-                variant="outline"
-                size="sm"
+                onClick={handleSaveBudget}
+                disabled={
+                  saveBudgetMutation.isPending ||
+                  !isActorReady ||
+                  !monthlyLimit ||
+                  !dayLimit ||
+                  !savingsGoal
+                }
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-ocid="expenses.budget.save_button"
               >
-                {isExporting ? (
+                {saveBudgetMutation.isPending ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Exporting...
+                    Saving...
+                  </>
+                ) : (
+                  "Save Budget"
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Budget Summary */}
+          {budget && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Monthly Budget</CardDescription>
+                  <CardTitle className="text-2xl text-emerald-600">
+                    ${monthlyBudget.toLocaleString()}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Total Expenses</CardDescription>
+                  <CardTitle className="text-2xl">
+                    ${totalExpenses.toLocaleString()}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardDescription>Remaining</CardDescription>
+                  <CardTitle
+                    className={`text-2xl ${
+                      remainingBudget < 0
+                        ? "text-destructive"
+                        : "text-emerald-600"
+                    }`}
+                  >
+                    ${remainingBudget.toLocaleString()}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            </div>
+          )}
+
+          <Separator />
+
+          {/* Add Expense */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Add Expense</CardTitle>
+              <CardDescription>Record a new expense</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div>
+                  <Label htmlFor="expenseDate">Date *</Label>
+                  <Input
+                    id="expenseDate"
+                    type="date"
+                    value={expenseDate}
+                    onChange={(e) => setExpenseDate(e.target.value)}
+                    disabled={!isActorReady}
+                    data-ocid="expenses.date.input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expenseCategory">Category *</Label>
+                  <Select
+                    value={expenseCategory}
+                    onValueChange={setExpenseCategory}
+                    disabled={!isActorReady}
+                  >
+                    <SelectTrigger
+                      id="expenseCategory"
+                      data-ocid="expenses.category.select"
+                    >
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Food">Food</SelectItem>
+                      <SelectItem value="Transport">Transport</SelectItem>
+                      <SelectItem value="Entertainment">
+                        Entertainment
+                      </SelectItem>
+                      <SelectItem value="Shopping">Shopping</SelectItem>
+                      <SelectItem value="Bills">Bills</SelectItem>
+                      <SelectItem value="Healthcare">Healthcare</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="expenseAmount">Amount ($) *</Label>
+                  <Input
+                    id="expenseAmount"
+                    type="number"
+                    min="0"
+                    step="1"
+                    value={expenseAmount}
+                    onChange={(e) => setExpenseAmount(e.target.value)}
+                    placeholder="50"
+                    disabled={!isActorReady}
+                    data-ocid="expenses.amount.input"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expenseDescription">Description</Label>
+                  <Input
+                    id="expenseDescription"
+                    value={expenseDescription}
+                    onChange={(e) => setExpenseDescription(e.target.value)}
+                    placeholder="Lunch at cafe"
+                    disabled={!isActorReady}
+                    data-ocid="expenses.description.input"
+                  />
+                </div>
+              </div>
+              {expenseError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{expenseError}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                onClick={handleAddExpense}
+                disabled={
+                  addExpenseMutation.isPending ||
+                  !isActorReady ||
+                  !expenseDate ||
+                  !expenseCategory ||
+                  !expenseAmount
+                }
+                className="bg-emerald-600 hover:bg-emerald-700"
+                data-ocid="expenses.add.primary_button"
+              >
+                {addExpenseMutation.isPending ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Adding...
                   </>
                 ) : (
                   <>
-                    <Download className="w-4 h-4 mr-2" />
-                    Download Report
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Expense
                   </>
                 )}
               </Button>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {expensesLoading ? (
-            <p className="text-center text-muted-foreground py-8">
-              Loading expenses...
-            </p>
-          ) : expenses.length === 0 ? (
-            <p className="text-center text-muted-foreground py-8">
-              No expenses yet. Add your first expense above.
-            </p>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Description</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {expenses
-                    .sort(
-                      (a, b) =>
-                        new Date(b.date).getTime() - new Date(a.date).getTime(),
-                    )
-                    .map((expense) => (
-                      <TableRow key={Number(expense.id)}>
-                        <TableCell>{expense.date}</TableCell>
-                        <TableCell>{expense.category}</TableCell>
-                        <TableCell className="font-medium">
-                          ${Number(expense.amount).toLocaleString()}
-                        </TableCell>
-                        <TableCell className="text-muted-foreground">
-                          {expense.description || "—"}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditDialog(expense)}
-                              disabled={!isActorReady}
-                            >
-                              <Edit className="w-4 h-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteExpense(expense)}
-                              disabled={
-                                deleteExpenseMutation.isPending || !isActorReady
-                              }
-                            >
-                              <Trash2 className="w-4 h-4 text-destructive" />
-                            </Button>
-                          </div>
-                        </TableCell>
+            </CardContent>
+          </Card>
+
+          {/* Expense History */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between flex-wrap gap-3">
+                <div>
+                  <CardTitle>Expense History</CardTitle>
+                  <CardDescription>
+                    View and manage your expenses
+                  </CardDescription>
+                </div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <Select
+                    value={reportType}
+                    onValueChange={(v) => setReportType(v as ReportType)}
+                  >
+                    <SelectTrigger
+                      className="w-32"
+                      data-ocid="expenses.report-type.select"
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Monthly</SelectItem>
+                      <SelectItem value="weekly">Weekly</SelectItem>
+                      <SelectItem value="daily">Daily</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={handleDownloadReport}
+                    disabled={isExporting || expenses.length === 0}
+                    variant="outline"
+                    size="sm"
+                    data-ocid="expenses.download.button"
+                  >
+                    {isExporting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-4 h-4 mr-2" />
+                        Download
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      setShareTitle("");
+                      setSelectedRecipients([]);
+                      setShareSearch("");
+                      setShareDialogOpen(true);
+                    }}
+                    disabled={expenses.length === 0 || !isActorReady}
+                    variant="outline"
+                    size="sm"
+                    data-ocid="expenses.share.button"
+                  >
+                    <Share2 className="w-4 h-4 mr-2" />
+                    Share Report
+                  </Button>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {expensesLoading ? (
+                <p
+                  className="text-center text-muted-foreground py-8"
+                  data-ocid="expenses.loading_state"
+                >
+                  Loading expenses...
+                </p>
+              ) : expenses.length === 0 ? (
+                <p
+                  className="text-center text-muted-foreground py-8"
+                  data-ocid="expenses.empty_state"
+                >
+                  No expenses yet. Add your first expense above.
+                </p>
+              ) : (
+                <div className="overflow-x-auto">
+                  <Table data-ocid="expenses.table">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Date</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Description</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
                       </TableRow>
-                    ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {expenses
+                        .sort(
+                          (a, b) =>
+                            new Date(b.date).getTime() -
+                            new Date(a.date).getTime(),
+                        )
+                        .map((expense, idx) => (
+                          <TableRow
+                            key={Number(expense.id)}
+                            data-ocid={`expenses.item.${idx + 1}`}
+                          >
+                            <TableCell>{expense.date}</TableCell>
+                            <TableCell>{expense.category}</TableCell>
+                            <TableCell className="font-medium">
+                              ${Number(expense.amount).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-muted-foreground">
+                              {expense.description || "—"}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(expense)}
+                                  disabled={!isActorReady}
+                                  data-ocid={`expenses.edit_button.${idx + 1}`}
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteExpense(expense)}
+                                  disabled={
+                                    deleteExpenseMutation.isPending ||
+                                    !isActorReady
+                                  }
+                                  data-ocid={`expenses.delete_button.${idx + 1}`}
+                                >
+                                  <Trash2 className="w-4 h-4 text-destructive" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        {/* Shared with Me Tab */}
+        <TabsContent value="shared" className="mt-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Share2 className="h-5 w-5 text-primary" />
+                Shared Reports
+              </CardTitle>
+              <CardDescription>
+                Expense reports shared with you by your team
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sharedReportsLoading ? (
+                <p
+                  className="text-center text-muted-foreground py-8"
+                  data-ocid="shared-reports.loading_state"
+                >
+                  Loading shared reports...
+                </p>
+              ) : sharedReports.length === 0 ? (
+                <div
+                  className="text-center py-12 text-muted-foreground"
+                  data-ocid="shared-reports.empty_state"
+                >
+                  <Share2 className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm">
+                    No reports have been shared with you yet.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {sharedReports.map((report, idx) => {
+                    const senderName =
+                      allUsers.find(
+                        (u) =>
+                          u.principal.toString() === report.senderId.toString(),
+                      )?.profile?.displayName ??
+                      `${report.senderId.toString().slice(0, 12)}…`;
+                    const sharedDate = new Date(
+                      Number(report.timestamp) / 1_000_000,
+                    ).toLocaleDateString("en-US", {
+                      year: "numeric",
+                      month: "short",
+                      day: "numeric",
+                    });
+                    return (
+                      <div
+                        key={String(report.id)}
+                        className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
+                        data-ocid={`shared-reports.item.${idx + 1}`}
+                      >
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                            {senderName.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold text-sm truncate">
+                            {report.reportTitle}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            From{" "}
+                            <span className="font-medium text-foreground">
+                              {senderName}
+                            </span>{" "}
+                            &middot; {sharedDate}
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setViewReportData({
+                              title: report.reportTitle,
+                              data: report.reportData,
+                            });
+                            setViewReportOpen(true);
+                          }}
+                          data-ocid={`shared-reports.view_button.${idx + 1}`}
+                        >
+                          <Eye className="h-3.5 w-3.5 mr-1.5" />
+                          View
+                        </Button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Edit Expense Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent>
+        <DialogContent data-ocid="expenses.edit.dialog">
           <DialogHeader>
             <DialogTitle>Edit Expense</DialogTitle>
             <DialogDescription>Update expense details</DialogDescription>
@@ -705,6 +920,7 @@ export function RegularExpenseTab() {
                 !editAmount
               }
               className="bg-emerald-600 hover:bg-emerald-700"
+              data-ocid="expenses.edit.save_button"
             >
               {editExpenseMutation.isPending ? (
                 <>
@@ -714,6 +930,151 @@ export function RegularExpenseTab() {
               ) : (
                 "Save Changes"
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Share Report Dialog */}
+      <Dialog open={shareDialogOpen} onOpenChange={setShareDialogOpen}>
+        <DialogContent className="max-w-md" data-ocid="expenses.share.dialog">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Share2 className="h-5 w-5" />
+              Share Expense Report
+            </DialogTitle>
+            <DialogDescription>
+              Share your current expense report with specific team members.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label htmlFor="share-title">Report Title *</Label>
+              <Input
+                id="share-title"
+                value={shareTitle}
+                onChange={(e) => setShareTitle(e.target.value)}
+                placeholder="e.g. Q1 2025 Expenses"
+                data-ocid="expenses.share.title.input"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Select Recipients *</Label>
+              <Input
+                value={shareSearch}
+                onChange={(e) => setShareSearch(e.target.value)}
+                placeholder="Search by name…"
+                data-ocid="expenses.share.search_input"
+              />
+              <div className="max-h-48 overflow-y-auto space-y-1 rounded-md border border-border p-1">
+                {filteredUsers.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    No users found.
+                  </p>
+                ) : (
+                  filteredUsers.map((u) => {
+                    const name = u.profile?.displayName ?? "Unknown";
+                    const pStr = u.principal.toString();
+                    const isSelected = selectedRecipients.includes(pStr);
+                    return (
+                      <button
+                        key={pStr}
+                        type="button"
+                        onClick={() => toggleRecipient(pStr)}
+                        className={`w-full flex items-center gap-3 px-3 py-2 rounded-md transition-colors text-left text-sm ${
+                          isSelected
+                            ? "bg-primary/10 border border-primary/30"
+                            : "hover:bg-muted"
+                        }`}
+                      >
+                        <Avatar className="h-7 w-7 shrink-0">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="flex-1 truncate font-medium">
+                          {name}
+                        </span>
+                        {isSelected && (
+                          <Badge
+                            variant="secondary"
+                            className="text-xs shrink-0"
+                          >
+                            Selected
+                          </Badge>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+              {selectedRecipients.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedRecipients.length} recipient(s) selected
+                </p>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setShareDialogOpen(false)}
+              data-ocid="expenses.share.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleShareReport}
+              disabled={
+                shareReportMutation.isPending ||
+                !shareTitle.trim() ||
+                selectedRecipients.length === 0
+              }
+              data-ocid="expenses.share.confirm_button"
+            >
+              {shareReportMutation.isPending ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Share2 className="h-4 w-4 mr-2" />
+              )}
+              Share Report
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Shared Report Dialog */}
+      <Dialog open={viewReportOpen} onOpenChange={setViewReportOpen}>
+        <DialogContent
+          className="max-w-2xl max-h-[80vh] overflow-y-auto"
+          data-ocid="shared-reports.view.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>{viewReportData?.title}</DialogTitle>
+            <DialogDescription>Shared expense report details</DialogDescription>
+          </DialogHeader>
+          {viewReportData && (
+            <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">
+              {(() => {
+                try {
+                  return JSON.stringify(
+                    JSON.parse(viewReportData.data),
+                    null,
+                    2,
+                  );
+                } catch {
+                  return viewReportData.data;
+                }
+              })()}
+            </pre>
+          )}
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setViewReportOpen(false)}
+              data-ocid="shared-reports.view.close_button"
+            >
+              Close
             </Button>
           </DialogFooter>
         </DialogContent>

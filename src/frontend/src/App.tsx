@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { WelcomeSplash } from "./components/WelcomeSplash";
 import { ApprovalGate } from "./components/auth/ApprovalGate";
 import UserProfileSetup from "./components/auth/UserProfileSetup";
 import BroadcastModal from "./components/broadcast/BroadcastModal";
@@ -178,7 +179,6 @@ function AppContent() {
   }, [isAuthenticated, activeTab]);
 
   // Show profile setup if authenticated and profile is null, undefined, or errored.
-  // This ensures the admin token section is reachable even when the backend traps.
   const showProfileSetup =
     isAuthenticated &&
     !profileLoading &&
@@ -256,6 +256,7 @@ function AppContent() {
     <ReminderEventsProvider>
       <UserProfileSetup open={showProfileSetup} />
       {isAuthenticated && <DailyRemindersStartupModal />}
+      {isAuthenticated && userProfile && <WelcomeSplash />}
       {currentBroadcast && (
         <BroadcastModal
           broadcast={currentBroadcast}

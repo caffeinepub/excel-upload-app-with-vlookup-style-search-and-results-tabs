@@ -80,3 +80,36 @@ export function useSaveCallerUserProfile() {
     },
   });
 }
+
+export function useUpdateUserProfileFull() {
+  const { actor } = useActor();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (params: {
+      displayName: string;
+      phone: string;
+      email: string;
+      jobTitle: string;
+      bio: string;
+      avatarUrl: string;
+      departments: string[];
+    }) => {
+      if (!actor) throw new Error("Actor not available");
+      await actor.updateUserProfileFull(
+        params.displayName,
+        params.phone,
+        params.email,
+        params.jobTitle,
+        params.bio,
+        params.avatarUrl,
+        params.departments,
+      );
+      return params;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["currentUserProfile"] });
+      queryClient.invalidateQueries({ queryKey: ["observeUsers"] });
+    },
+  });
+}
