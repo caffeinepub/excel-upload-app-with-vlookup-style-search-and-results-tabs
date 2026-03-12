@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
+import { BirthdayPopup } from "./components/BirthdayPopup";
 import { WelcomeSplash } from "./components/WelcomeSplash";
 import { ApprovalGate } from "./components/auth/ApprovalGate";
 import UserProfileSetup from "./components/auth/UserProfileSetup";
@@ -22,6 +23,7 @@ import DeskboardTab from "./pages/DeskboardTab";
 import { HistoryTab } from "./pages/HistoryTab";
 import { NotesTab } from "./pages/NotesTab";
 import { ObserveUsersTab } from "./pages/ObserveUsersTab";
+import { ProfilePage } from "./pages/ProfilePage";
 import { RegularExpenseTab } from "./pages/RegularExpenseTab";
 import RemindersTab from "./pages/RemindersTab";
 import { ResultsTab } from "./pages/ResultsTab";
@@ -257,6 +259,7 @@ function AppContent() {
       <UserProfileSetup open={showProfileSetup} />
       {isAuthenticated && <DailyRemindersStartupModal />}
       {isAuthenticated && userProfile && <WelcomeSplash />}
+      {isAuthenticated && userProfile && <BirthdayPopup />}
       {currentBroadcast && (
         <BroadcastModal
           broadcast={currentBroadcast}
@@ -279,16 +282,30 @@ function AppContent() {
   );
 }
 
+function RootRouter() {
+  // Simple path-based routing without a router library
+  const path = window.location.pathname;
+  const isProfilePage = path === "/profile" || path.endsWith("/profile");
+
+  if (isProfilePage) {
+    return <ProfilePage />;
+  }
+
+  return (
+    <AppStateProvider>
+      {({ reset }) => (
+        <AppErrorBoundary onReset={reset}>
+          <AppContent />
+        </AppErrorBoundary>
+      )}
+    </AppStateProvider>
+  );
+}
+
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <AppStateProvider>
-        {({ reset }) => (
-          <AppErrorBoundary onReset={reset}>
-            <AppContent />
-          </AppErrorBoundary>
-        )}
-      </AppStateProvider>
+      <RootRouter />
     </QueryClientProvider>
   );
 }

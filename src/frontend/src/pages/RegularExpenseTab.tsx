@@ -115,6 +115,9 @@ export function RegularExpenseTab() {
     title: string;
     data: string;
   } | null>(null);
+  const [deletedReportIds, setDeletedReportIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   // Queries and mutations
   const { data: budget, isLoading: budgetLoading } = useGetBudget();
@@ -788,61 +791,80 @@ export function RegularExpenseTab() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {sharedReports.map((report, idx) => {
-                    const senderName =
-                      allUsers.find(
-                        (u) =>
-                          u.principal.toString() === report.senderId.toString(),
-                      )?.profile?.displayName ??
-                      `${report.senderId.toString().slice(0, 12)}…`;
-                    const sharedDate = new Date(
-                      Number(report.timestamp) / 1_000_000,
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    });
-                    return (
-                      <div
-                        key={String(report.id)}
-                        className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
-                        data-ocid={`shared-reports.item.${idx + 1}`}
-                      >
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                            {senderName.slice(0, 2).toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="font-semibold text-sm truncate">
-                            {report.reportTitle}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            From{" "}
-                            <span className="font-medium text-foreground">
-                              {senderName}
-                            </span>{" "}
-                            &middot; {sharedDate}
-                          </p>
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setViewReportData({
-                              title: report.reportTitle,
-                              data: report.reportData,
-                            });
-                            setViewReportOpen(true);
-                          }}
-                          data-ocid={`shared-reports.view_button.${idx + 1}`}
+                  {sharedReports
+                    .filter((r) => !deletedReportIds.has(String(r.id)))
+                    .map((report, idx) => {
+                      const senderName =
+                        allUsers.find(
+                          (u) =>
+                            u.principal.toString() ===
+                            report.senderId.toString(),
+                        )?.profile?.displayName ??
+                        `${report.senderId.toString().slice(0, 12)}…`;
+                      const sharedDate = new Date(
+                        Number(report.timestamp) / 1_000_000,
+                      ).toLocaleDateString("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      });
+                      return (
+                        <div
+                          key={String(report.id)}
+                          className="flex items-start gap-4 p-4 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors"
+                          data-ocid={`shared-reports.item.${idx + 1}`}
                         >
-                          <Eye className="h-3.5 w-3.5 mr-1.5" />
-                          View
-                        </Button>
-                      </div>
-                    );
-                  })}
+                          <Avatar className="h-10 w-10 shrink-0">
+                            <AvatarFallback className="bg-primary/10 text-primary text-sm">
+                              {senderName.slice(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-semibold text-sm truncate">
+                              {report.reportTitle}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              From{" "}
+                              <span className="font-medium text-foreground">
+                                {senderName}
+                              </span>{" "}
+                              &middot; {sharedDate}
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setViewReportData({
+                                  title: report.reportTitle,
+                                  data: report.reportData,
+                                });
+                                setViewReportOpen(true);
+                              }}
+                              data-ocid={`shared-reports.view_button.${idx + 1}`}
+                            >
+                              <Eye className="h-3.5 w-3.5 mr-1.5" />
+                              View
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setDeletedReportIds(
+                                  (prev) =>
+                                    new Set([...prev, String(report.id)]),
+                                );
+                              }}
+                              className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                              data-ocid={`shared-reports.delete_button.${idx + 1}`}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </CardContent>
@@ -1053,21 +1075,113 @@ export function RegularExpenseTab() {
             <DialogTitle>{viewReportData?.title}</DialogTitle>
             <DialogDescription>Shared expense report details</DialogDescription>
           </DialogHeader>
-          {viewReportData && (
-            <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">
-              {(() => {
-                try {
-                  return JSON.stringify(
-                    JSON.parse(viewReportData.data),
-                    null,
-                    2,
-                  );
-                } catch {
-                  return viewReportData.data;
-                }
-              })()}
-            </pre>
-          )}
+          {viewReportData &&
+            (() => {
+              let parsed: {
+                expenses?: any[];
+                summary?: any;
+                period?: string;
+              } | null = null;
+              try {
+                parsed = JSON.parse(viewReportData.data);
+              } catch {}
+              if (!parsed || !parsed.expenses) {
+                return (
+                  <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">
+                    {viewReportData.data}
+                  </pre>
+                );
+              }
+              const exps = parsed.expenses ?? [];
+              const total = exps.reduce(
+                (sum: number, e: any) => sum + Number(e.amount ?? 0),
+                0,
+              );
+              return (
+                <div className="space-y-4">
+                  {parsed.period && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <span>Period:</span>
+                      <span className="font-medium text-foreground">
+                        {parsed.period}
+                      </span>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
+                      <p className="text-xs text-muted-foreground">
+                        Total Expenses
+                      </p>
+                      <p className="text-xl font-bold text-emerald-600">
+                        ${total.toLocaleString()}
+                      </p>
+                    </div>
+                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-muted-foreground">
+                        Transactions
+                      </p>
+                      <p className="text-xl font-bold text-blue-600">
+                        {exps.length}
+                      </p>
+                    </div>
+                  </div>
+                  {exps.length > 0 && (
+                    <div className="rounded-lg border overflow-hidden">
+                      <table className="w-full text-sm">
+                        <thead className="bg-muted/60">
+                          <tr>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                              Date
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                              Category
+                            </th>
+                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                              Description
+                            </th>
+                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                              Amount
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {exps.map((e: any) => (
+                            <tr
+                              key={`${e.date ?? "x"}-${e.category ?? "y"}-${e.amount ?? "0"}`}
+                              className="border-t border-border"
+                            >
+                              <td className="px-3 py-2 text-muted-foreground">
+                                {e.date ?? "—"}
+                              </td>
+                              <td className="px-3 py-2">{e.category ?? "—"}</td>
+                              <td className="px-3 py-2 text-muted-foreground truncate max-w-[120px]">
+                                {e.description || "—"}
+                              </td>
+                              <td className="px-3 py-2 text-right font-medium">
+                                ${Number(e.amount ?? 0).toLocaleString()}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot className="bg-muted/40">
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-3 py-2 font-semibold text-sm"
+                            >
+                              Total
+                            </td>
+                            <td className="px-3 py-2 text-right font-bold text-emerald-600">
+                              ${total.toLocaleString()}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              );
+            })()}
           <DialogFooter>
             <Button
               variant="outline"

@@ -1,9 +1,8 @@
 import { RotateCcw, Upload, User, UserCheck } from "lucide-react";
-import { useRef, useState } from "react";
+import { useRef } from "react";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useAppState } from "../../state/appState";
 import { LoginButton } from "../auth/LoginButton";
-import { ProfileModal } from "../profile/ProfileModal";
 import { Button } from "../ui/button";
 
 interface AppHeaderProps {
@@ -22,7 +21,6 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [profileOpen, setProfileOpen] = useState(false);
 
   const handleReplaceWorkbook = () => {
     if (uploadLoading) return;
@@ -84,6 +82,12 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
     }
   };
 
+  const handleProfileClick = () => {
+    // Open profile page directly in a new tab
+    const profileUrl = `${window.location.origin}/profile`;
+    window.open(profileUrl, "_blank", "noopener,noreferrer");
+  };
+
   return (
     <>
       <header className="border-b bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 backdrop-blur-sm">
@@ -99,7 +103,7 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
             <div className="flex gap-2 flex-wrap justify-center sm:justify-end items-center">
               {isAuthenticated && (
                 <Button
-                  onClick={() => setProfileOpen(true)}
+                  onClick={handleProfileClick}
                   variant="outline"
                   size="sm"
                   data-ocid="header.profile.button"
@@ -157,9 +161,6 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
           className="hidden"
         />
       </header>
-
-      {/* Profile Modal */}
-      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </>
   );
 }

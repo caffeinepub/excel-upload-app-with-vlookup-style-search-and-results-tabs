@@ -1,3 +1,11 @@
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
+import { Menu } from "lucide-react";
+import { useState } from "react";
 import type { ReactNode } from "react";
 import type { TabDef, TabId } from "../../App";
 import { CharacterDock } from "../character/CharacterDock";
@@ -19,13 +27,20 @@ export function AppLayout({
   activeTab,
   isAdmin,
 }: AppLayoutProps) {
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+
+  const handleMobileNavChange = (tab: TabId) => {
+    setMobileNavOpen(false);
+    if (onNavigate) onNavigate(tab);
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-x-hidden flex flex-col">
       <AppHeader
         onNavigate={onNavigate as ((tab: string) => void) | undefined}
       />
       <div className="flex flex-1 overflow-hidden">
-        {/* Desktop sidebar */}
+        {/* Desktop sidebar - hidden on mobile */}
         <div className="hidden lg:flex flex-col w-52 shrink-0 border-r border-border bg-background overflow-y-auto">
           <DesktopSidebarNav
             activeTab={activeTab}
@@ -61,6 +76,37 @@ export function AppLayout({
         </div>
       </footer>
       <InAppReminderNotifier />
+
+      {/* Mobile hamburger FAB - only visible below lg */}
+      <button
+        type="button"
+        onClick={() => setMobileNavOpen(true)}
+        className="fixed bottom-6 left-4 z-50 lg:hidden flex items-center justify-center w-12 h-12 rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-all"
+        data-ocid="mobile-nav.open_modal_button"
+        aria-label="Open navigation menu"
+      >
+        <Menu className="h-6 w-6" />
+      </button>
+
+      {/* Mobile navigation sheet */}
+      <Sheet open={mobileNavOpen} onOpenChange={setMobileNavOpen}>
+        <SheetContent
+          side="left"
+          className="w-64 p-0"
+          data-ocid="mobile-nav.sheet"
+        >
+          <SheetHeader className="px-4 pt-4 pb-2 border-b">
+            <SheetTitle className="text-left text-base">Navigation</SheetTitle>
+          </SheetHeader>
+          <div className="overflow-y-auto h-full pb-16">
+            <DesktopSidebarNav
+              activeTab={activeTab}
+              onTabChange={handleMobileNavChange}
+              isAdmin={isAdmin}
+            />
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

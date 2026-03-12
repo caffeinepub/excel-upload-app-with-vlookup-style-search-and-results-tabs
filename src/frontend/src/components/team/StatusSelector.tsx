@@ -86,7 +86,6 @@ export default function StatusSelector({
   const setStatusMutate = setStatus.mutate;
 
   // On first mount, set our status in the backend to match our local/stored preference
-  // biome-ignore lint/correctness/useExhaustiveDependencies: mount-only effect intentional
   useEffect(() => {
     if (!initialSyncDone.current) {
       initialSyncDone.current = true;

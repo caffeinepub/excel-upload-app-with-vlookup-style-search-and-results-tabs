@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Download, FileText, Pencil, Trash2 } from "lucide-react";
+import { Download, FileText, Pencil, Smile, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ChannelMessage, DirectMessage } from "../../backend";
@@ -25,54 +25,33 @@ function getSenderName(msg: Message): string {
   return "";
 }
 
-const QUICK_EMOJIS = ["👍", "❤️", "😂", "😮", "😢", "👏"];
+const QUICK_EMOJIS = [
+  "\uD83D\uDC4D",
+  "\u2764\uFE0F",
+  "\uD83D\uDE02",
+  "\uD83D\uDE2E",
+  "\uD83D\uDE22",
+  "\uD83D\uDC4F",
+];
 
 interface MessageAvatarProps {
   principalStr: string;
   fallbackName: string;
-  size?: "sm" | "md";
 }
 
-function MessageAvatar({
-  principalStr,
-  fallbackName,
-  size = "md",
-}: MessageAvatarProps) {
+function MessageAvatar({ principalStr, fallbackName }: MessageAvatarProps) {
   const { data: profile } = useGetUserProfile(principalStr);
   const avatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
   const initials = getInitials(profile?.displayName || fallbackName);
   const displayName = profile?.displayName || fallbackName;
-  const sizeClass = size === "sm" ? "h-7 w-7" : "h-8 w-8";
 
   return (
-    <Avatar className={`${sizeClass} flex-shrink-0`}>
+    <Avatar className="h-8 w-8 flex-shrink-0">
       {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
       <AvatarFallback className="text-xs bg-primary/15 text-primary font-semibold">
         {initials}
       </AvatarFallback>
     </Avatar>
-  );
-}
-
-interface EmojiPickerProps {
-  onSelect: (emoji: string) => void;
-}
-
-function EmojiPicker({ onSelect }: EmojiPickerProps) {
-  return (
-    <div className="flex items-center gap-0.5 bg-popover border border-border rounded-full px-1.5 py-0.5 shadow-md">
-      {QUICK_EMOJIS.map((emoji) => (
-        <button
-          key={emoji}
-          type="button"
-          onClick={() => onSelect(emoji)}
-          className="text-sm hover:scale-125 transition-transform px-0.5 leading-none"
-          title={emoji}
-        >
-          {emoji}
-        </button>
-      ))}
-    </div>
   );
 }
 
@@ -88,7 +67,6 @@ interface MessageBubbleProps {
   onDeleteMessage?: (messageId: bigint) => void;
   onEditMessage?: (messageId: bigint, newText: string) => void;
   markerIndex: number;
-  /** Whether this message is the first in a group (shows avatar + name) */
   isGroupStart: boolean;
 }
 
@@ -101,7 +79,6 @@ function MessageBubble({
   markerIndex,
   isGroupStart,
 }: MessageBubbleProps) {
-  const [hovered, setHovered] = useState(false);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [reactions, setReactions] = useState<ReactionCounts>({});
   const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
@@ -122,13 +99,13 @@ function MessageBubble({
 
   const canDelete = isOwn || isAdmin;
   const canEdit = isOwn;
+  const hasActions = canEdit || canDelete;
 
   const handleEmojiSelect = (emoji: string) => {
     setShowEmojiPicker(false);
     setReactions((prev) => {
       const current = prev[emoji] ?? 0;
       if (myReactions.has(emoji)) {
-        // Remove reaction
         setMyReactions((s) => {
           const n = new Set(s);
           n.delete(emoji);
@@ -136,14 +113,9 @@ function MessageBubble({
         });
         return { ...prev, [emoji]: Math.max(0, current - 1) };
       }
-      // Add reaction
       setMyReactions((s) => new Set(s).add(emoji));
       return { ...prev, [emoji]: current + 1 };
     });
-  };
-
-  const toggleReaction = (emoji: string) => {
-    handleEmojiSelect(emoji);
   };
 
   const handleEditSave = async () => {
@@ -168,7 +140,6 @@ function MessageBubble({
     }
   };
 
-  // Focus edit textarea when edit mode starts
   useEffect(() => {
     if (isEditing && editRef.current) {
       editRef.current.focus();
@@ -182,14 +153,9 @@ function MessageBubble({
 
   return (
     <div
-      className={`flex gap-2.5 items-start group relative ${isOwn ? "flex-row-reverse" : "flex-row"}`}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => {
-        setHovered(false);
-        setShowEmojiPicker(false);
-      }}
+      className={`flex gap-2.5 items-start ${isOwn ? "flex-row-reverse" : "flex-row"}`}
     >
-      {/* Avatar — only shown for group start; spacer otherwise */}
+      {/* Avatar */}
       {isGroupStart ? (
         <MessageAvatar principalStr={senderId} fallbackName={fallbackName} />
       ) : (
@@ -197,9 +163,9 @@ function MessageBubble({
       )}
 
       <div
-        className={`flex flex-col max-w-[72%] ${isOwn ? "items-end" : "items-start"} relative`}
+        className={`flex flex-col max-w-[72%] ${isOwn ? "items-end" : "items-start"}`}
       >
-        {/* Sender info — only on group start */}
+        {/* Sender + time */}
         {isGroupStart && !isOwn && (
           <div className="flex items-baseline gap-2 mb-1">
             <span className="text-xs font-semibold text-foreground/90 tracking-tight">
@@ -214,7 +180,7 @@ function MessageBubble({
           </div>
         )}
 
-        {/* Message bubble */}
+        {/* Edit mode */}
         {isEditing ? (
           <div className="w-full space-y-1.5">
             <Textarea
@@ -247,129 +213,148 @@ function MessageBubble({
               </Button>
             </div>
             <p className="text-[10px] text-muted-foreground">
-              Press Enter to save · Esc to cancel
+              Enter to save · Esc to cancel
             </p>
           </div>
         ) : (
-          <div
-            className={`rounded-2xl px-3.5 py-2 text-sm break-words shadow-sm relative ${
-              isOwn
-                ? "bg-primary text-primary-foreground rounded-tr-[4px]"
-                : "bg-card border border-border/40 text-foreground rounded-tl-[4px]"
-            }`}
-          >
-            {msg.text && (
-              <p className="whitespace-pre-wrap leading-relaxed">{msg.text}</p>
-            )}
-            {msg.fileUrl && (
-              <div className="mt-1.5">
-                {msg.fileName &&
-                /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.fileName) ? (
-                  <img
-                    src={msg.fileUrl}
-                    alt={msg.fileName}
-                    className="max-w-xs rounded-lg mt-1 border border-white/10"
-                  />
-                ) : (
-                  <a
-                    href={msg.fileUrl}
-                    download={msg.fileName}
-                    className="flex items-center gap-1.5 underline text-xs opacity-80 hover:opacity-100 mt-1"
+          <>
+            {/* Bubble */}
+            <div
+              className={`rounded-2xl px-3.5 py-2 text-sm break-words shadow-sm ${
+                isOwn
+                  ? "bg-primary text-primary-foreground rounded-tr-[4px]"
+                  : "bg-card border border-border/40 text-foreground rounded-tl-[4px]"
+              }`}
+            >
+              {msg.text && (
+                <p className="whitespace-pre-wrap leading-relaxed">
+                  {msg.text}
+                </p>
+              )}
+              {msg.fileUrl && (
+                <div className="mt-1.5">
+                  {msg.fileName &&
+                  /\.(jpg|jpeg|png|gif|webp)$/i.test(msg.fileName) ? (
+                    <img
+                      src={msg.fileUrl}
+                      alt={msg.fileName}
+                      className="max-w-xs rounded-lg mt-1 border border-white/10"
+                    />
+                  ) : (
+                    <a
+                      href={msg.fileUrl}
+                      download={msg.fileName}
+                      className="flex items-center gap-1.5 underline text-xs opacity-80 hover:opacity-100 mt-1"
+                    >
+                      <FileText className="h-3 w-3 flex-shrink-0" />
+                      <Download className="h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">
+                        {msg.fileName || "Download file"}
+                      </span>
+                    </a>
+                  )}
+                </div>
+              )}
+              {!isGroupStart && (
+                <span className="text-[10px] opacity-50 ml-2 float-right mt-0.5">
+                  {time}
+                </span>
+              )}
+            </div>
+
+            {/* Reactions row */}
+            {activeReactions.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {activeReactions.map(([emoji, count]) => (
+                  <button
+                    key={emoji}
+                    type="button"
+                    onClick={() => handleEmojiSelect(emoji)}
+                    className={`flex items-center gap-0.5 text-xs rounded-full px-1.5 py-0.5 border transition-colors ${
+                      myReactions.has(emoji)
+                        ? "bg-primary/15 border-primary/30 text-primary"
+                        : "bg-muted border-border hover:bg-accent"
+                    }`}
                   >
-                    <FileText className="h-3 w-3 flex-shrink-0" />
-                    <Download className="h-3 w-3 flex-shrink-0" />
-                    <span className="truncate">
-                      {msg.fileName || "Download file"}
-                    </span>
-                  </a>
+                    <span>{emoji}</span>
+                    <span className="font-medium">{count}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {/* Action bar — always visible, compact icon buttons below the bubble */}
+            {hasActions && (
+              <div
+                className={`flex items-center gap-0.5 mt-1 ${isOwn ? "flex-row-reverse" : "flex-row"}`}
+              >
+                {/* Emoji reaction toggle */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowEmojiPicker((v) => !v)}
+                    className="text-muted-foreground/50 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted/60 text-xs"
+                    title="React"
+                    data-ocid={`team.message.react_button.${markerIndex}`}
+                  >
+                    <Smile className="h-3.5 w-3.5" />
+                  </button>
+                  {showEmojiPicker && (
+                    <div
+                      className={`absolute bottom-full mb-1 z-20 flex items-center gap-0.5 bg-popover border border-border rounded-full px-2 py-1 shadow-lg ${
+                        isOwn ? "right-0" : "left-0"
+                      }`}
+                    >
+                      {QUICK_EMOJIS.map((emoji) => (
+                        <button
+                          key={emoji}
+                          type="button"
+                          onClick={() => handleEmojiSelect(emoji)}
+                          className="text-sm hover:scale-125 transition-transform px-0.5 leading-none"
+                          title={emoji}
+                        >
+                          {emoji}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {canEdit && onEditMessage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditing(true);
+                      setEditText(msg.text || "");
+                    }}
+                    className="text-muted-foreground/50 hover:text-blue-500 transition-colors p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                    title="Edit message"
+                    data-ocid={`team.message.edit_button.${markerIndex}`}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </button>
+                )}
+
+                {canDelete && onDeleteMessage && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (confirm("Delete this message?")) {
+                        onDeleteMessage(msg.id);
+                      }
+                    }}
+                    className="text-muted-foreground/50 hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                    title="Delete message"
+                    data-ocid={`team.message.delete_button.${markerIndex}`}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 )}
               </div>
             )}
-            {/* Show time inline if not group start */}
-            {!isGroupStart && (
-              <span className="text-[10px] opacity-50 ml-2 float-right mt-0.5">
-                {time}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Reactions row */}
-        {activeReactions.length > 0 && !isEditing && (
-          <div className="flex flex-wrap gap-1 mt-1">
-            {activeReactions.map(([emoji, count]) => (
-              <button
-                key={emoji}
-                type="button"
-                onClick={() => toggleReaction(emoji)}
-                className={`flex items-center gap-0.5 text-xs rounded-full px-1.5 py-0.5 border transition-colors ${
-                  myReactions.has(emoji)
-                    ? "bg-primary/15 border-primary/30 text-primary"
-                    : "bg-muted border-border hover:bg-accent"
-                }`}
-              >
-                <span>{emoji}</span>
-                <span className="font-medium">{count}</span>
-              </button>
-            ))}
-          </div>
+          </>
         )}
       </div>
-
-      {/* Action buttons — visible on hover (desktop) or always for own messages on touch */}
-      {!isEditing && (canEdit || canDelete) && (
-        <div
-          className={`absolute top-0 flex items-center gap-0.5 z-10 transition-opacity ${
-            hovered ? "opacity-100" : "opacity-0 group-hover:opacity-100"
-          } ${isOwn ? "right-full mr-2" : "left-full ml-2"}`}
-        >
-          {showEmojiPicker ? (
-            <EmojiPicker onSelect={handleEmojiSelect} />
-          ) : (
-            <div className="flex items-center gap-0.5 bg-popover border border-border rounded-full px-1.5 py-0.5 shadow-md">
-              <button
-                type="button"
-                onClick={() => setShowEmojiPicker(true)}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors p-0.5"
-                title="React with emoji"
-              >
-                😊
-              </button>
-              {canEdit && onEditMessage && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-foreground rounded-full"
-                  onClick={() => {
-                    setIsEditing(true);
-                    setEditText(msg.text || "");
-                  }}
-                  data-ocid={`team.message.edit_button.${markerIndex}`}
-                  title="Edit message"
-                >
-                  <Pencil className="h-3 w-3" />
-                </Button>
-              )}
-              {canDelete && onDeleteMessage && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-6 w-6 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-full"
-                  onClick={() => {
-                    if (confirm("Delete this message?")) {
-                      onDeleteMessage(msg.id);
-                    }
-                  }}
-                  data-ocid={`team.message.delete_button.${markerIndex}`}
-                  title="Delete message"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              )}
-            </div>
-          )}
-        </div>
-      )}
     </div>
   );
 }
@@ -389,7 +374,6 @@ function formatDateSeparator(timestamp: bigint): string {
   });
 }
 
-/** Returns true if two messages are from the same sender within 5 minutes */
 function isSameGroup(a: Message, b: Message): boolean {
   if (getSenderId(a) !== getSenderId(b)) return false;
   const diff =
@@ -426,7 +410,7 @@ export default function MessageFeed({
         data-ocid="team.messages.empty_state"
       >
         <div className="w-12 h-12 rounded-full bg-muted/60 flex items-center justify-center">
-          <span className="text-2xl">💬</span>
+          <span className="text-2xl">\uD83D\uDCAC</span>
         </div>
         <div>
           <p className="text-sm font-medium text-foreground/70">
@@ -440,7 +424,6 @@ export default function MessageFeed({
     );
   }
 
-  // Group messages by date
   const grouped: { date: string; messages: Message[] }[] = [];
   let currentDate = "";
 
@@ -469,8 +452,7 @@ export default function MessageFeed({
             <div className="flex-1 h-px bg-border/50" />
           </div>
 
-          {/* Messages in group */}
-          <div className="space-y-0.5">
+          <div className="space-y-1">
             {group.messages.map((msg, idx) => {
               msgIndex += 1;
               const prevMsg = idx > 0 ? group.messages[idx - 1] : null;

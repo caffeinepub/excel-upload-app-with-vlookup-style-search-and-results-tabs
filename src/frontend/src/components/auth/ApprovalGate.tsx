@@ -74,17 +74,36 @@ export function ApprovalGate({ children, fallback }: ApprovalGateProps) {
     try {
       const actorAny = actor as unknown as Record<
         string,
-        (token: string) => Promise<void>
+        (...args: unknown[]) => Promise<unknown>
       >;
+
+      // Try the new forceClaimAdmin first (works even when adminAssigned=true)
+      if (typeof actorAny.forceClaimAdmin === "function") {
+        const success = await actorAny.forceClaimAdmin(adminToken.trim());
+        if (success) {
+          setAdminTokenSuccess(true);
+          await queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+          await queryClient.invalidateQueries({
+            queryKey: ["isCallerApproved"],
+          });
+          await refetchAdmin();
+          await refetchApproved();
+          return;
+        }
+      }
+
+      // Fallback: try legacy _initializeAccessControlWithSecret
       if (typeof actorAny._initializeAccessControlWithSecret === "function") {
         await actorAny._initializeAccessControlWithSecret(adminToken.trim());
+        setAdminTokenSuccess(true);
+        await queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
+        await queryClient.invalidateQueries({ queryKey: ["isCallerApproved"] });
+        await refetchAdmin();
+        await refetchApproved();
+        return;
       }
-      setAdminTokenSuccess(true);
-      // Invalidate and wait for re-fetch
-      await queryClient.invalidateQueries({ queryKey: ["isCallerAdmin"] });
-      await queryClient.invalidateQueries({ queryKey: ["isCallerApproved"] });
-      await refetchAdmin();
-      await refetchApproved();
+
+      setAdminTokenError("Invalid admin token or admin access is unavailable.");
     } catch (err) {
       setAdminTokenError(
         "Invalid admin token. Please check the token and try again.",

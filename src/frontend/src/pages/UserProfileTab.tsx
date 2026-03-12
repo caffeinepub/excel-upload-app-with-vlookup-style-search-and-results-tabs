@@ -14,6 +14,7 @@ import { Building2, Camera, Loader2, Save, User } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { setBirthdayForUser } from "../components/BirthdayPopup";
 import { useListDepartments } from "../hooks/useDepartments";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
@@ -27,7 +28,10 @@ export default function UserProfileTab() {
   const { data: departments = [] } = useListDepartments();
   const saveMutation = useSaveCallerUserProfile();
 
+  const principalStr = identity?.getPrincipal().toString() ?? "";
+
   const [displayName, setDisplayName] = useState("");
+  const [birthday, setBirthday] = useState("");
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [newPictureBytes, setNewPictureBytes] = useState<Uint8Array | null>(
     null,
@@ -46,7 +50,11 @@ export default function UserProfileTab() {
         setAvatarPreview(url);
       }
     }
-  }, [profile]);
+    // Load birthday from localStorage
+    if (principalStr) {
+      setBirthday(localStorage.getItem(`birthday_${principalStr}`) ?? "");
+    }
+  }, [profile, principalStr]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -72,13 +80,23 @@ export default function UserProfileTab() {
         profilePicture: newPictureBytes ?? profile?.profilePicture,
         departmentId: profile?.departmentId,
       });
+
+      // Save birthday to localStorage and update the birthday map
+      if (principalStr) {
+        localStorage.setItem(`birthday_${principalStr}`, birthday);
+        if (birthday && /^\d{4}-\d{2}-\d{2}$/.test(birthday)) {
+          const mmdd = birthday.slice(5); // "MM-DD"
+          setBirthdayForUser(principalStr, displayName.trim(), mmdd);
+        } else {
+          setBirthdayForUser(principalStr, displayName.trim(), "");
+        }
+      }
+
       toast.success("Profile saved successfully!");
     } catch {
       toast.error("Failed to save profile. Please try again.");
     }
   };
-
-  const principalStr = identity?.getPrincipal().toString() ?? "";
 
   // Get department name(s) - primary
   const primaryDept = profile?.departmentId
@@ -200,6 +218,20 @@ export default function UserProfileTab() {
               placeholder="Your display name"
               data-ocid="profile.input"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="birthday">Date of Birth</Label>
+            <Input
+              id="birthday"
+              type="date"
+              value={birthday}
+              onChange={(e) => setBirthday(e.target.value)}
+              data-ocid="profile.birthday_input"
+            />
+            <p className="text-xs text-muted-foreground">
+              Used to celebrate your birthday with the team.
+            </p>
           </div>
 
           <Separator />

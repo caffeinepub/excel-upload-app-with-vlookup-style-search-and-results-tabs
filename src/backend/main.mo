@@ -1,3 +1,4 @@
+import Prim "mo:prim";
 import Map "mo:core/Map";
 import Text "mo:core/Text";
 import Time "mo:core/Time";
@@ -11,9 +12,9 @@ import AccessControl "authorization/access-control";
 import UserApproval "user-approval/approval";
 import MixinAuthorization "authorization/MixinAuthorization";
 import MixinStorage "blob-storage/Mixin";
-import Migration "migration";
 
-(with migration = Migration.run)
+
+
 actor {
   include MixinStorage();
 
@@ -1639,6 +1640,21 @@ actor {
 
   public query func isAdminInitialized() : async Bool {
     accessControlState.adminAssigned;
+  };
+
+  // Force-claim admin using token - works even after redeploy when adminAssigned is already true
+  public shared ({ caller }) func forceClaimAdmin(userToken : Text) : async Bool {
+    switch (Prim.envVar<system>("CAFFEINE_ADMIN_TOKEN")) {
+      case (null) { false };
+      case (?adminToken) {
+        let success = AccessControl.forceClaimAdmin(accessControlState, caller, adminToken, userToken);
+        if (success) {
+          // Also approve the user so they pass the isCallerApproved check
+          UserApproval.setApproval(approvalState, caller, #approved);
+        };
+        success;
+      };
+    };
   };
 
   public shared ({ caller }) func editChannelMessage(messageId : Nat, newText : Text) : async () {
