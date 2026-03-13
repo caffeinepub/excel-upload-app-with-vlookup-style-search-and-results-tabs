@@ -31,6 +31,16 @@ const MONTH_NAMES = [
   "December",
 ];
 
+const STATUS_SHORT_LABELS: Record<string, string> = {
+  present: "Present",
+  leave: "Leave",
+  halfDay: "Half Day",
+  weeklyOff: "Week Off",
+  festival: "Festival",
+  companyLeave: "Co. Leave",
+  holiday: "Holiday",
+};
+
 function timestampToDateString(ts: bigint): string {
   const ms = Number(ts) / 1_000_000;
   const d = new Date(ms);
@@ -109,12 +119,15 @@ export function AttendanceMonthCalendar({
     const isSelected = dateStr === selectedDate;
     const hasEntry = attendanceEntries.has(dateStr);
     const holiday = holidayMap.get(dateStr);
+    const entry = attendanceEntries.get(dateStr);
 
     let bgClass = "bg-background hover:bg-muted";
     let textClass = "text-foreground";
     let borderClass = "";
     let dotColor = "";
     let holidayTitle = "";
+    let holidayLabel = "";
+    let statusLabel = "";
 
     if (isSelected) {
       bgClass = "bg-primary text-primary-foreground hover:bg-primary/90";
@@ -125,6 +138,8 @@ export function AttendanceMonthCalendar({
 
     if (holiday && !isSelected) {
       holidayTitle = `${holiday.name} (${holiday.holidayType})`;
+      holidayLabel =
+        holiday.name.length > 8 ? `${holiday.name.slice(0, 7)}…` : holiday.name;
       const type = holiday.holidayType;
       if (type === "Festival" || type === "festival") {
         bgClass =
@@ -144,7 +159,6 @@ export function AttendanceMonthCalendar({
         dotColor = "bg-blue-500";
       }
     } else if (hasEntry && !isSelected) {
-      const entry = attendanceEntries.get(dateStr);
       if (entry?.status === "present") {
         bgClass =
           "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50";
@@ -166,9 +180,20 @@ export function AttendanceMonthCalendar({
           "bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50";
         textClass = "text-green-900 dark:text-green-100";
       }
+      if (entry?.status) {
+        statusLabel = STATUS_SHORT_LABELS[entry.status] ?? "";
+      }
     }
 
-    return { bgClass, textClass, borderClass, dotColor, holidayTitle };
+    return {
+      bgClass,
+      textClass,
+      borderClass,
+      dotColor,
+      holidayTitle,
+      holidayLabel,
+      statusLabel,
+    };
   };
 
   return (
@@ -191,7 +216,7 @@ export function AttendanceMonthCalendar({
         {WEEKDAY_LABELS.map((label) => (
           <div
             key={label}
-            className="text-center text-sm font-medium text-muted-foreground py-2"
+            className="text-center text-sm font-medium text-muted-foreground py-1"
           >
             {label}
           </div>
@@ -203,11 +228,18 @@ export function AttendanceMonthCalendar({
         {calendarDays.map((day, index) => {
           if (!day) {
             // biome-ignore lint/suspicious/noArrayIndexKey: empty placeholder cells have no stable id
-            return <div key={`empty-${index}`} className="aspect-square" />;
+            return <div key={`empty-${index}`} className="min-h-[56px]" />;
           }
 
-          const { bgClass, textClass, borderClass, dotColor, holidayTitle } =
-            getDayStyle(day.dateStr);
+          const {
+            bgClass,
+            textClass,
+            borderClass,
+            dotColor,
+            holidayTitle,
+            holidayLabel,
+            statusLabel,
+          } = getDayStyle(day.dateStr);
 
           return (
             <button
@@ -216,15 +248,29 @@ export function AttendanceMonthCalendar({
               onClick={() => onDateSelect(day.dateStr)}
               title={holidayTitle || undefined}
               className={cn(
-                "aspect-square rounded-md flex flex-col items-center justify-center text-sm font-medium transition-colors relative",
+                "min-h-[56px] rounded-md flex flex-col items-center justify-start pt-1.5 pb-1 px-0.5 text-sm font-medium transition-colors relative gap-0.5",
                 bgClass,
                 textClass,
                 borderClass,
               )}
             >
-              <span>{day.date}</span>
+              <span className="text-sm font-semibold leading-none">
+                {day.date}
+              </span>
               {dotColor && (
-                <span className={cn("w-1 h-1 rounded-full mt-0.5", dotColor)} />
+                <span className={cn("w-1 h-1 rounded-full", dotColor)} />
+              )}
+              {/* Holiday name label */}
+              {holidayLabel && (
+                <span className="text-[8px] leading-tight text-center break-words w-full px-0.5 opacity-80">
+                  {holidayLabel}
+                </span>
+              )}
+              {/* Status label when no holiday */}
+              {!holidayLabel && statusLabel && (
+                <span className="text-[8px] leading-tight text-center break-words w-full px-0.5 opacity-70">
+                  {statusLabel}
+                </span>
               )}
             </button>
           );

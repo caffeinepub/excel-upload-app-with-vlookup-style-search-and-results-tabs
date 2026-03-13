@@ -2,12 +2,21 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Clock, FileText, Loader2, LogIn, LogOut } from "lucide-react";
 import React, { useState } from "react";
+import { toast } from "sonner";
 import { AttendanceStatus } from "../../backend";
 import {
   useCheckOut,
+  useEditAttendanceEntry,
   useGetAttendanceEntries,
   useTodayCheckIn,
 } from "../../hooks/useAttendance";
@@ -24,6 +33,28 @@ const STATUS_LABELS: Record<AttendanceStatus, string> = {
   [AttendanceStatus.festival]: "Festival Leave",
   [AttendanceStatus.companyLeave]: "Company Leave",
   [AttendanceStatus.holiday]: "Holiday",
+};
+
+const STATUS_OPTIONS: { value: AttendanceStatus; label: string }[] = [
+  { value: AttendanceStatus.present, label: "Present" },
+  { value: AttendanceStatus.leave, label: "Leave" },
+  { value: AttendanceStatus.festival, label: "Festival Leave" },
+  { value: AttendanceStatus.companyLeave, label: "Company Leave" },
+  { value: AttendanceStatus.weeklyOff, label: "Week Off" },
+  { value: AttendanceStatus.halfDay, label: "Half Day" },
+  { value: AttendanceStatus.holiday, label: "Holiday" },
+];
+
+const STATUS_COLORS: Record<AttendanceStatus, string> = {
+  [AttendanceStatus.present]: "bg-green-100 text-green-800 border-green-200",
+  [AttendanceStatus.leave]: "bg-red-100 text-red-800 border-red-200",
+  [AttendanceStatus.festival]:
+    "bg-purple-100 text-purple-800 border-purple-200",
+  [AttendanceStatus.companyLeave]:
+    "bg-orange-100 text-orange-800 border-orange-200",
+  [AttendanceStatus.weeklyOff]: "bg-gray-100 text-gray-700 border-gray-200",
+  [AttendanceStatus.halfDay]: "bg-yellow-100 text-yellow-800 border-yellow-200",
+  [AttendanceStatus.holiday]: "bg-blue-100 text-blue-800 border-blue-200",
 };
 
 function formatNsTime(ns: bigint | undefined): string {
@@ -58,9 +89,11 @@ export default function TodayAttendanceView({
   const { data: entries = [], isLoading } = useGetAttendanceEntries();
   const checkIn = useTodayCheckIn();
   const checkOut = useCheckOut();
+  const editEntry = useEditAttendanceEntry();
 
   const [workNote, setWorkNote] = useState("");
   const [showNoteInput, setShowNoteInput] = useState(false);
+  const [isChangingDayType, setIsChangingDayType] = useState(false);
 
   const todayEntry = entries.find(([date]) => date === today)?.[1] ?? null;
 
@@ -83,7 +116,29 @@ export default function TodayAttendanceView({
     setShowNoteInput(false);
   };
 
-  const isLoading2 = checkIn.isPending || checkOut.isPending || isLoading;
+  const handleDayTypeChange = async (newStatus: string) => {
+    if (!todayEntry) return;
+    setIsChangingDayType(true);
+    try {
+      await editEntry.mutateAsync({
+        date: today,
+        entry: {
+          ...todayEntry,
+          status: newStatus as AttendanceStatus,
+        },
+      });
+      toast.success(
+        `Day type updated to ${STATUS_LABELS[newStatus as AttendanceStatus]}`,
+      );
+    } catch (_err) {
+      toast.error("Failed to update day type");
+    } finally {
+      setIsChangingDayType(false);
+    }
+  };
+
+  const isLoading2 =
+    checkIn.isPending || checkOut.isPending || isLoading || isChangingDayType;
 
   const displayDate = new Date(`${today}T00:00:00`).toLocaleDateString(
     "en-US",
@@ -94,6 +149,8 @@ export default function TodayAttendanceView({
       day: "numeric",
     },
   );
+
+  const currentStatus = todayEntry?.status ?? null;
 
   return (
     <div className="space-y-4">
@@ -107,9 +164,9 @@ export default function TodayAttendanceView({
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Status summary */}
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4 items-start">
             <div className="text-center">
-              <p className="text-xs text-muted-foreground">Status</p>
+              <p className="text-xs text-muted-foreground mb-1">Clock Status</p>
               <Badge
                 variant={
                   isCheckedIn
@@ -126,14 +183,45 @@ export default function TodayAttendanceView({
                     : "Not Started"}
               </Badge>
             </div>
-            {todayEntry?.status && (
-              <div className="text-center">
-                <p className="text-xs text-muted-foreground">Day Type</p>
-                <Badge variant="outline">
-                  {STATUS_LABELS[todayEntry.status]}
+
+            {/* Day Type — editable select */}
+            <div>
+              <p className="text-xs text-muted-foreground mb-1">Day Type</p>
+              {todayEntry ? (
+                <Select
+                  value={currentStatus ?? AttendanceStatus.present}
+                  onValueChange={handleDayTypeChange}
+                  disabled={isChangingDayType}
+                  data-ocid="today-attendance.day-type.select"
+                >
+                  <SelectTrigger
+                    className={`h-7 text-xs px-2 rounded-full border w-36 font-medium ${
+                      currentStatus
+                        ? STATUS_COLORS[currentStatus as AttendanceStatus]
+                        : ""
+                    }`}
+                  >
+                    <SelectValue placeholder="Select type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map((opt) => (
+                      <SelectItem
+                        key={opt.value}
+                        value={opt.value}
+                        className="text-xs"
+                      >
+                        {opt.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Badge variant="outline" className="text-xs">
+                  —
                 </Badge>
-              </div>
-            )}
+              )}
+            </div>
+
             {todayEntry?.checkIn && (
               <div className="text-center">
                 <p className="text-xs text-muted-foreground">Check In</p>

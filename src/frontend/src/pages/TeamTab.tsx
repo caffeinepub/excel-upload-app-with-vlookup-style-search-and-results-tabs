@@ -133,19 +133,19 @@ export default function TeamTab() {
         }
         return dm;
       });
-      // Only update if something changed
-      if (updated.some((u, i) => u.displayName !== prev[i]?.displayName)) {
-        return updated;
-      }
-      return prev;
+      const changed = updated.some(
+        (u, i) => u.displayName !== prev[i]?.displayName,
+      );
+      if (changed && callerPrincipal) saveDmUsers(callerPrincipal, updated);
+      return changed ? updated : prev;
     });
-  }, [allUsers]);
+  }, [allUsers, callerPrincipal]);
 
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [showNewDm, setShowNewDm] = useState(false);
   const [dmSearchQuery, setDmSearchQuery] = useState("");
+  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [callModal, setCallModal] = useState<"voice" | "video" | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -224,7 +224,10 @@ export default function TeamTab() {
   });
 
   return (
-    <div className="flex h-full overflow-hidden bg-background">
+    <div
+      className="flex h-[calc(100vh-8rem)] min-h-[500px] overflow-hidden bg-background rounded-xl border border-border shadow-sm animate-in fade-in slide-in-from-right-2 duration-300"
+      data-ocid="team.panel"
+    >
       {/* Sidebar */}
       <TeamSidebar
         channels={channels}
@@ -262,20 +265,21 @@ export default function TeamTab() {
               </>
             ) : (
               <span className="text-sm text-muted-foreground">
-                Select a channel or DM
+                Select a channel or DM to start
               </span>
             )}
           </div>
 
-          <div className="flex items-center gap-1 flex-shrink-0">
-            {(selectedChannel || selectedDmPrincipal !== null) && (
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {(selectedChannelId !== null || selectedDmPrincipal !== null) && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => setCallModal("voice")}
-                  data-ocid="team.voice.button"
+                  title="Voice call (coming soon)"
+                  data-ocid="team.voice_call.button"
                 >
                   <Phone className="h-4 w-4" />
                 </Button>
@@ -284,7 +288,8 @@ export default function TeamTab() {
                   size="icon"
                   className="h-8 w-8"
                   onClick={() => setCallModal("video")}
-                  data-ocid="team.video.button"
+                  title="Video call (coming soon)"
+                  data-ocid="team.video_call.button"
                 >
                   <Video className="h-4 w-4" />
                 </Button>
@@ -295,98 +300,95 @@ export default function TeamTab() {
               size="icon"
               className="h-8 w-8"
               onClick={() => setShowInviteDialog(true)}
-              data-ocid="team.invite.button"
+              title="Invite teammates"
+              data-ocid="team.invite.open_modal_button"
             >
               <UserPlus className="h-4 w-4" />
             </Button>
-            <StatusSelector currentStatus={callerStatus} />
-            <CallerAvatarButton onClick={() => setShowProfileEditor(true)} />
+            <div className="flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
+              <StatusSelector currentStatus={callerStatus} />
+              <CallerAvatarButton onClick={() => setShowProfileEditor(true)} />
+            </div>
           </div>
         </div>
 
-        {/* Content area */}
-        <div className="flex-1 flex flex-col min-h-0">
-          {selectedChannelId !== null ? (
-            <ChannelView
-              channelId={selectedChannelId}
-              callerPrincipal={callerPrincipal}
-              senderName={callerProfile?.displayName ?? "User"}
-            />
-          ) : selectedDmPrincipal !== null ? (
-            <DirectMessageView
-              otherPrincipal={selectedDmPrincipal}
-              callerPrincipal={callerPrincipal}
-            />
-          ) : (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-8 gap-4">
-              <div className="rounded-full bg-primary/10 p-6">
-                <MessageSquare className="h-10 w-10 text-primary" />
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-1">
-                  Welcome to Team Chat
-                </h3>
-                <p className="text-sm text-muted-foreground max-w-sm">
-                  Select a channel from the sidebar to start messaging, or open
-                  a direct message with a teammate.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowCreateChannel(true)}
-                  data-ocid="team.create-channel.button"
-                >
-                  <Hash className="h-4 w-4 mr-1" />
-                  Create Channel
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowNewDm(true)}
-                  data-ocid="team.new-dm.button"
-                >
-                  <MessageSquare className="h-4 w-4 mr-1" />
-                  New Message
-                </Button>
-              </div>
-              {allUsers.filter((u) => u.principalStr !== callerPrincipal)
-                .length > 0 && (
-                <div className="mt-4 w-full max-w-sm">
-                  <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                    Registered Users — click to start a DM
-                  </p>
-                  <div className="space-y-1">
-                    {allUsers
-                      .filter((u) => u.principalStr !== callerPrincipal)
-                      .slice(0, 5)
-                      .map((u) => {
-                        const label =
-                          u.displayName ||
-                          `User-${u.principalStr.slice(-4).toUpperCase()}`;
-                        return (
-                          <button
-                            key={u.principalStr}
-                            type="button"
-                            onClick={() => handleStartDm(u.principalStr, label)}
-                            className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors text-left"
-                          >
-                            <Avatar className="h-6 w-6">
-                              <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                                {getInitials(label)}
-                              </AvatarFallback>
-                            </Avatar>
-                            <span className="text-sm">{label}</span>
-                          </button>
-                        );
-                      })}
-                  </div>
-                </div>
-              )}
+        {/* Chat area */}
+        {selectedChannelId !== null ? (
+          <ChannelView
+            channelId={selectedChannelId}
+            callerPrincipal={callerPrincipal}
+            senderName={
+              callerProfile?.displayName ||
+              `User-${callerPrincipal.slice(-4).toUpperCase()}`
+            }
+          />
+        ) : selectedDmPrincipal !== null ? (
+          <DirectMessageView
+            otherPrincipal={selectedDmPrincipal}
+            callerPrincipal={callerPrincipal}
+          />
+        ) : (
+          // Welcome / empty state
+          <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/15 to-primary/30 flex items-center justify-center">
+              <MessageSquare className="h-9 w-9 text-primary/60" />
             </div>
-          )}
-        </div>
+            <div className="text-center max-w-xs">
+              <h2 className="text-lg font-semibold mb-1">
+                Welcome to Team Chat
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                Select a channel from the sidebar to start messaging, or start a
+                new direct message.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowNewDm(true)}
+                className="gap-1"
+                data-ocid="team.welcome.dm_button"
+              >
+                <MessageSquare className="h-4 w-4 mr-1" />
+                New Message
+              </Button>
+            </div>
+            {allUsers.filter((u) => u.principalStr !== callerPrincipal).length >
+              0 && (
+              <div className="mt-2 w-full max-w-sm">
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">
+                  Registered Users — click to start a DM
+                </p>
+                <div className="space-y-1">
+                  {allUsers
+                    .filter((u) => u.principalStr !== callerPrincipal)
+                    .slice(0, 5)
+                    .map((u) => {
+                      const label =
+                        u.displayName ||
+                        `User-${u.principalStr.slice(-4).toUpperCase()}`;
+                      return (
+                        <button
+                          key={u.principalStr}
+                          type="button"
+                          onClick={() => handleStartDm(u.principalStr, label)}
+                          className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors text-left"
+                        >
+                          <Avatar className="h-6 w-6">
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {getInitials(label)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm">{label}</span>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Create Channel Dialog */}
@@ -485,9 +487,6 @@ export default function TeamTab() {
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">
                           {displayLabel}
-                        </p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {u.principalStr.slice(0, 16)}…
                         </p>
                       </div>
                     </button>

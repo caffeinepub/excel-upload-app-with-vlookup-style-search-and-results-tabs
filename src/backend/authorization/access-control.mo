@@ -37,8 +37,7 @@ module {
     };
   };
 
-  // Force-claim admin role using the correct token — works even if admin was already assigned
-  // (handles the case where the previous admin principal is different, e.g. after redeploy)
+  // Force-claim admin using token - works even if adminAssigned is already true (e.g. after redeploy).
   public func forceClaimAdmin(state : AccessControlState, caller : Principal, adminToken : Text, userProvidedToken : Text) : Bool {
     if (caller.isAnonymous()) { return false };
     if (userProvidedToken != adminToken) { return false };
@@ -72,9 +71,6 @@ module {
   };
 
   public func isAdmin(state : AccessControlState, caller : Principal) : Bool {
-    switch (state.userRoles.get(caller)) {
-      case (?#admin) { true };
-      case (_) { false };
-    };
+    getUserRole(state, caller) == #admin;
   };
 };

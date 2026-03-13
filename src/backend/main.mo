@@ -1504,7 +1504,7 @@ actor {
     if (size <= 50) {
       all;
     } else {
-      let start = if (size > 50) { size - 50 } else { 0 };
+      let start : Nat = if (size > 50) { size - 50 : Nat } else { 0 };
       if (start < size) {
         all.sliceToArray(start, size);
       } else {
@@ -1555,7 +1555,7 @@ actor {
     if (size <= 50) {
       all;
     } else {
-      let start = if (size > 50) { size - 50 } else { 0 };
+      let start : Nat = if (size > 50) { size - 50 : Nat } else { 0 };
       if (start < size) {
         all.sliceToArray(start, size);
       } else {
