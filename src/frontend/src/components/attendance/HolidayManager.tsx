@@ -27,6 +27,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Building2,
@@ -153,6 +154,7 @@ export function HolidayManager({
   const updateHoliday = useUpdateHoliday();
   const deleteHoliday = useDeleteHoliday();
   const { actor } = useActor();
+  const queryClient = useQueryClient();
 
   // Filter holidays for current month/year
   const monthHolidays = holidays
@@ -245,17 +247,26 @@ export function HolidayManager({
           description: form.description.trim(),
         });
         // Auto-mark all users' attendance as Holiday on this date
-        try {
-          if (actor) {
+        if (actor) {
+          try {
             const dateStr = form.date; // already YYYY-MM-DD
             await (actor as any).setHolidayForAllUsers(
               dateStr,
               form.name.trim(),
               form.holidayType,
             );
+            queryClient.invalidateQueries({ queryKey: ["attendance"] });
+            queryClient.invalidateQueries({ queryKey: ["attendanceSummary"] });
+            queryClient.invalidateQueries({
+              queryKey: ["attendanceDayEntries"],
+            });
+          } catch (err) {
+            const msg =
+              err instanceof Error
+                ? err.message
+                : "Failed to update attendance records";
+            toast.error(`Holiday saved but attendance update failed: ${msg}`);
           }
-        } catch {
-          // Non-critical: best-effort
         }
         toast.success("Holiday created successfully");
       }

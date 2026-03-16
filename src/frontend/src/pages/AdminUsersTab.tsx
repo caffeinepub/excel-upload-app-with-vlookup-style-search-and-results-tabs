@@ -357,8 +357,6 @@ function AdminEmployeeAttendancePanel() {
     entry: AttendanceDayEntry;
   } | null>(null);
   const [editDayType, setEditDayType] = useState("");
-  const [editCheckIn, setEditCheckIn] = useState("");
-  const [editCheckOut, setEditCheckOut] = useState("");
   const [editWorkNote, setEditWorkNote] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -420,8 +418,6 @@ function AdminEmployeeAttendancePanel() {
     setEditingEntry({ date, entry });
     const statusKey = Object.keys(entry.status)[0] ?? "present";
     setEditDayType(statusKey);
-    setEditCheckIn(entry.checkIn ? formatNsTimeAdmin(entry.checkIn) : "");
-    setEditCheckOut(entry.checkOut ? formatNsTimeAdmin(entry.checkOut) : "");
     setEditWorkNote(entry.note ?? "");
     setEditDialogOpen(true);
   };
@@ -433,8 +429,8 @@ function AdminEmployeeAttendancePanel() {
       const { Principal } = await import("@dfinity/principal");
       const principal = Principal.fromText(selectedPrincipal);
       const statusVariant = { [editDayType]: null } as any;
-      const checkInOpt = editCheckIn ? [editCheckIn] : [];
-      const checkOutOpt = editCheckOut ? [editCheckOut] : [];
+      const checkInOpt: string[] = [];
+      const checkOutOpt: string[] = [];
       await (actor as any).adminUpdateUserAttendance(
         principal,
         editingEntry.date,
@@ -485,26 +481,7 @@ function AdminEmployeeAttendancePanel() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label>Check In (HH:MM)</Label>
-                <Input
-                  value={editCheckIn}
-                  onChange={(e) => setEditCheckIn(e.target.value)}
-                  placeholder="09:00"
-                  data-ocid="admin.edit-attendance.checkin.input"
-                />
-              </div>
-              <div>
-                <Label>Check Out (HH:MM)</Label>
-                <Input
-                  value={editCheckOut}
-                  onChange={(e) => setEditCheckOut(e.target.value)}
-                  placeholder="18:00"
-                  data-ocid="admin.edit-attendance.checkout.input"
-                />
-              </div>
-            </div>
+
             <div>
               <Label>Work Note</Label>
               <Textarea

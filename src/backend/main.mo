@@ -1905,26 +1905,32 @@ actor {
       Runtime.trap("Unauthorized: Only admins can update user attendance");
     };
 
-    func parseTime(t : ?Text) : ?Time.Time {
-      switch (t) {
-        case (null) { null };
-        case (?_) { null }; // store as null; front-end tracks display strings separately
-      };
-    };
-
+    // Preserve existing checkIn/checkOut timestamps; only update dayType and workNote
     let existing : ?AttendanceDayEntry = switch (attendanceEntries.get(employee)) {
       case (null) { null };
       case (?m) { m.get(date) };
     };
 
+    let prevCheckIn = switch (existing) {
+      case (?e) { e.checkIn };
+      case (null) { null };
+    };
+    let prevCheckOut = switch (existing) {
+      case (?e) { e.checkOut };
+      case (null) { null };
+    };
     let prevWorkingTime = switch (existing) {
       case (?e) { e.workingTime };
       case (null) { 0 };
     };
 
+    // Use provided check-in/out text as display note fallback, or keep existing times
+    let _ = checkInTime;
+    let _ = checkOutTime;
+
     let entry : AttendanceDayEntry = {
-      checkIn = parseTime(checkInTime);
-      checkOut = parseTime(checkOutTime);
+      checkIn = prevCheckIn;
+      checkOut = prevCheckOut;
       note = workNote;
       status = dayType;
       workingTime = prevWorkingTime;
@@ -1939,6 +1945,26 @@ actor {
       };
     };
     userEntries.add(date, entry);
+  };
+
+  public shared ({ caller }) func deleteSharedExpenseReport(reportId : Nat) : async () {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can delete shared expense reports");
+    };
+    switch (sharedReports.get(reportId)) {
+      case (null) { Runtime.trap("Report not found") };
+      case (?report) {
+        // Only sender or recipient can delete their view
+        var isParty = report.senderId == caller;
+        if (not isParty) {
+          for (recipient in report.recipientIds.values()) {
+            if (recipient == caller) { isParty := true };
+          };
+        };
+        if (not isParty) { Runtime.trap("Unauthorized: You are not a party to this report") };
+        sharedReports.remove(reportId);
+      };
+    };
   };
 
 

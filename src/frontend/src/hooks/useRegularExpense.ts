@@ -323,3 +323,33 @@ export function useGetSharedReports() {
     refetchInterval: 30000,
   });
 }
+
+/**
+ * Mutation to delete a shared expense report (from recipient's "Shared with Me")
+ */
+export function useDeleteSharedExpenseReport() {
+  const { actor, isFetching } = useActor();
+  const { identity } = useInternetIdentity();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (reportId: bigint) => {
+      if (!identity) throw new Error("Please log in to delete shared reports");
+      if (!actor)
+        throw new Error(
+          "Backend connection not ready. Please wait a moment and try again.",
+        );
+      if (isFetching)
+        throw new Error(
+          "Backend is initializing. Please wait a moment and try again.",
+        );
+      await (actor as any).deleteSharedExpenseReport(reportId);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["sharedReports"] });
+    },
+    onError: (error) => {
+      console.error("Failed to delete shared report:", error);
+    },
+  });
+}

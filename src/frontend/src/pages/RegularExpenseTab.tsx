@@ -56,6 +56,7 @@ import { useObserveUsers } from "../hooks/useObserveUsers";
 import {
   useAddExpense,
   useDeleteExpense,
+  useDeleteSharedExpenseReport,
   useEditExpense,
   useGetBudget,
   useGetExpenses,
@@ -131,6 +132,7 @@ export function RegularExpenseTab() {
   const editExpenseMutation = useEditExpense();
   const deleteExpenseMutation = useDeleteExpense();
   const shareReportMutation = useShareExpenseReport();
+  const deleteSharedMutation = useDeleteSharedExpenseReport();
 
   const mySelfPrincipal = identity?.getPrincipal().toString() ?? "";
 
@@ -856,6 +858,7 @@ export function RegularExpenseTab() {
                                   (prev) =>
                                     new Set([...prev, String(report.id)]),
                                 );
+                                deleteSharedMutation.mutate(report.id);
                               }}
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               data-ocid={`shared-reports.delete_button.${idx + 1}`}
