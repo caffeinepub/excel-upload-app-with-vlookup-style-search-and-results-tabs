@@ -145,7 +145,6 @@ export const ALL_TABS: TabDef[] = [
     id: "departments",
     label: "Departments",
     icon: <Building2 className="h-4 w-4" />,
-    adminOnly: true,
   },
 ];
 

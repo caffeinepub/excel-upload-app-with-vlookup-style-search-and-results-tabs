@@ -1,8 +1,12 @@
 import { RotateCcw, Upload, User, UserCheck } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
+import { useAvatarUrl } from "../../hooks/useAvatarUrl";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
+import { useGetCallerUserProfile } from "../../hooks/useUserProfile";
 import { useAppState } from "../../state/appState";
 import { LoginButton } from "../auth/LoginButton";
+import { ProfileModal } from "../profile/ProfileModal";
+import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 
 interface AppHeaderProps {
@@ -20,7 +24,10 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
   } = useAppState();
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
+  const { data: callerProfile } = useGetCallerUserProfile();
+  const callerAvatarUrl = useAvatarUrl(callerProfile?.profilePicture ?? null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showProfile, setShowProfile] = useState(false);
 
   const handleReplaceWorkbook = () => {
     if (uploadLoading) return;
@@ -83,13 +90,20 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
   };
 
   const handleProfileClick = () => {
-    // Open profile page directly in a new tab
-    const profileUrl = `${window.location.origin}/profile`;
-    window.open(profileUrl, "_blank", "noopener,noreferrer");
+    setShowProfile(true);
   };
+
+  const callerInitials =
+    callerProfile?.displayName
+      ?.split(" ")
+      .map((w: string) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) ?? "?";
 
   return (
     <>
+      <ProfileModal open={showProfile} onClose={() => setShowProfile(false)} />
       <header className="border-b bg-gradient-to-r from-primary/5 via-accent/5 to-primary/5 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 max-w-6xl">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
@@ -106,10 +120,24 @@ export function AppHeader({ onNavigate }: AppHeaderProps) {
                   onClick={handleProfileClick}
                   variant="outline"
                   size="sm"
+                  className="gap-2"
                   data-ocid="header.profile.button"
                 >
-                  <User className="w-4 h-4 mr-2" />
-                  <span className="hidden xs:inline">Profile</span>
+                  <Avatar className="h-6 w-6">
+                    {callerAvatarUrl && (
+                      <AvatarImage src={callerAvatarUrl} alt="Profile" />
+                    )}
+                    <AvatarFallback className="text-[10px] bg-primary/10 text-primary">
+                      {callerAvatarUrl ? null : callerProfile ? (
+                        callerInitials
+                      ) : (
+                        <User className="h-3 w-3" />
+                      )}
+                    </AvatarFallback>
+                  </Avatar>
+                  <span className="hidden sm:inline">
+                    {callerProfile?.displayName?.split(" ")[0] ?? "Profile"}
+                  </span>
                 </Button>
               )}
               <LoginButton />

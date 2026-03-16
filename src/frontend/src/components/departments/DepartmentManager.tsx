@@ -72,7 +72,9 @@ function removeUserFromExtraDept(principalStr: string, deptId: string) {
   saveExtraDeptMap(map);
 }
 
-export default function DepartmentManager() {
+export default function DepartmentManager({
+  readOnly = false,
+}: { readOnly?: boolean }) {
   const { data: departments = [], isLoading } = useListDepartments();
   const { data: allUsers = [] } = useObserveUsers();
   const createDept = useCreateDepartment();
@@ -187,46 +189,48 @@ export default function DepartmentManager() {
   return (
     <div className="space-y-4">
       {/* Create new dept */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Building2 className="h-4 w-4 text-primary" />
-            Departments
-            <Badge variant="secondary" className="ml-auto">
-              {departments.length}
-            </Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex gap-2">
-            <Input
-              placeholder="New department name…"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-              className="h-8 text-sm"
-              data-ocid="departments.input"
-            />
-            <Button
-              onClick={handleCreate}
-              disabled={!newName.trim() || createDept.isPending}
-              size="sm"
-              className="gap-1 shrink-0"
-              data-ocid="departments.primary_button"
-            >
-              {createDept.isPending ? (
-                <Loader2 className="h-3 w-3 animate-spin" />
-              ) : (
-                <Plus className="h-3 w-3" />
-              )}
-              Add
-            </Button>
-          </div>
-          {createError && (
-            <p className="text-xs text-destructive mt-1">{createError}</p>
-          )}
-        </CardContent>
-      </Card>
+      {!readOnly && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Building2 className="h-4 w-4 text-primary" />
+              Departments
+              <Badge variant="secondary" className="ml-auto">
+                {departments.length}
+              </Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex gap-2">
+              <Input
+                placeholder="New department name…"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                className="h-8 text-sm"
+                data-ocid="departments.input"
+              />
+              <Button
+                onClick={handleCreate}
+                disabled={!newName.trim() || createDept.isPending}
+                size="sm"
+                className="gap-1 shrink-0"
+                data-ocid="departments.primary_button"
+              >
+                {createDept.isPending ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Plus className="h-3 w-3" />
+                )}
+                Add
+              </Button>
+            </div>
+            {createError && (
+              <p className="text-xs text-destructive mt-1">{createError}</p>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Department list with members */}
       {isLoading ? (
@@ -286,48 +290,52 @@ export default function DepartmentManager() {
                           {members.length} member
                           {members.length !== 1 ? "s" : ""}
                         </Badge>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-7 w-7"
-                          onClick={() => handleEditStart(dept.id, dept.name)}
-                        >
-                          <Pencil className="h-3 w-3" />
-                        </Button>
-                        <AlertDialog>
-                          <AlertDialogTrigger asChild>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-7 w-7 text-destructive hover:text-destructive"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </AlertDialogTrigger>
-                          <AlertDialogContent>
-                            <AlertDialogHeader>
-                              <AlertDialogTitle>
-                                Delete Department
-                              </AlertDialogTitle>
-                              <AlertDialogDescription>
-                                Are you sure you want to delete "{dept.name}"?
-                                This action cannot be undone.
-                              </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                              <AlertDialogCancel>Cancel</AlertDialogCancel>
-                              <AlertDialogAction
-                                onClick={() => handleDelete(dept.id)}
-                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        {!readOnly && (
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            onClick={() => handleEditStart(dept.id, dept.name)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                        )}
+                        {!readOnly && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
                               >
-                                {deleteDept.isPending ? (
-                                  <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                                ) : null}
-                                Delete
-                              </AlertDialogAction>
-                            </AlertDialogFooter>
-                          </AlertDialogContent>
-                        </AlertDialog>
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                  Delete Department
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Are you sure you want to delete "{dept.name}"?
+                                  This action cannot be undone.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={() => handleDelete(dept.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  {deleteDept.isPending ? (
+                                    <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                                  ) : null}
+                                  Delete
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
+                        )}
                       </>
                     )}
                   </div>
@@ -353,15 +361,19 @@ export default function DepartmentManager() {
                             key={pStr}
                             className="relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
                           >
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                              onClick={() => handleRemoveMember(pStr, dept.id)}
-                              title="Remove from department"
-                            >
-                              <X className="h-3 w-3" />
-                            </Button>
+                            {!readOnly && (
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+                                onClick={() =>
+                                  handleRemoveMember(pStr, dept.id)
+                                }
+                                title="Remove from department"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            )}
                             <Avatar className="h-12 w-12">
                               {avatarUrl ? (
                                 <AvatarImage src={avatarUrl} alt={name} />
@@ -397,19 +409,21 @@ export default function DepartmentManager() {
                     </div>
                   )}
                   {/* Add Member button */}
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5 text-xs"
-                    onClick={() => {
-                      setAddMemberDeptId(dept.id);
-                      setMemberSearch("");
-                    }}
-                    data-ocid="departments.secondary_button"
-                  >
-                    <UserPlus className="h-3.5 w-3.5" />
-                    Add Member
-                  </Button>
+                  {!readOnly && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5 text-xs"
+                      onClick={() => {
+                        setAddMemberDeptId(dept.id);
+                        setMemberSearch("");
+                      }}
+                      data-ocid="departments.secondary_button"
+                    >
+                      <UserPlus className="h-3.5 w-3.5" />
+                      Add Member
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             );

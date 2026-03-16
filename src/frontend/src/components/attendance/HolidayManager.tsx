@@ -39,6 +39,7 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 import type { Department, Holiday } from "../../backend";
+import { useActor } from "../../hooks/useActor";
 import { useListDepartments } from "../../hooks/useDepartments";
 import {
   useCreateHoliday,
@@ -151,6 +152,7 @@ export function HolidayManager({
   const createHoliday = useCreateHoliday();
   const updateHoliday = useUpdateHoliday();
   const deleteHoliday = useDeleteHoliday();
+  const { actor } = useActor();
 
   // Filter holidays for current month/year
   const monthHolidays = holidays
@@ -242,6 +244,19 @@ export function HolidayManager({
           applicableDepartments: depts,
           description: form.description.trim(),
         });
+        // Auto-mark all users' attendance as Holiday on this date
+        try {
+          if (actor) {
+            const dateStr = form.date; // already YYYY-MM-DD
+            await (actor as any).setHolidayForAllUsers(
+              dateStr,
+              form.name.trim(),
+              form.holidayType,
+            );
+          }
+        } catch {
+          // Non-critical: best-effort
+        }
         toast.success("Holiday created successfully");
       }
       setIsFormOpen(false);

@@ -1,60 +1,38 @@
-# Crystal Atlas — Attendance, Calendar, Expenses, Team Chat, Mobile Fixes
+# Crystal Atlas
 
 ## Current State
+Crystal Atlas is a full-stack HR/productivity app with Motoko backend and React frontend. It has attendance tracking (check-in/out, history, PDF export), holiday management, team chat, user profiles, expense sharing, calendar events, department management, and admin controls.
 
-Crystal Atlas is a full-stack HR/collaboration app with Motoko backend and React frontend. It features Attendance (check in/out, history, PDF), Calendar (events, holidays), Expenses (shared reports), Team Chat (channels, DMs, reactions, status), and mobile layout.
-
-- TodayAttendanceView: shows day type as a static badge, no dropdown to change it
-- AttendanceDateEditor: has a Select component for status but it's only on the date-editor panel
-- Calendar (CalendarTab): has CalendarEvents but no inline calendar picker for creating events
-- Expenses (RegularExpenseTab): shared reports tab labeled incorrectly; shared report data shown as raw JSON/text
-- TeamTab: profiles and reactions not visible for messages from other users; chat is small/boxed not full-screen
-- Mobile: Team Chat, Attendance, and other pages have layout/text overflow issues
+Known issues:
+- Holiday creation does NOT auto-update all users' attendance history
+- Admin cannot edit individual user attendance records
+- Profile page is not full-page; lacks professional section layout
+- Shared expense reports display in raw/unformatted text, not a clean table
+- Department view is only available to admins, not all users
+- Calendar Events calendar widget doesn't fill its container box fully
 
 ## Requested Changes (Diff)
 
 ### Add
-- Day Type selector drawer/dropdown on TodayAttendanceView — user can change the day type (Present, Leave, Festival Leave, Company Leave, Week Off, Half Day, Holiday) directly from the Today tab
-- Holiday name + day type label shown below each date cell on the Attendance Calendar view
-- Calendar Events page: show a full calendar picker to select a date, then create/edit/delete events (title, description, time, public or admin-only visibility)
-- Full-screen Team Chat layout with slide-in animation when navigating to Team tab
-- Profiles (avatar + name) visible on all messages including from other users in Team Chat
-- Emoji reactions visible and interactive for all users (not just own messages)
+- Backend: `setHolidayForAllUsers(date, holidayName, holidayType)` — when admin creates a holiday, auto-insert/update an attendance record with status "Holiday" for every registered user on that date
+- Backend: `adminUpdateUserAttendance(userId, date, dayType, checkIn, checkOut, workNote)` — admin can overwrite any field of a user's attendance for a given date
+- Frontend: After admin saves a holiday, trigger auto-update of all users' attendance history
+- Frontend: Admin employee attendance view — edit button per record that opens a modal to change Day Type, Check-in, Check-out, Work Note
+- Frontend: Department tab visible to ALL users (read-only for non-admins)
 
 ### Modify
-- RegularExpenseTab: rename "Shared with User" tab → "Shared with Me"
-- Shared expense report view: replace raw text with formatted table (Date, Category, Description, Amount columns + total row at bottom)
-- TodayAttendanceView: wire Day Type select to call `saveAttendanceEntry` when changed
-- Team Chat: improve visuals — larger message area, better padding, animated entry, profile pictures on all messages
-- Mobile layout: fix text overflow, wrapping, and padding across Team Chat, Attendance, Dashboard, and other pages
+- Profile page: Redesign as full-page professional layout with three sections — Personal Info (name, photo, birthdate, bio), Contact Details (email, phone), Employment Info (joining date, job title, department). All fields editable, savable.
+- Shared expense report ("Shared with Me" tab): Replace raw text display with a clean HTML table — columns: Date, Category, Description, Amount — with a bold Total row at bottom. Reports remain deletable by sender.
+- Calendar Events page: Make the calendar widget fill 100% of its container box with proper spacing and no overflow issues.
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-
-1. **TodayAttendanceView**: Add a Select/Drawer for Day Type (all 7 statuses). On change, call `saveAttendanceEntry` with updated status for today's date.
-
-2. **Attendance Calendar**: In the calendar cell renderer, look up holidays and attendance entries for each date. Show holiday name + type (e.g. "Diwali — Festival Leave") below the day number.
-
-3. **RegularExpenseTab / Shared Reports**:
-   - Rename tab label from "Shared with User" → "Shared with Me"
-   - Parse `reportData` JSON to extract expense rows, render as a clean table with columns: Date, Category, Description, Amount — plus a bold total row at the bottom
-
-4. **CalendarTab — Calendar Events**:
-   - Replace the current event creation UI with a shadcn Calendar component for date selection
-   - Below the calendar, show a form to create an event for the selected date (title, description, time, visibility toggle admin-only/public)
-   - List existing events for the selected date with Edit and Delete controls
-
-5. **TeamTab — Full-screen + Visuals**:
-   - Wrap TeamTab content in a full-viewport overlay that animates in (slide from right or fade-scale) when the tab is activated
-   - Increase chat area to use full height/width; keep sidebar visible
-   - Show sender avatar + display name on every message bubble (not just own)
-   - Show emoji reaction bar on all messages, not just own
-
-6. **Mobile Fixes**:
-   - Add `overflow-hidden` / `overflow-x-hidden` to root containers
-   - Ensure all flex/grid layouts have proper `flex-wrap` or `min-w-0` on children
-   - Fix Team Chat sidebar and message area on small screens (stack vertically or use a slide-over sidebar)
-   - Fix Attendance Today/History card layouts on mobile
-   - Ensure text doesn't overflow on dashboard widgets
+1. Add `setHolidayForAllUsers` and `adminUpdateUserAttendance` backend functions
+2. Wire holiday creation flow to call `setHolidayForAllUsers` after saving holiday
+3. Add edit modal in admin attendance viewer for per-user record edits
+4. Redesign ProfileModal/ProfilePage as full-page sectioned layout
+5. Fix SharedExpenseReport display to render as a proper HTML table with Date/Category/Description/Amount columns and Total row
+6. Make Department tab read-only visible to all users (hide edit controls for non-admins)
+7. Fix Calendar Events calendar widget CSS to fill container box fully

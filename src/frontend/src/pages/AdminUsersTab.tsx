@@ -9,11 +9,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -30,6 +39,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
 import type { Principal } from "@icp-sdk/core/principal";
 import {
   AlertCircle,
@@ -44,6 +54,7 @@ import {
   FileText,
   Loader2,
   MoreHorizontal,
+  Pencil,
   RefreshCw,
   Trash2,
   Users,
@@ -339,6 +350,18 @@ function AdminEmployeeAttendancePanel() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Edit attendance dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingEntry, setEditingEntry] = useState<{
+    date: string;
+    entry: AttendanceDayEntry;
+  } | null>(null);
+  const [editDayType, setEditDayType] = useState("");
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
+  const [editWorkNote, setEditWorkNote] = useState("");
+  const [isSavingEdit, setIsSavingEdit] = useState(false);
+
   const fetchAttendance = async (principalStr: string) => {
     if (!principalStr || !actor) return;
     setIsLoading(true);
@@ -393,8 +416,128 @@ function AdminEmployeeAttendancePanel() {
     }
   };
 
+  const openEdit = (date: string, entry: AttendanceDayEntry) => {
+    setEditingEntry({ date, entry });
+    const statusKey = Object.keys(entry.status)[0] ?? "present";
+    setEditDayType(statusKey);
+    setEditCheckIn(entry.checkIn ? formatNsTimeAdmin(entry.checkIn) : "");
+    setEditCheckOut(entry.checkOut ? formatNsTimeAdmin(entry.checkOut) : "");
+    setEditWorkNote(entry.note ?? "");
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingEntry || !actor || !selectedPrincipal) return;
+    setIsSavingEdit(true);
+    try {
+      const { Principal } = await import("@dfinity/principal");
+      const principal = Principal.fromText(selectedPrincipal);
+      const statusVariant = { [editDayType]: null } as any;
+      const checkInOpt = editCheckIn ? [editCheckIn] : [];
+      const checkOutOpt = editCheckOut ? [editCheckOut] : [];
+      await (actor as any).adminUpdateUserAttendance(
+        principal,
+        editingEntry.date,
+        statusVariant,
+        checkInOpt,
+        checkOutOpt,
+        editWorkNote,
+      );
+      // Refresh attendance
+      await fetchAttendance(selectedPrincipal);
+      toast.success("Attendance updated successfully");
+      setEditDialogOpen(false);
+    } catch (e) {
+      toast.error(
+        `Failed to update: ${e instanceof Error ? e.message : String(e)}`,
+      );
+    } finally {
+      setIsSavingEdit(false);
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Edit Attendance Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent
+          className="sm:max-w-sm"
+          data-ocid="admin.edit-attendance.dialog"
+        >
+          <DialogHeader>
+            <DialogTitle>Edit Attendance — {editingEntry?.date}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <Label>Day Type</Label>
+              <Select value={editDayType} onValueChange={setEditDayType}>
+                <SelectTrigger data-ocid="admin.edit-attendance.daytype.select">
+                  <SelectValue placeholder="Select status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="present">Present</SelectItem>
+                  <SelectItem value="leave">Leave</SelectItem>
+                  <SelectItem value="festivalLeave">Festival Leave</SelectItem>
+                  <SelectItem value="companyLeave">Company Leave</SelectItem>
+                  <SelectItem value="weekOff">Week Off</SelectItem>
+                  <SelectItem value="halfDay">Half Day</SelectItem>
+                  <SelectItem value="holiday">Holiday</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Check In (HH:MM)</Label>
+                <Input
+                  value={editCheckIn}
+                  onChange={(e) => setEditCheckIn(e.target.value)}
+                  placeholder="09:00"
+                  data-ocid="admin.edit-attendance.checkin.input"
+                />
+              </div>
+              <div>
+                <Label>Check Out (HH:MM)</Label>
+                <Input
+                  value={editCheckOut}
+                  onChange={(e) => setEditCheckOut(e.target.value)}
+                  placeholder="18:00"
+                  data-ocid="admin.edit-attendance.checkout.input"
+                />
+              </div>
+            </div>
+            <div>
+              <Label>Work Note</Label>
+              <Textarea
+                value={editWorkNote}
+                onChange={(e) => setEditWorkNote(e.target.value)}
+                rows={3}
+                placeholder="Work details..."
+                data-ocid="admin.edit-attendance.note.textarea"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditDialogOpen(false)}
+              data-ocid="admin.edit-attendance.cancel_button"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSaveEdit}
+              disabled={isSavingEdit}
+              data-ocid="admin.edit-attendance.save_button"
+            >
+              {isSavingEdit ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex items-end gap-3 flex-wrap">
         <div className="space-y-1.5 flex-1 min-w-48">
           <label
@@ -508,6 +651,7 @@ function AdminEmployeeAttendancePanel() {
                   <TableHead className="text-xs">Check Out</TableHead>
                   <TableHead className="text-xs">Working Time</TableHead>
                   <TableHead className="text-xs">Work Details</TableHead>
+                  <TableHead className="text-xs">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -533,6 +677,17 @@ function AdminEmployeeAttendancePanel() {
                     </TableCell>
                     <TableCell className="text-sm max-w-xs truncate">
                       {entry.note || "—"}
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => openEdit(date, entry)}
+                        data-ocid={`admin.employee-attendance.edit_button.${idx + 1}`}
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </Button>
                     </TableCell>
                   </TableRow>
                 ))}

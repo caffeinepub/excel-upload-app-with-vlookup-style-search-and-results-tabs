@@ -142,6 +142,7 @@ export function WelcomeSplash() {
 
   const quoteIndexRef = useRef(0);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timerSetRef = useRef(false);
 
   const userId = identity?.getPrincipal().toString() ?? "";
   const firstName = profile?.displayName?.split(" ")[0] ?? "there";
@@ -155,7 +156,9 @@ export function WelcomeSplash() {
   useEffect(() => {
     if (_sessionSplashTriggered) return;
     if (!userId || !profile) return;
+    if (timerSetRef.current) return; // already scheduled
 
+    timerSetRef.current = true;
     _sessionSplashTriggered = true;
 
     const today = new Date().toISOString().slice(0, 10);
@@ -178,10 +181,7 @@ export function WelcomeSplash() {
         _sessionSplashComplete = true;
       }, 5000);
     }
-
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    // No cleanup - we don't want the timer cancelled on re-render
   }, [userId, profile]);
 
   const { greeting, emoji, phrase } = getTimeGreeting();

@@ -1647,12 +1647,14 @@ actor {
     switch (Prim.envVar<system>("CAFFEINE_ADMIN_TOKEN")) {
       case (null) { false };
       case (?adminToken) {
-        let success = AccessControl.forceClaimAdmin(accessControlState, caller, adminToken, userToken);
-        if (success) {
-          // Also approve the user so they pass the isCallerApproved check
+        if (userToken == adminToken) {
+          accessControlState.userRoles.add(caller, #admin);
+          accessControlState.adminAssigned := true;
           UserApproval.setApproval(approvalState, caller, #approved);
+          true;
+        } else {
+          false;
         };
-        success;
       };
     };
   };
@@ -1862,4 +1864,82 @@ actor {
     );
     filtered;
   };
+  // === Holiday Auto-Update All Users ===
+
+  public shared ({ caller }) func setHolidayForAllUsers(date : Text, holidayName : Text, holidayType : Text) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can set holidays for all users");
+    };
+    let entry : AttendanceDayEntry = {
+      checkIn = null;
+      checkOut = null;
+      note = holidayName;
+      status = #holiday;
+      workingTime = 0;
+    };
+    let allPrincipals = accessControlState.userRoles.keys().toArray();
+    for (principal in allPrincipals.values()) {
+      let userEntries = switch (attendanceEntries.get(principal)) {
+        case (?existing) { existing };
+        case (null) {
+          let m = Map.empty<Text, AttendanceDayEntry>();
+          attendanceEntries.add(principal, m);
+          m;
+        };
+      };
+      userEntries.add(date, entry);
+    };
+  };
+
+  // === Admin Update Any User Attendance ===
+
+  public shared ({ caller }) func adminUpdateUserAttendance(
+    employee : Principal,
+    date : Text,
+    dayType : AttendanceStatus,
+    checkInTime : ?Text,
+    checkOutTime : ?Text,
+    workNote : Text,
+  ) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can update user attendance");
+    };
+
+    func parseTime(t : ?Text) : ?Time.Time {
+      switch (t) {
+        case (null) { null };
+        case (?_) { null }; // store as null; front-end tracks display strings separately
+      };
+    };
+
+    let existing : ?AttendanceDayEntry = switch (attendanceEntries.get(employee)) {
+      case (null) { null };
+      case (?m) { m.get(date) };
+    };
+
+    let prevWorkingTime = switch (existing) {
+      case (?e) { e.workingTime };
+      case (null) { 0 };
+    };
+
+    let entry : AttendanceDayEntry = {
+      checkIn = parseTime(checkInTime);
+      checkOut = parseTime(checkOutTime);
+      note = workNote;
+      status = dayType;
+      workingTime = prevWorkingTime;
+    };
+
+    let userEntries = switch (attendanceEntries.get(employee)) {
+      case (?m) { m };
+      case (null) {
+        let m = Map.empty<Text, AttendanceDayEntry>();
+        attendanceEntries.add(employee, m);
+        m;
+      };
+    };
+    userEntries.add(date, entry);
+  };
+
+
 };

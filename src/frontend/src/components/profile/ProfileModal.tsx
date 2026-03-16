@@ -10,7 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Textarea } from "@/components/ui/textarea";
-import { Camera, ExternalLink, Loader2, Save, X } from "lucide-react";
+import { Camera, Loader2, Save, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useListDepartments } from "../../hooks/useDepartments";
@@ -91,62 +91,6 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
         ? prev.filter((d) => d !== deptName)
         : [...prev, deptName],
     );
-  };
-
-  const openProfileInNewTab = () => {
-    const newWin = window.open("", "_blank");
-    if (!newWin) return;
-    const deptList = selectedDepts.length > 0 ? selectedDepts.join(", ") : "—";
-    const initStr =
-      displayName
-        .split(" ")
-        .map((w: string) => w[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2) || "?";
-    const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${displayName || "User"} — Profile</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f7fa; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 40px 20px; }
-    .card { background: #fff; border-radius: 16px; box-shadow: 0 4px 32px rgba(0,0,0,0.10); max-width: 520px; width: 100%; padding: 40px; }
-    .avatar { width: 90px; height: 90px; border-radius: 50%; background: linear-gradient(135deg, #3b82f6, #6366f1); display: flex; align-items: center; justify-content: center; font-size: 32px; font-weight: 700; color: #fff; margin: 0 auto 18px; overflow: hidden; }
-    .avatar img { width: 100%; height: 100%; object-fit: cover; }
-    .name { text-align: center; font-size: 26px; font-weight: 700; color: #111; margin-bottom: 6px; }
-    .jobtitle { text-align: center; font-size: 15px; color: #6b7280; margin-bottom: 28px; }
-    .divider { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
-    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-    .field label { font-size: 11px; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 4px; }
-    .field span { font-size: 14px; color: #111; }
-    .bio-field { grid-column: 1 / -1; }
-    .footer { text-align: center; font-size: 12px; color: #d1d5db; margin-top: 32px; }
-    @media print { body { background: #fff; padding: 0; } .card { box-shadow: none; } }
-  </style>
-</head>
-<body>
-<div class="card">
-  <div class="avatar">${avatarPreview ? `<img src="${avatarPreview}" alt="" />` : initStr}</div>
-  <div class="name">${displayName || "—"}</div>
-  <div class="jobtitle">${jobTitle || "Team Member"}</div>
-  <hr class="divider" />
-  <div class="grid">
-    <div class="field"><label>Email</label><span>${email || "—"}</span></div>
-    <div class="field"><label>Phone</label><span>${phone || "—"}</span></div>
-    <div class="field"><label>Birth Date</label><span>${birthDate || "—"}</span></div>
-    <div class="field"><label>Joining Date</label><span>${joiningDate || "—"}</span></div>
-    <div class="field"><label>Department(s)</label><span>${deptList}</span></div>
-    ${bio ? `<div class="field bio-field"><label>Bio</label><span>${bio}</span></div>` : ""}
-  </div>
-  <div class="footer">Crystal Atlas &mdash; Employee Profile</div>
-</div>
-</body>
-</html>`;
-    newWin.document.write(html);
-    newWin.document.close();
   };
 
   const handleSave = async () => {
@@ -375,18 +319,6 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
               </p>
             </div>
           )}
-
-          {/* Open in New Tab */}
-          <Button
-            type="button"
-            variant="outline"
-            onClick={openProfileInNewTab}
-            className="w-full gap-2"
-            data-ocid="profile.secondary_button"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Open Profile in New Tab
-          </Button>
 
           {/* Save */}
           <Button

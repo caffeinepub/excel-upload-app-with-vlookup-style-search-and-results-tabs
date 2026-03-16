@@ -24,7 +24,6 @@ import { UserStatusKind } from "../backend";
 import CallPlaceholderModal from "../components/team/CallPlaceholderModal";
 import ChannelView from "../components/team/ChannelView";
 import DirectMessageView from "../components/team/DirectMessageView";
-import ProfileEditorDialog from "../components/team/ProfileEditorDialog";
 import StatusSelector from "../components/team/StatusSelector";
 import TeamSidebar from "../components/team/TeamSidebar";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
@@ -38,29 +37,6 @@ import {
 } from "../hooks/useTeamMessaging";
 import { useGetCallerUserProfile } from "../hooks/useUserProfile";
 import { getInitials } from "../lib/avatarUtils";
-
-function CallerAvatarButton({ onClick }: { onClick: () => void }) {
-  const { data: profile } = useGetCallerUserProfile();
-  const avatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
-  const initials = getInitials(profile?.displayName);
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-full focus:outline-none focus:ring-2 focus:ring-primary"
-    >
-      <Avatar className="h-8 w-8">
-        {avatarUrl && (
-          <AvatarImage src={avatarUrl} alt={profile?.displayName} />
-        )}
-        <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
-          {initials}
-        </AvatarFallback>
-      </Avatar>
-    </button>
-  );
-}
 
 // Key used to persist DM conversation list in localStorage
 const DM_USERS_KEY_PREFIX = "dmUsers_";
@@ -145,7 +121,6 @@ export default function TeamTab() {
   const [newChannelName, setNewChannelName] = useState("");
   const [showNewDm, setShowNewDm] = useState(false);
   const [dmSearchQuery, setDmSearchQuery] = useState("");
-  const [showProfileEditor, setShowProfileEditor] = useState(false);
   const [callModal, setCallModal] = useState<"voice" | "video" | null>(null);
   const [copiedInvite, setCopiedInvite] = useState(false);
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -307,7 +282,6 @@ export default function TeamTab() {
             </Button>
             <div className="flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
               <StatusSelector currentStatus={callerStatus} />
-              <CallerAvatarButton onClick={() => setShowProfileEditor(true)} />
             </div>
           </div>
         </div>
@@ -547,12 +521,6 @@ export default function TeamTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
-      {/* Profile Editor */}
-      <ProfileEditorDialog
-        open={showProfileEditor}
-        onOpenChange={setShowProfileEditor}
-      />
 
       {/* Call Placeholder */}
       <CallPlaceholderModal

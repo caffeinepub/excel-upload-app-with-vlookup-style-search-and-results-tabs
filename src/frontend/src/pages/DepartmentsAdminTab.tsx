@@ -1,4 +1,3 @@
-import { ShieldAlert } from "lucide-react";
 import React from "react";
 import DepartmentManager from "../components/departments/DepartmentManager";
 import UserDepartmentAssigner from "../components/departments/UserDepartmentAssigner";
@@ -17,11 +16,14 @@ export default function DepartmentsAdminTab() {
 
   if (!isAdmin) {
     return (
-      <div className="flex flex-col items-center justify-center py-16 text-muted-foreground gap-3">
-        <ShieldAlert className="h-10 w-10 opacity-40" />
-        <p className="text-sm">
-          You do not have permission to manage departments.
-        </p>
+      <div className="space-y-4 max-w-3xl mx-auto">
+        <div>
+          <h2 className="text-lg font-semibold">Departments — View Only</h2>
+          <p className="text-sm text-muted-foreground">
+            You can view department members but cannot make changes.
+          </p>
+        </div>
+        <DepartmentManager readOnly={true} />
       </div>
     );
   }

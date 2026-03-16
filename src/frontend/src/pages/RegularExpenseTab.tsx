@@ -42,6 +42,7 @@ import {
   Download,
   Edit,
   Eye,
+  FileText,
   Loader2,
   Plus,
   Share2,
@@ -1072,8 +1073,13 @@ export function RegularExpenseTab() {
           data-ocid="shared-reports.view.dialog"
         >
           <DialogHeader>
-            <DialogTitle>{viewReportData?.title}</DialogTitle>
-            <DialogDescription>Shared expense report details</DialogDescription>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-primary" />
+              {viewReportData?.title}
+            </DialogTitle>
+            <DialogDescription>
+              Shared expense report — Crystal Atlas
+            </DialogDescription>
           </DialogHeader>
           {viewReportData &&
             (() => {
@@ -1081,15 +1087,140 @@ export function RegularExpenseTab() {
                 expenses?: any[];
                 summary?: any;
                 period?: string;
+                headers?: string[];
+                rows?: any[][];
               } | null = null;
               try {
                 parsed = JSON.parse(viewReportData.data);
               } catch {}
+
+              // Handle ExportData format {headers, rows}
+              if (parsed?.headers && parsed.rows) {
+                const headers = parsed.headers as string[];
+                const rows = parsed.rows as any[][];
+                // Find total row and data rows
+                const dataRows = rows.filter((r) => String(r[1]) !== "TOTAL");
+                const totalRow = rows.find((r) => String(r[1]) === "TOTAL");
+                // Map rows: Date, Category, Amount, Description (order from buildExpenseReportData)
+                const dateIdx = headers.indexOf("Date");
+                const catIdx = headers.indexOf("Category");
+                const amtIdx = headers.indexOf("Amount");
+                const descIdx = headers.indexOf("Description");
+                const expsFromRows = dataRows.map((r) => ({
+                  date: dateIdx >= 0 ? r[dateIdx] : r[0],
+                  category: catIdx >= 0 ? r[catIdx] : r[1],
+                  amount: amtIdx >= 0 ? r[amtIdx] : r[2],
+                  description: descIdx >= 0 ? r[descIdx] : r[3],
+                }));
+                const grandTotal = totalRow
+                  ? Number(totalRow[amtIdx >= 0 ? amtIdx : 2] ?? 0)
+                  : expsFromRows.reduce((s, e) => s + Number(e.amount ?? 0), 0);
+                return (
+                  <div className="space-y-4">
+                    <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4 flex items-center gap-3">
+                      <div className="rounded-lg bg-primary/10 p-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="font-bold text-base">
+                          {viewReportData.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Expense Report • Crystal Atlas
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-xs text-muted-foreground">Total</p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          $
+                          {grandTotal.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="rounded-xl border overflow-hidden shadow-sm">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="bg-primary text-primary-foreground">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
+                              Date
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
+                              Category
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
+                              Description
+                            </th>
+                            <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wide">
+                              Amount
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {expsFromRows.map((e: any, i: number) => (
+                            <tr
+                              // biome-ignore lint/suspicious/noArrayIndexKey: expense rows have no stable id
+                              key={`exp-row-${i}`}
+                              className={
+                                i % 2 === 0 ? "bg-background" : "bg-muted/30"
+                              }
+                            >
+                              <td className="px-4 py-2.5 text-muted-foreground">
+                                {e.date ?? "—"}
+                              </td>
+                              <td className="px-4 py-2.5">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                  {e.category ?? "—"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground max-w-[140px] truncate">
+                                {e.description || "—"}
+                              </td>
+                              <td className="px-4 py-2.5 text-right font-semibold">
+                                $
+                                {Number(e.amount ?? 0).toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                        <tfoot>
+                          <tr className="bg-muted/60 border-t-2 border-border">
+                            <td
+                              colSpan={3}
+                              className="px-4 py-3 font-bold text-sm"
+                            >
+                              Grand Total
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600 text-base">
+                              $
+                              {grandTotal.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                              })}
+                            </td>
+                          </tr>
+                        </tfoot>
+                      </table>
+                    </div>
+                  </div>
+                );
+              }
+
               if (!parsed || !parsed.expenses) {
                 return (
-                  <pre className="text-xs bg-muted rounded-lg p-4 overflow-x-auto whitespace-pre-wrap">
-                    {viewReportData.data}
-                  </pre>
+                  <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-2">
+                    <div className="flex items-center gap-2 mb-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                      <span className="text-sm font-semibold text-foreground">
+                        Report Data
+                      </span>
+                    </div>
+                    <div className="font-mono text-xs bg-background rounded-md border border-border p-3 overflow-x-auto whitespace-pre-wrap leading-relaxed text-foreground/80">
+                      {viewReportData.data}
+                    </div>
+                  </div>
                 );
               }
               const exps = parsed.expenses ?? [];
@@ -1097,82 +1228,137 @@ export function RegularExpenseTab() {
                 (sum: number, e: any) => sum + Number(e.amount ?? 0),
                 0,
               );
+              const categoryTotals: Record<string, number> = {};
+              for (const e of exps) {
+                const cat = e.category ?? "Other";
+                categoryTotals[cat] =
+                  (categoryTotals[cat] ?? 0) + Number(e.amount ?? 0);
+              }
+              const topCategory =
+                Object.entries(categoryTotals).sort(
+                  (a, b) => b[1] - a[1],
+                )[0]?.[0] ?? "—";
               return (
                 <div className="space-y-4">
-                  {parsed.period && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <span>Period:</span>
-                      <span className="font-medium text-foreground">
-                        {parsed.period}
-                      </span>
+                  {/* Report Summary Header */}
+                  <div className="rounded-xl border border-primary/20 bg-gradient-to-r from-primary/5 to-accent/5 p-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="rounded-lg bg-primary/10 p-2">
+                        <FileText className="h-5 w-5 text-primary" />
+                      </div>
+                      <div>
+                        <p className="font-bold text-base">
+                          {viewReportData.title}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Expense Report • Crystal Atlas
+                        </p>
+                      </div>
                     </div>
-                  )}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="bg-emerald-50 dark:bg-emerald-950/30 rounded-lg p-3 border border-emerald-200 dark:border-emerald-800">
-                      <p className="text-xs text-muted-foreground">
-                        Total Expenses
-                      </p>
-                      <p className="text-xl font-bold text-emerald-600">
-                        ${total.toLocaleString()}
-                      </p>
+                    <div className="grid grid-cols-3 gap-3">
+                      <div className="bg-background rounded-lg p-3 border border-border text-center">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Total Amount
+                        </p>
+                        <p className="text-lg font-bold text-emerald-600">
+                          $
+                          {total.toLocaleString("en-US", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </p>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 border border-border text-center">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Transactions
+                        </p>
+                        <p className="text-lg font-bold text-blue-600">
+                          {exps.length}
+                        </p>
+                      </div>
+                      <div className="bg-background rounded-lg p-3 border border-border text-center">
+                        <p className="text-xs text-muted-foreground mb-1">
+                          Top Category
+                        </p>
+                        <p className="text-sm font-bold truncate">
+                          {topCategory}
+                        </p>
+                      </div>
                     </div>
-                    <div className="bg-blue-50 dark:bg-blue-950/30 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-muted-foreground">
-                        Transactions
+                    {parsed.period && (
+                      <p className="text-xs text-muted-foreground mt-2 text-right">
+                        Period:{" "}
+                        <span className="font-medium text-foreground">
+                          {parsed.period}
+                        </span>
                       </p>
-                      <p className="text-xl font-bold text-blue-600">
-                        {exps.length}
-                      </p>
-                    </div>
+                    )}
                   </div>
                   {exps.length > 0 && (
-                    <div className="rounded-lg border overflow-hidden">
+                    <div className="rounded-xl border overflow-hidden shadow-sm">
                       <table className="w-full text-sm">
-                        <thead className="bg-muted/60">
-                          <tr>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                        <thead>
+                          <tr className="bg-primary text-primary-foreground">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
+                              #
+                            </th>
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
                               Date
                             </th>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
                               Category
                             </th>
-                            <th className="px-3 py-2 text-left font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-left font-semibold text-xs uppercase tracking-wide">
                               Description
                             </th>
-                            <th className="px-3 py-2 text-right font-medium text-muted-foreground">
+                            <th className="px-4 py-3 text-right font-semibold text-xs uppercase tracking-wide">
                               Amount
                             </th>
                           </tr>
                         </thead>
                         <tbody>
-                          {exps.map((e: any) => (
+                          {exps.map((e: any, idx: number) => (
                             <tr
-                              key={`${e.date ?? "x"}-${e.category ?? "y"}-${e.amount ?? "0"}`}
-                              className="border-t border-border"
+                              key={`${e.date ?? "x"}-${e.category ?? "y"}-${e.amount ?? "0"}-${idx}`}
+                              className={
+                                idx % 2 === 0 ? "bg-background" : "bg-muted/30"
+                              }
                             >
-                              <td className="px-3 py-2 text-muted-foreground">
+                              <td className="px-4 py-2.5 text-muted-foreground text-xs">
+                                {idx + 1}
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground">
                                 {e.date ?? "—"}
                               </td>
-                              <td className="px-3 py-2">{e.category ?? "—"}</td>
-                              <td className="px-3 py-2 text-muted-foreground truncate max-w-[120px]">
+                              <td className="px-4 py-2.5">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                                  {e.category ?? "—"}
+                                </span>
+                              </td>
+                              <td className="px-4 py-2.5 text-muted-foreground max-w-[140px] truncate">
                                 {e.description || "—"}
                               </td>
-                              <td className="px-3 py-2 text-right font-medium">
-                                ${Number(e.amount ?? 0).toLocaleString()}
+                              <td className="px-4 py-2.5 text-right font-semibold">
+                                $
+                                {Number(e.amount ?? 0).toLocaleString("en-US", {
+                                  minimumFractionDigits: 2,
+                                })}
                               </td>
                             </tr>
                           ))}
                         </tbody>
-                        <tfoot className="bg-muted/40">
-                          <tr>
+                        <tfoot>
+                          <tr className="bg-muted/60 border-t-2 border-border">
                             <td
-                              colSpan={3}
-                              className="px-3 py-2 font-semibold text-sm"
+                              colSpan={4}
+                              className="px-4 py-3 font-bold text-sm"
                             >
-                              Total
+                              Grand Total
                             </td>
-                            <td className="px-3 py-2 text-right font-bold text-emerald-600">
-                              ${total.toLocaleString()}
+                            <td className="px-4 py-3 text-right font-bold text-emerald-600 text-base">
+                              $
+                              {total.toLocaleString("en-US", {
+                                minimumFractionDigits: 2,
+                              })}
                             </td>
                           </tr>
                         </tfoot>
