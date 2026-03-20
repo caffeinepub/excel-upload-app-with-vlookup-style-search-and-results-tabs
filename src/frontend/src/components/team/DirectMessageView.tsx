@@ -1,7 +1,7 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Principal } from "@dfinity/principal";
 import { Loader2 } from "lucide-react";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { UserStatusKind } from "../../backend";
 import { useApproval } from "../../hooks/useApproval";
 import { useAvatarUrl } from "../../hooks/useAvatarUrl";
@@ -14,6 +14,7 @@ import {
 } from "../../hooks/useTeamMessaging";
 import { useGetUserProfile } from "../../hooks/useUserProfile";
 import { getInitials } from "../../lib/avatarUtils";
+import { markDmMessagesSeen } from "../../lib/team/dmSeen";
 import MessageFeed from "./MessageFeed";
 import MessageInput from "./MessageInput";
 
@@ -58,6 +59,7 @@ export default function DirectMessageView({
   const deleteMessage = useDeleteDirectMessage();
   const editMessage = useEditDirectMessage();
   const { isAdmin } = useApproval();
+  const prevIdsRef = useRef<string[]>([]);
 
   // Get the other user's profile and status
   const { data: otherProfile } = useGetUserProfile(otherPrincipal);
@@ -72,6 +74,17 @@ export default function DirectMessageView({
     otherProfile?.displayName ||
     `User-${otherPrincipal.slice(-4).toUpperCase()}`;
   const initials = getInitials(displayName);
+
+  // Mark messages as seen when they arrive
+  useEffect(() => {
+    if (!callerPrincipal || messages.length === 0) return;
+    const ids = messages.map((m) => m.id.toString());
+    const newIds = ids.filter((id) => !prevIdsRef.current.includes(id));
+    if (newIds.length > 0) {
+      markDmMessagesSeen(otherPrincipal, callerPrincipal, newIds);
+      prevIdsRef.current = ids;
+    }
+  }, [messages, callerPrincipal, otherPrincipal]);
 
   const handleSend = async (
     text: string,
@@ -141,11 +154,12 @@ export default function DirectMessageView({
           isAdmin={isAdmin}
           onDeleteMessage={handleDelete}
           onEditMessage={handleEdit}
+          otherPrincipal={otherPrincipal}
         />
       )}
       <MessageInput
         onSend={handleSend}
-        placeholder={`Message ${displayName}…`}
+        placeholder={`Message ${displayName}\u2026`}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import type { Principal } from "@dfinity/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { Department } from "../backend";
+import type { Department, UserProfileFull } from "../backend";
 import { useActor } from "./useActor";
 
 export function useListDepartments() {
@@ -12,6 +12,23 @@ export function useListDepartments() {
       return actor.listDepartments();
     },
     enabled: !!actor && !isFetching,
+  });
+}
+
+export function useGetUsersInDepartment(departmentId: string | null) {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfileFull[]>({
+    queryKey: ["usersInDepartment", departmentId],
+    queryFn: async () => {
+      if (!actor || !departmentId) return [];
+      try {
+        return await actor.getUsersInDepartment(departmentId);
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching && !!departmentId,
+    staleTime: 30000,
   });
 }
 
@@ -71,6 +88,7 @@ export function useAdminAssignUserToDepartment() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["departments"] });
       queryClient.invalidateQueries({ queryKey: ["observeUsers"] });
+      queryClient.invalidateQueries({ queryKey: ["usersInDepartment"] });
     },
   });
 }

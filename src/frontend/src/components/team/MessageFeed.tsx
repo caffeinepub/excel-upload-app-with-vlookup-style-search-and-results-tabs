@@ -8,6 +8,8 @@ import type { ChannelMessage, DirectMessage } from "../../backend";
 import { useAvatarUrl } from "../../hooks/useAvatarUrl";
 import { useGetUserProfile } from "../../hooks/useUserProfile";
 import { getInitials } from "../../lib/avatarUtils";
+import { getDmSeenBy, markDmMessagesSeen } from "../../lib/team/dmSeen";
+import { getSeenBy } from "../../lib/team/seenMessages";
 
 type Message = ChannelMessage | DirectMessage;
 
@@ -72,20 +74,25 @@ interface MessageBubbleProps {
   isOwn: boolean;
   isAdmin: boolean;
   callerPrincipal: string;
+  otherPrincipal?: string;
   onDeleteMessage?: (messageId: bigint) => void;
   onEditMessage?: (messageId: bigint, newText: string) => void;
   markerIndex: number;
   isGroupStart: boolean;
+  channelId?: string;
 }
 
 function MessageBubble({
   msg,
   isOwn,
   isAdmin,
+  callerPrincipal,
+  otherPrincipal,
   onDeleteMessage,
   onEditMessage,
   markerIndex,
   isGroupStart,
+  channelId,
 }: MessageBubbleProps) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [reactions, setReactions] = useState<ReactionCounts>({});
@@ -107,6 +114,22 @@ function MessageBubble({
 
   const canDelete = isOwn || isAdmin;
   const canEdit = isOwn;
+
+  // Seen indicators for channel messages
+  const channelSeenBy =
+    channelId && isChannelMessage(msg)
+      ? getSeenBy(channelId, msg.id.toString()).filter(
+          (p) => p !== callerPrincipal,
+        )
+      : [];
+
+  // Seen indicators for DM messages
+  const dmSeenBy =
+    !isChannelMessage(msg) && otherPrincipal
+      ? getDmSeenBy(otherPrincipal, callerPrincipal, msg.id.toString()).filter(
+          (p) => p !== callerPrincipal,
+        )
+      : [];
 
   const handleEmojiSelect = (emoji: string) => {
     setShowEmojiPicker(false);
@@ -292,18 +315,18 @@ function MessageBubble({
               </div>
             )}
 
-            {/* Action bar — always show emoji for everyone, edit/delete only if permitted */}
+            {/* Action bar */}
             <div
               className={`flex items-center gap-0.5 mt-1 ${
                 isOwn ? "flex-row-reverse" : "flex-row"
               }`}
             >
-              {/* Emoji reaction toggle — available to ALL users on ALL messages */}
+              {/* Emoji reaction */}
               <div className="relative">
                 <button
                   type="button"
                   onClick={() => setShowEmojiPicker((v) => !v)}
-                  className="text-muted-foreground/40 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted/60 text-xs"
+                  className="text-muted-foreground/70 hover:text-muted-foreground transition-colors p-1 rounded hover:bg-muted/60 text-xs"
                   title="React"
                   data-ocid={`team.message.react_button.${markerIndex}`}
                 >
@@ -337,7 +360,7 @@ function MessageBubble({
                     setIsEditing(true);
                     setEditText(msg.text || "");
                   }}
-                  className="text-muted-foreground/40 hover:text-blue-500 transition-colors p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                  className="text-muted-foreground/70 hover:text-blue-500 transition-colors p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-950/30"
                   title="Edit message"
                   data-ocid={`team.message.edit_button.${markerIndex}`}
                 >
@@ -353,7 +376,7 @@ function MessageBubble({
                       onDeleteMessage(msg.id);
                     }
                   }}
-                  className="text-muted-foreground/40 hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
+                  className="text-muted-foreground/70 hover:text-destructive transition-colors p-1 rounded hover:bg-destructive/10"
                   title="Delete message"
                   data-ocid={`team.message.delete_button.${markerIndex}`}
                 >
@@ -361,6 +384,118 @@ function MessageBubble({
                 </button>
               )}
             </div>
+
+            {/* Seen/Sent indicator */}
+            {isOwn && (
+              <div className="flex items-center gap-1 mt-0.5 justify-end">
+                {/* Channel message seen indicator */}
+                {isChannelMessage(msg) && channelSeenBy.length > 0 && (
+                  <span className="text-[10px] text-blue-400 font-medium flex items-center gap-0.5">
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2 12l5 5L20 4"
+                      />
+                    </svg>
+                    <svg
+                      className="h-3.5 w-3.5 -ml-2"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 12l5 5L20 4"
+                      />
+                    </svg>
+                    Seen by {channelSeenBy.length}
+                  </span>
+                )}
+                {isChannelMessage(msg) && channelSeenBy.length === 0 && (
+                  <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 12l5 5L20 6"
+                      />
+                    </svg>
+                    Sent
+                  </span>
+                )}
+                {/* DM message seen indicator */}
+                {!isChannelMessage(msg) && dmSeenBy.length > 0 && (
+                  <span className="text-[10px] text-blue-400 font-medium flex items-center gap-0.5">
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M2 12l5 5L20 4"
+                      />
+                    </svg>
+                    <svg
+                      className="h-3.5 w-3.5 -ml-2"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M9 12l5 5L20 4"
+                      />
+                    </svg>
+                    Seen
+                  </span>
+                )}
+                {!isChannelMessage(msg) && dmSeenBy.length === 0 && (
+                  <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.5"
+                      aria-hidden="true"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        d="M5 12l5 5L20 6"
+                      />
+                    </svg>
+                    Sent
+                  </span>
+                )}
+              </div>
+            )}
           </>
         )}
       </div>
@@ -396,6 +531,8 @@ export interface MessageFeedProps {
   isAdmin?: boolean;
   onDeleteMessage?: (messageId: bigint) => void;
   onEditMessage?: (messageId: bigint, newText: string) => void;
+  channelId?: string;
+  otherPrincipal?: string;
 }
 
 export default function MessageFeed({
@@ -404,6 +541,8 @@ export default function MessageFeed({
   isAdmin = false,
   onDeleteMessage,
   onEditMessage,
+  channelId,
+  otherPrincipal,
 }: MessageFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -411,6 +550,13 @@ export default function MessageFeed({
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length]);
+
+  // Mark DM messages as seen when loaded
+  useEffect(() => {
+    if (!otherPrincipal || !callerPrincipal || messages.length === 0) return;
+    const ids = messages.map((m) => m.id.toString());
+    markDmMessagesSeen(otherPrincipal, callerPrincipal, ids);
+  }, [messages, otherPrincipal, callerPrincipal]);
 
   if (messages.length === 0) {
     return (
@@ -477,10 +623,12 @@ export default function MessageFeed({
                     isOwn={getSenderId(msg) === callerPrincipal}
                     isAdmin={isAdmin}
                     callerPrincipal={callerPrincipal}
+                    otherPrincipal={otherPrincipal}
                     onDeleteMessage={onDeleteMessage}
                     onEditMessage={onEditMessage}
                     markerIndex={msgIndex}
                     isGroupStart={isGroupStart}
+                    channelId={channelId}
                   />
                 </div>
               );

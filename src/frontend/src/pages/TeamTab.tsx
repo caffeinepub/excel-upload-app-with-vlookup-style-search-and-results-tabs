@@ -117,6 +117,22 @@ export default function TeamTab() {
     });
   }, [allUsers, callerPrincipal]);
 
+  // Auto-select channel from dashboard navigation
+  useEffect(() => {
+    if (channels.length === 0) return;
+    const pending = localStorage.getItem("pendingTeamChannel");
+    if (pending) {
+      try {
+        const channelId = BigInt(pending);
+        localStorage.removeItem("pendingTeamChannel");
+        setSelectedChannelId(channelId);
+        setSelectedDmPrincipal(null);
+      } catch {
+        localStorage.removeItem("pendingTeamChannel");
+      }
+    }
+  }, [channels]);
+
   const [showCreateChannel, setShowCreateChannel] = useState(false);
   const [newChannelName, setNewChannelName] = useState("");
   const [showNewDm, setShowNewDm] = useState(false);
@@ -200,7 +216,7 @@ export default function TeamTab() {
 
   return (
     <div
-      className="flex h-[calc(100vh-8rem)] min-h-[500px] overflow-hidden bg-background rounded-xl border border-border shadow-sm animate-in fade-in slide-in-from-right-2 duration-300"
+      className="flex h-[calc(100vh-8rem)] min-h-[500px] overflow-hidden rounded-xl border border-border shadow-2xl animate-in fade-in slide-in-from-right-2 duration-300 bg-background"
       data-ocid="team.panel"
     >
       {/* Sidebar */}

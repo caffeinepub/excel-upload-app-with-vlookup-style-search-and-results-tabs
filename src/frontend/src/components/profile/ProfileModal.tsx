@@ -22,11 +22,12 @@ import {
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
+import { useAvatarUrl } from "../../hooks/useAvatarUrl";
 import { useListDepartments } from "../../hooks/useDepartments";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import {
   useGetCallerUserProfile,
-  useUpdateUserProfileFull,
+  useSaveCallerUserProfile,
 } from "../../hooks/useUserProfile";
 
 interface ProfileModalProps {
@@ -38,7 +39,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
   const { identity } = useInternetIdentity();
   const { data: profile } = useGetCallerUserProfile();
   const { data: departments = [] } = useListDepartments();
-  const updateMutation = useUpdateUserProfileFull();
+  const saveMutation = useSaveCallerUserProfile();
 
   const [displayName, setDisplayName] = useState("");
   const [phone, setPhone] = useState("");
@@ -47,21 +48,24 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [selectedDepts, setSelectedDepts] = useState<string[]>([]);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const [birthDate, setBirthDate] = useState("");
   const [joiningDate, setJoiningDate] = useState("");
+  const [pendingPhotoBytes, setPendingPhotoBytes] = useState<Uint8Array | null>(
+    null,
+  );
+  const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Show existing profile picture from backend
+  const backendAvatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
+  // The preview to show: local pick > backend binary > typed URL
+  const displayAvatarPreview =
+    localPreviewUrl ?? backendAvatarUrl ?? (avatarUrl || null);
 
   useEffect(() => {
     if (!open) return;
     if (profile) {
       setDisplayName(profile.displayName ?? "");
-      if (profile.profilePicture && profile.profilePicture.length > 0) {
-        const blob = new Blob([profile.profilePicture.buffer as ArrayBuffer], {
-          type: "image/jpeg",
-        });
-        setAvatarPreview(URL.createObjectURL(blob));
-      }
     }
     try {
       const stored = localStorage.getItem("userProfileFull");
@@ -81,16 +85,23 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
     }
   }, [open, profile]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cleanup blob URLs on unmount / when preview changes
+  useEffect(() => {
+    return () => {
+      if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    };
+  }, [localPreviewUrl]);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      const url = URL.createObjectURL(file);
-      setAvatarPreview(url);
-      setAvatarUrl(url);
-    };
-    reader.readAsArrayBuffer(file);
+    // Show immediate preview
+    const previewUrl = URL.createObjectURL(file);
+    if (localPreviewUrl) URL.revokeObjectURL(localPreviewUrl);
+    setLocalPreviewUrl(previewUrl);
+    // Store bytes for save
+    const arrayBuffer = await file.arrayBuffer();
+    setPendingPhotoBytes(new Uint8Array(arrayBuffer));
   };
 
   const handleDeptToggle = (deptName: string) => {
@@ -107,7 +118,12 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
       return;
     }
     try {
-      await updateMutation.mutateAsync({
+      // Build a full UserProfile to save
+      const profilePicture: Uint8Array = pendingPhotoBytes
+        ? pendingPhotoBytes
+        : (profile?.profilePicture ?? new Uint8Array(0));
+
+      await saveMutation.mutateAsync({
         displayName: displayName.trim(),
         phone,
         email,
@@ -115,7 +131,11 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
         bio,
         avatarUrl,
         departments: selectedDepts,
-      });
+        birthDate,
+        joiningDate,
+        profilePicture,
+      } as any);
+
       localStorage.setItem(
         "userProfileFull",
         JSON.stringify({
@@ -129,6 +149,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
           joiningDate,
         }),
       );
+      setPendingPhotoBytes(null);
       toast.success("Profile updated successfully!");
       onClose();
     } catch {
@@ -149,7 +170,7 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 bg-background overflow-hidden flex flex-col"
+      className="fixed inset-0 z-50 bg-background flex flex-col"
       data-ocid="profile.sheet"
     >
       {/* Hero Header */}
@@ -175,8 +196,8 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
         <div className="absolute -bottom-16 left-8 flex items-end gap-5">
           <div className="relative">
             <Avatar className="h-28 w-28 border-4 border-background shadow-xl">
-              {avatarPreview ? (
-                <AvatarImage src={avatarPreview} alt={displayName} />
+              {displayAvatarPreview ? (
+                <AvatarImage src={displayAvatarPreview} alt={displayName} />
               ) : null}
               <AvatarFallback className="bg-primary/20 text-primary text-4xl font-bold">
                 {initials}
@@ -203,27 +224,32 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
               {displayName || "Your Profile"}
             </h1>
             {jobTitle && <p className="text-white/80 text-sm">{jobTitle}</p>}
+            {pendingPhotoBytes && (
+              <p className="text-white/70 text-xs mt-0.5">
+                ✓ New photo selected — save to apply
+              </p>
+            )}
           </div>
         </div>
       </div>
 
       {/* Content area with top padding to clear avatar */}
-      <ScrollArea className="flex-1 mt-20">
+      <ScrollArea className="flex-1 mt-20 h-0">
         <div className="max-w-3xl mx-auto px-6 py-6 space-y-6">
           {/* Save button at top */}
           <div className="flex justify-end">
             <Button
               onClick={handleSave}
-              disabled={updateMutation.isPending || !displayName.trim()}
+              disabled={saveMutation.isPending || !displayName.trim()}
               className="gap-2 px-6"
               data-ocid="profile.save_button"
             >
-              {updateMutation.isPending ? (
+              {saveMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Save className="h-4 w-4" />
               )}
-              {updateMutation.isPending ? "Saving…" : "Save Profile"}
+              {saveMutation.isPending ? "Saving…" : "Save Profile"}
             </Button>
           </div>
 
@@ -363,14 +389,13 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
               <div className="space-y-1.5">
                 <Label htmlFor="pm-avatar" className="flex items-center gap-1">
                   <Camera className="h-3 w-3" />
-                  Avatar URL
+                  Avatar URL (optional)
                 </Label>
                 <Input
                   id="pm-avatar"
                   value={avatarUrl}
                   onChange={(e) => {
                     setAvatarUrl(e.target.value);
-                    if (e.target.value) setAvatarPreview(e.target.value);
                   }}
                   placeholder="https://… (or upload photo above)"
                 />
@@ -415,16 +440,16 @@ export function ProfileModal({ open, onClose }: ProfileModalProps) {
           {/* Save button at bottom */}
           <Button
             onClick={handleSave}
-            disabled={updateMutation.isPending || !displayName.trim()}
+            disabled={saveMutation.isPending || !displayName.trim()}
             className="w-full gap-2 h-12 text-base"
             data-ocid="profile.save_button"
           >
-            {updateMutation.isPending ? (
+            {saveMutation.isPending ? (
               <Loader2 className="h-5 w-5 animate-spin" />
             ) : (
               <Save className="h-5 w-5" />
             )}
-            {updateMutation.isPending ? "Saving…" : "Save Profile"}
+            {saveMutation.isPending ? "Saving…" : "Save Profile"}
           </Button>
 
           <div className="h-8" />

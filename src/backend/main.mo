@@ -1897,15 +1897,14 @@ actor {
     employee : Principal,
     date : Text,
     dayType : AttendanceStatus,
-    checkInTime : ?Text,
-    checkOutTime : ?Text,
+    checkInNs : ?Int,
+    checkOutNs : ?Int,
     workNote : Text,
   ) : async () {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
       Runtime.trap("Unauthorized: Only admins can update user attendance");
     };
 
-    // Preserve existing checkIn/checkOut timestamps; only update dayType and workNote
     let existing : ?AttendanceDayEntry = switch (attendanceEntries.get(employee)) {
       case (null) { null };
       case (?m) { m.get(date) };
@@ -1924,13 +1923,18 @@ actor {
       case (null) { 0 };
     };
 
-    // Use provided check-in/out text as display note fallback, or keep existing times
-    let _ = checkInTime;
-    let _ = checkOutTime;
+    let newCheckIn = switch (checkInNs) {
+      case (?ns) { ?ns };
+      case (null) { prevCheckIn };
+    };
+    let newCheckOut = switch (checkOutNs) {
+      case (?ns) { ?ns };
+      case (null) { prevCheckOut };
+    };
 
     let entry : AttendanceDayEntry = {
-      checkIn = prevCheckIn;
-      checkOut = prevCheckOut;
+      checkIn = newCheckIn;
+      checkOut = newCheckOut;
       note = workNote;
       status = dayType;
       workingTime = prevWorkingTime;
@@ -1948,20 +1952,17 @@ actor {
   };
 
   public shared ({ caller }) func deleteSharedExpenseReport(reportId : Nat) : async () {
-    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
-      Runtime.trap("Unauthorized: Only users can delete shared expense reports");
-    };
     switch (sharedReports.get(reportId)) {
-      case (null) { Runtime.trap("Report not found") };
+      case (null) { return };
       case (?report) {
-        // Only sender or recipient can delete their view
-        var isParty = report.senderId == caller;
+        // Allow sender, recipient, or admin to delete
+        var isParty = report.senderId == caller or AccessControl.isAdmin(accessControlState, caller);
         if (not isParty) {
           for (recipient in report.recipientIds.values()) {
             if (recipient == caller) { isParty := true };
           };
         };
-        if (not isParty) { Runtime.trap("Unauthorized: You are not a party to this report") };
+        if (not isParty) { return };
         sharedReports.remove(reportId);
       };
     };

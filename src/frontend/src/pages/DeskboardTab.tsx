@@ -3,30 +3,40 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Bell,
+  CalendarClock,
   CalendarDays,
   ChevronDown,
   ChevronUp,
+  FlaskConical,
   LayoutDashboard,
+  Megaphone,
   MessageSquare,
   Telescope,
   X,
 } from "lucide-react";
 import { useState } from "react";
 import AdminBroadcastComposer from "../components/broadcast/AdminBroadcastComposer";
+import BroadcastHistory from "../components/broadcast/BroadcastHistory";
 import ClockCalendarWidget from "../components/deskboard/ClockCalendarWidget";
+import TeamMessagesWidget from "../components/deskboard/TeamMessagesWidget";
 import ExploreHerePanel from "../components/search/ExploreHerePanel";
 import { useIsCallerAdmin } from "../hooks/useApproval";
 import {
   useDismissBroadcast,
   useGetActiveBroadcasts,
+  useGetBroadcastHistory,
 } from "../hooks/useBroadcasts";
 import { useGetCalendarEvents } from "../hooks/useCalendarEvents";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useToggleTodo } from "../hooks/useProductivityMutations";
 import { useGetReminders, useGetTodos } from "../hooks/useProductivityQueries";
 
-export default function DeskboardTab() {
+export default function DeskboardTab({
+  onNavigate,
+}: { onNavigate?: (tab: string) => void } = {}) {
   const [exploreOpen, setExploreOpen] = useState(false);
+  const [researchOpen, setResearchOpen] = useState(false);
+  const [broadcastHistoryOpen, setBroadcastHistoryOpen] = useState(false);
   const { identity } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const { data: isAdmin = false } = useIsCallerAdmin();
@@ -36,6 +46,7 @@ export default function DeskboardTab() {
   const { data: todos = [] } = useGetTodos();
   const { data: activeBroadcasts = [] } =
     useGetActiveBroadcasts(isAuthenticated);
+  const { data: broadcastHistory = [] } = useGetBroadcastHistory();
   const dismissBroadcast = useDismissBroadcast();
   const toggleTodo = useToggleTodo();
 
@@ -45,7 +56,6 @@ export default function DeskboardTab() {
   // Reminders for today — also include repeat-until reminders
   const todayReminders = reminders.filter((r) => {
     if (r.date === today) return true;
-    // If reminder has repeatUntilDate, check if today is within range
     if (r.repeatUntilDate && r.date <= today) {
       const endDate = new Date(Number(r.repeatUntilDate))
         .toISOString()
@@ -69,6 +79,13 @@ export default function DeskboardTab() {
       day: "numeric",
     });
   };
+
+  const latestBroadcast =
+    activeBroadcasts.length > 0
+      ? [...activeBroadcasts].sort(
+          (a, b) => Number(b.createdAt) - Number(a.createdAt),
+        )[0]
+      : null;
 
   return (
     <div className="min-h-full bg-background p-4 md:p-6 space-y-4">
@@ -135,7 +152,7 @@ export default function DeskboardTab() {
       )}
 
       {/* Upcoming Events Bar */}
-      {isAuthenticated && upcomingEvents.length > 0 && (
+      {isAuthenticated && (
         <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-200 text-blue-800 overflow-hidden dark:bg-blue-900/20 dark:border-blue-700/30 dark:text-blue-300">
           <CalendarDays className="w-4 h-4 flex-shrink-0 text-blue-500" />
           <div className="overflow-x-auto whitespace-nowrap scrollbar-none flex-1">
@@ -151,6 +168,40 @@ export default function DeskboardTab() {
 
       {/* Admin Broadcast Composer */}
       {isAuthenticated && isAdmin && <AdminBroadcastComposer />}
+
+      {/* Broadcast History — visible to all authenticated users */}
+      {isAuthenticated && (
+        <div className="rounded-2xl bg-card border border-border/40 shadow-mac-soft overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setBroadcastHistoryOpen((o) => !o)}
+            className="w-full flex items-center justify-between px-4 py-3 hover:bg-accent/10 transition-colors"
+            data-ocid="dashboard.broadcast-history.toggle"
+          >
+            <div className="flex items-center gap-2">
+              <Megaphone className="w-4 h-4 text-primary" />
+              <span className="text-sm font-semibold text-foreground">
+                Broadcast History
+              </span>
+              {activeBroadcasts.length > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {activeBroadcasts.length}
+                </Badge>
+              )}
+            </div>
+            {broadcastHistoryOpen ? (
+              <ChevronUp className="w-4 h-4 text-muted-foreground" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-muted-foreground" />
+            )}
+          </button>
+          {broadcastHistoryOpen && (
+            <div className="px-4 pb-4 border-t border-border/40 pt-2">
+              <BroadcastHistory broadcasts={broadcastHistory} />
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -197,6 +248,80 @@ export default function DeskboardTab() {
           </div>
         </div>
       </div>
+
+      {/* Team Messages Widget */}
+      {isAuthenticated && <TeamMessagesWidget onNavigate={onNavigate} />}
+
+      {/* Upcoming Calendar Events Widget */}
+      {isAuthenticated && (
+        <div
+          className="rounded-2xl bg-card border border-border/40 shadow-mac-soft overflow-hidden"
+          data-ocid="dashboard.upcoming-events.panel"
+        >
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-border/30">
+            <CalendarClock className="w-4 h-4 text-blue-500" />
+            <span className="text-sm font-semibold text-foreground">
+              Upcoming Events
+            </span>
+            <span className="ml-auto text-xs bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 rounded-full px-2 py-0.5 font-semibold">
+              {upcomingEvents.length}
+            </span>
+          </div>
+          <div className="divide-y divide-border/30">
+            {upcomingEvents.length === 0 && (
+              <div
+                className="flex items-center gap-2 px-4 py-4"
+                data-ocid="dashboard.upcoming-events.empty_state"
+              >
+                <CalendarClock className="w-4 h-4 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  No upcoming events scheduled
+                </p>
+              </div>
+            )}
+            {upcomingEvents.map((event) => {
+              const ms = Number(event.dateTime) / 1_000_000;
+              const eventDate = new Date(ms);
+              const isToday =
+                eventDate.toDateString() === new Date().toDateString();
+              const isTomorrow =
+                eventDate.toDateString() ===
+                new Date(Date.now() + 86400000).toDateString();
+              const label = isToday
+                ? "Today"
+                : isTomorrow
+                  ? "Tomorrow"
+                  : formatEventDate(event.dateTime);
+              return (
+                <div
+                  key={event.id.toString()}
+                  className="flex items-center gap-3 px-4 py-3"
+                  data-ocid="dashboard.upcoming-event.row"
+                >
+                  <div
+                    className={`w-2 h-2 rounded-full flex-shrink-0 ${isToday ? "bg-red-500" : isTomorrow ? "bg-amber-400" : "bg-blue-400"}`}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">
+                      {event.title}
+                    </p>
+                    {event.description && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {event.description}
+                      </p>
+                    )}
+                  </div>
+                  <span
+                    className={`text-xs font-semibold flex-shrink-0 px-2 py-0.5 rounded-full ${isToday ? "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300" : isTomorrow ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" : "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"}`}
+                  >
+                    {label}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Reminders & Todos Row */}
       {isAuthenticated && (
@@ -348,6 +473,53 @@ export default function DeskboardTab() {
           </div>
         )}
       </div>
+
+      {/* Deep Research Section */}
+      <div className="rounded-2xl bg-card border border-border/40 shadow-mac-soft overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setResearchOpen((o) => !o)}
+          className="w-full flex items-center justify-between p-5 hover:bg-accent/10 transition-colors"
+          data-ocid="dashboard.research.toggle"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
+              <FlaskConical className="w-5 h-5 text-emerald-400" />
+            </div>
+            <div className="text-left">
+              <div className="text-sm font-bold text-foreground">
+                Deep Research
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Research any topic in depth
+              </div>
+            </div>
+          </div>
+          {researchOpen ? (
+            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+          ) : (
+            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+          )}
+        </button>
+        {researchOpen && (
+          <div className="px-5 pb-5 border-t border-border/40 pt-4">
+            <ExploreHerePanel />
+          </div>
+        )}
+      </div>
+
+      {/* Latest Announcement pinned at bottom */}
+      {isAuthenticated && latestBroadcast && (
+        <div className="border-t border-border/40 pt-4">
+          <p className="text-xs text-muted-foreground font-medium mb-2 uppercase tracking-wider">
+            Latest Announcement
+          </p>
+          <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 flex items-start gap-2">
+            <Megaphone className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
+            <p className="text-sm text-foreground">{latestBroadcast.text}</p>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

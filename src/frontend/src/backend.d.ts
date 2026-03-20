@@ -245,6 +245,7 @@ export interface backendInterface {
     addHistory(entryType: HistoryType, details: string): Promise<bigint>;
     addTodo(text: string): Promise<bigint>;
     adminAssignUserToDepartment(user: Principal, departmentId: bigint): Promise<void>;
+    adminUpdateUserAttendance(employee: Principal, date: string, dayType: { [key: string]: null }, checkInNs: [] | [bigint], checkOutNs: [] | [bigint], workNote: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignToDepartment(departmentId: bigint): Promise<void>;
     createBroadcast(text: string): Promise<bigint>;
@@ -263,6 +264,7 @@ export interface backendInterface {
     deleteExpense(id: bigint): Promise<void>;
     deleteHoliday(id: bigint): Promise<void>;
     deleteNote(id: bigint): Promise<void>;
+    deleteSharedExpenseReport(reportId: bigint): Promise<void>;
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;

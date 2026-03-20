@@ -328,7 +328,7 @@ export function useGetSharedReports() {
  * Mutation to delete a shared expense report (from recipient's "Shared with Me")
  */
 export function useDeleteSharedExpenseReport() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   const queryClient = useQueryClient();
 
@@ -339,13 +339,21 @@ export function useDeleteSharedExpenseReport() {
         throw new Error(
           "Backend connection not ready. Please wait a moment and try again.",
         );
-      if (isFetching)
-        throw new Error(
-          "Backend is initializing. Please wait a moment and try again.",
-        );
-      await (actor as any).deleteSharedExpenseReport(reportId);
+      console.log("Deleting shared report ID:", reportId);
+      try {
+        await actor.deleteSharedExpenseReport(reportId);
+        console.log("Shared report delete successful");
+      } catch (e) {
+        console.error("Shared report delete error:", e);
+        throw e;
+      }
     },
-    onSuccess: () => {
+    onSuccess: (_, reportId) => {
+      // Optimistically remove from cache immediately
+      queryClient.setQueryData<import("../backend").SharedReport[]>(
+        ["sharedReports"],
+        (old) => old?.filter((r) => r.id !== reportId) ?? [],
+      );
       queryClient.invalidateQueries({ queryKey: ["sharedReports"] });
     },
     onError: (error) => {

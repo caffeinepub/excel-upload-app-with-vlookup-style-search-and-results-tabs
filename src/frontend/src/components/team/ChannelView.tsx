@@ -1,6 +1,6 @@
 import { Pin } from "lucide-react";
 import { Loader2 } from "lucide-react";
-import React, { useCallback } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { useApproval } from "../../hooks/useApproval";
 import {
   useDeleteChannelMessage,
@@ -8,6 +8,7 @@ import {
   useGetChannelMessages,
   usePostChannelMessage,
 } from "../../hooks/useTeamMessaging";
+import { markMessagesSeen } from "../../lib/team/seenMessages";
 import MessageFeed from "./MessageFeed";
 import MessageInput from "./MessageInput";
 
@@ -27,6 +28,21 @@ export default function ChannelView({
   const deleteMessage = useDeleteChannelMessage();
   const editMessage = useEditChannelMessage();
   const { isAdmin } = useApproval();
+  const channelIdStr = channelId.toString();
+  const prevMessagesRef = useRef<string[]>([]);
+
+  // Mark all visible messages as "seen" by current user
+  useEffect(() => {
+    if (!callerPrincipal || messages.length === 0) return;
+    const messageIds = messages.map((m) => m.id.toString());
+    const newIds = messageIds.filter(
+      (id) => !prevMessagesRef.current.includes(id),
+    );
+    if (newIds.length > 0) {
+      markMessagesSeen(channelIdStr, callerPrincipal, newIds);
+      prevMessagesRef.current = messageIds;
+    }
+  }, [messages, callerPrincipal, channelIdStr]);
 
   const handleSend = async (
     text: string,
@@ -75,6 +91,7 @@ export default function ChannelView({
           isAdmin={isAdmin}
           onDeleteMessage={handleDelete}
           onEditMessage={handleEdit}
+          channelId={channelIdStr}
         />
       )}
       <MessageInput onSend={handleSend} placeholder="Message channel…" />

@@ -357,6 +357,8 @@ function AdminEmployeeAttendancePanel() {
     entry: AttendanceDayEntry;
   } | null>(null);
   const [editDayType, setEditDayType] = useState("");
+  const [editCheckIn, setEditCheckIn] = useState("");
+  const [editCheckOut, setEditCheckOut] = useState("");
   const [editWorkNote, setEditWorkNote] = useState("");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
 
@@ -419,6 +421,22 @@ function AdminEmployeeAttendancePanel() {
     const statusKey = Object.keys(entry.status)[0] ?? "present";
     setEditDayType(statusKey);
     setEditWorkNote(entry.note ?? "");
+    if (entry.checkIn) {
+      const d = new Date(Number(entry.checkIn) / 1_000_000);
+      setEditCheckIn(
+        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      );
+    } else {
+      setEditCheckIn("");
+    }
+    if (entry.checkOut) {
+      const d = new Date(Number(entry.checkOut) / 1_000_000);
+      setEditCheckOut(
+        `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`,
+      );
+    } else {
+      setEditCheckOut("");
+    }
     setEditDialogOpen(true);
   };
 
@@ -429,9 +447,17 @@ function AdminEmployeeAttendancePanel() {
       const { Principal } = await import("@dfinity/principal");
       const principal = Principal.fromText(selectedPrincipal);
       const statusVariant = { [editDayType]: null } as any;
-      const checkInOpt: string[] = [];
-      const checkOutOpt: string[] = [];
-      await (actor as any).adminUpdateUserAttendance(
+      const toNs = (dateStr: string, timeStr: string): bigint => {
+        const ms = new Date(`${dateStr}T${timeStr}:00`).getTime();
+        return BigInt(ms) * BigInt(1_000_000);
+      };
+      const checkInOpt: [] | [bigint] = editCheckIn.trim()
+        ? [toNs(editingEntry.date, editCheckIn.trim())]
+        : [];
+      const checkOutOpt: [] | [bigint] = editCheckOut.trim()
+        ? [toNs(editingEntry.date, editCheckOut.trim())]
+        : [];
+      await actor.adminUpdateUserAttendance(
         principal,
         editingEntry.date,
         statusVariant,
@@ -473,15 +499,35 @@ function AdminEmployeeAttendancePanel() {
                 <SelectContent>
                   <SelectItem value="present">Present</SelectItem>
                   <SelectItem value="leave">Leave</SelectItem>
-                  <SelectItem value="festivalLeave">Festival Leave</SelectItem>
+                  <SelectItem value="festival">Festival Leave</SelectItem>
                   <SelectItem value="companyLeave">Company Leave</SelectItem>
-                  <SelectItem value="weekOff">Week Off</SelectItem>
+                  <SelectItem value="weeklyOff">Week Off</SelectItem>
                   <SelectItem value="halfDay">Half Day</SelectItem>
                   <SelectItem value="holiday">Holiday</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Check-in Time</Label>
+                <Input
+                  type="time"
+                  value={editCheckIn}
+                  onChange={(e) => setEditCheckIn(e.target.value)}
+                  data-ocid="admin.edit-attendance.checkin.input"
+                />
+              </div>
+              <div>
+                <Label>Check-out Time</Label>
+                <Input
+                  type="time"
+                  value={editCheckOut}
+                  onChange={(e) => setEditCheckOut(e.target.value)}
+                  data-ocid="admin.edit-attendance.checkout.input"
+                />
+              </div>
+            </div>
             <div>
               <Label>Work Note</Label>
               <Textarea

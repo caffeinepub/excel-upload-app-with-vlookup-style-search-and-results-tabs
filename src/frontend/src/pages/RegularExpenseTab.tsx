@@ -853,12 +853,19 @@ export function RegularExpenseTab() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                setDeletedReportIds(
-                                  (prev) =>
-                                    new Set([...prev, String(report.id)]),
-                                );
-                                deleteSharedMutation.mutate(report.id);
+                              onClick={async () => {
+                                try {
+                                  await deleteSharedMutation.mutateAsync(
+                                    report.id,
+                                  );
+                                  setDeletedReportIds(
+                                    (prev) =>
+                                      new Set([...prev, String(report.id)]),
+                                  );
+                                  toast.success("Report deleted");
+                                } catch {
+                                  toast.error("Failed to delete report");
+                                }
                               }}
                               className="text-destructive hover:text-destructive hover:bg-destructive/10"
                               data-ocid={`shared-reports.delete_button.${idx + 1}`}

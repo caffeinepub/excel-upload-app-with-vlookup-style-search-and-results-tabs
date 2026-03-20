@@ -1,27 +1,42 @@
 # Crystal Atlas
 
 ## Current State
-A comprehensive HR/productivity app with attendance management, expense tracking, team chat, and admin controls. Version 85.
+- Profile page (`ProfileModal.tsx`) has a photo upload but the binary is never saved to backend — it only creates a local blob URL that becomes invalid. The `useUpdateUserProfileFull` mutation only sends `avatarUrl` string, not the binary. The backend profile field `profilePicture` is a `Uint8Array` read by `useAvatarUrl` hook.
+- Department members panel (`DepartmentManager.tsx`) calls `actor.getUsersInDepartment(deptId.toString())` but the Motoko backend likely expects a `bigint`/`Nat` — causing empty results.
+- Team tab (`TeamTab.tsx`, `TeamSidebar.tsx`) has a standard two-column layout with dark sidebar. User requests a totally new, visually unique interface.
+- Dashboard (`DeskboardTab.tsx`) already has upcoming calendar events widget code but it only renders when `upcomingEvents.length > 0`. If events exist with future timestamps they should be visible — may be a nanoseconds/milliseconds conversion issue or missing visibility.
+- Team message edit/delete/react functions exist but users report they don't work properly.
 
 ## Requested Changes (Diff)
 
 ### Add
-- `deleteSharedExpenseReport` backend call in RegularExpenseTab's "Shared with Me" section so deleting a shared report is persisted (not just local state)
-- A new `useDeleteSharedExpenseReport` hook in useRegularExpense.ts that calls `actor.deleteSharedExpenseReport(reportId)`
+- Profile photo: save binary `Uint8Array` to backend on upload using `useSaveCallerUserProfile` (which calls `saveCallerUserProfile`) — update the file handler to read as ArrayBuffer, convert to Uint8Array, and save to backend immediately.
+- Dashboard: ensure upcoming calendar events are always visible as a prominent card even when count is low; fix potential nanosecond timestamp issue.
 
 ### Modify
-- **ProfilePage.tsx**: Make profile truly full-screen and professional. Use `fixed inset-0 z-50 overflow-y-auto bg-background` or a full-page layout with organized sections (Personal Info, Contact Details, Employment Info). Hero banner, large avatar, 3-column grid on desktop. The page should feel like a full professional profile page.
-- **RegularExpenseTab.tsx**: Replace the client-side-only `deletedReportIds` state deletion with a real backend call to `deleteSharedExpenseReport`. On success, invalidate the `getSharedReports` query cache so the list refreshes.
-- **HolidayManager.tsx or similar**: Ensure `setHolidayForAllUsers` is properly awaited and errors are shown (not silently swallowed). After creating a holiday successfully, call `setHolidayForAllUsers` and show a toast if it fails.
-- **AdminUsersTab.tsx**: In the admin attendance edit dialog, remove the Check-In and Check-Out time fields (they cannot be properly saved from text strings), keeping only Day Type, Work Note, and a Save button.
+- **Profile photo upload**: Fix `handleFileChange` in `ProfileModal.tsx` to actually save the image bytes to backend via `saveCallerUserProfile` (merging with existing profile). Also ensure avatarPreview shows the uploaded image immediately.
+- **Department members**: Fix `useDepartmentMembers` to try `bigint` first and also show member avatars using `useAvatarUrl` (member's `profilePicture`). Also add a debug fallback: if result is empty, log a warning. Ensure `DeptMemberCards` is rendered in both admin and read-only modes.
+- **Team chat — full redesign**: Completely new visual design for `TeamTab.tsx` and `TeamSidebar.tsx`:
+  - Gradient glass-morphism sidebar with team name header, user avatar + status at top
+  - Channels list with `#` prefix, unread dot indicators
+  - DMs list with avatar + status dot
+  - Main chat area with full-height message feed
+  - Animated slide-in on open
+  - Top bar showing channel/DM name with actions
+  - Message bubbles: own messages right-aligned with primary color, others left-aligned with card color
+  - Edit/delete/react always visible as small icon buttons below each message
+  - Make emoji reactions, edit, and delete actually work end-to-end
+- **Dashboard calendar events widget**: move it higher on the page (above reminders/todos), ensure it always renders if events exist regardless of position, fix timestamp handling if needed.
 
 ### Remove
-- Nothing
+- Nothing removed
 
 ## Implementation Plan
-1. Add `useDeleteSharedExpenseReport` hook to useRegularExpense.ts
-2. Update RegularExpenseTab.tsx Shared with Me delete button to call the hook
-3. Update ProfilePage.tsx for full-screen professional layout
-4. Update HolidayManager holiday creation to properly await and handle setHolidayForAllUsers errors
-5. Update AdminUsersTab.tsx edit dialog to remove check-in/check-out fields
-6. Validate and build
+1. Fix `ProfileModal.tsx` photo upload: on file select, read as ArrayBuffer, create Uint8Array, call `useSaveCallerUserProfile` mutation with `{ displayName, profilePicture: new Uint8Array(arrayBuffer) }` to save binary to backend. Show preview immediately with `URL.createObjectURL(file)`.
+2. Fix `DepartmentManager.tsx` `useDepartmentMembers`: use `actor.getUsersInDepartment(deptId)` passing bigint directly, handle fallback. In `DeptMemberCards`, render for both admin and readOnly by showing the member cards regardless of mode.
+3. Redesign `TeamTab.tsx` and `TeamSidebar.tsx` with a fresh, visually striking interface:
+   - Sidebar: deep navy/slate gradient background, rounded channel items, avatar+name workspace header
+   - Main area: clean white/card background, large message feed
+   - Message bubbles: iMessage-style layout with proper grouping
+   - Action buttons (emoji, edit, delete) are always inline under messages
+4. Fix `DeskboardTab.tsx` upcoming events: render the card widget unconditionally (don't gate on `upcomingEvents.length > 0` in the widget card itself — still show "No upcoming events" state), move it above the reminders row.

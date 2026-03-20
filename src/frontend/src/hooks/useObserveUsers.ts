@@ -37,3 +37,25 @@ export function useObserveUsers() {
     enabled: !!actor && !isFetching,
   });
 }
+
+/**
+ * Fetches users via the public endpoint (works for all approved users, not just admins).
+ * Returns { principal, displayName } objects.
+ */
+export function usePublicUsersForDepts() {
+  const { actor, isFetching } = useActor();
+  return useQuery({
+    queryKey: ["publicUsersForDepts"],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        const users = await (actor as any).getAllRegisteredUsersPublic();
+        return users as Array<{ principal: Principal; displayName: string }>;
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!actor && !isFetching,
+    refetchInterval: 30000,
+  });
+}

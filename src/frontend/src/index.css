@@ -29,6 +29,7 @@
     --chart-3: 55% 0.18 264;
     --chart-4: 60% 0.2 290;
     --chart-5: 55% 0.22 25;
+    /* App sidebar (main nav) */
     --sidebar: 98% 0.01 264;
     --sidebar-foreground: 20% 0.01 264;
     --sidebar-primary: 55% 0.18 264;
@@ -37,6 +38,13 @@
     --sidebar-accent-foreground: 20% 0.01 264;
     --sidebar-border: 88% 0.02 264;
     --sidebar-ring: 55% 0.18 264;
+    /* Team chat sidebar — always dark regardless of theme */
+    --team-sidebar-bg: 22% 0.03 264;
+    --team-sidebar-fg: 92% 0.01 264;
+    --team-sidebar-accent: 30% 0.04 264;
+    --team-sidebar-accent-fg: 95% 0 0;
+    --team-sidebar-border: 28% 0.02 264;
+    --team-sidebar-muted: 60% 0.01 264;
 
     /* Emerald accent for History and Budget/Expense */
     --history-accent: 65% 0.18 160;
@@ -79,6 +87,13 @@
     --sidebar-accent-foreground: 98% 0.01 264;
     --sidebar-border: 25% 0.02 264;
     --sidebar-ring: 65% 0.18 264;
+    /* Team chat sidebar dark mode */
+    --team-sidebar-bg: 15% 0.02 264;
+    --team-sidebar-fg: 90% 0.01 264;
+    --team-sidebar-accent: 22% 0.03 264;
+    --team-sidebar-accent-fg: 95% 0 0;
+    --team-sidebar-border: 22% 0.02 264;
+    --team-sidebar-muted: 55% 0.01 264;
 
     /* Emerald accent for History and Budget/Expense (dark mode) */
     --history-accent: 70% 0.18 160;
@@ -344,6 +359,88 @@
   .astronaut-float {
     animation: none;
   }
+}
+
+/* ============================================================
+   Team Chat — Unique Sidebar Design
+   Always dark regardless of light/dark mode
+   ============================================================ */
+.team-chat-sidebar {
+  background: oklch(var(--team-sidebar-bg));
+  color: oklch(var(--team-sidebar-fg));
+  border-right: 1px solid oklch(var(--team-sidebar-border));
+}
+
+.team-chat-sidebar .tcs-section-header {
+  color: oklch(var(--team-sidebar-muted));
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 0.5rem 0.75rem 0.25rem;
+}
+
+.team-chat-sidebar .tcs-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  color: oklch(var(--team-sidebar-fg) / 0.75);
+  font-size: 0.875rem;
+  width: 100%;
+  text-align: left;
+}
+
+.team-chat-sidebar .tcs-item:hover {
+  background: oklch(var(--team-sidebar-accent));
+  color: oklch(var(--team-sidebar-fg));
+}
+
+.team-chat-sidebar .tcs-item.active {
+  background: oklch(var(--primary) / 0.25);
+  color: oklch(var(--team-sidebar-fg));
+  font-weight: 600;
+}
+
+.team-chat-sidebar .tcs-workspace {
+  padding: 0.875rem 1rem;
+  border-bottom: 1px solid oklch(var(--team-sidebar-border));
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+}
+
+.team-chat-sidebar .tcs-workspace-name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  color: oklch(var(--team-sidebar-fg));
+  letter-spacing: -0.01em;
+}
+
+.team-chat-sidebar .tcs-workspace-sub {
+  font-size: 0.7rem;
+  color: oklch(var(--team-sidebar-muted));
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+/* Team chat message panel */
+@keyframes chat-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.team-chat-panel {
+  animation: chat-slide-in 0.22s ease-out;
 }
 
 /* Responsive adjustments */

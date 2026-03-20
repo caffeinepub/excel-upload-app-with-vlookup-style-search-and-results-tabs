@@ -345,6 +345,7 @@ export interface backendInterface {
     addHistory(entryType: HistoryType, details: string): Promise<bigint>;
     addTodo(text: string): Promise<bigint>;
     adminAssignUserToDepartment(user: Principal, departmentId: bigint): Promise<void>;
+    adminUpdateUserAttendance(employee: Principal, date: string, dayType: { [key: string]: null }, checkInNs: [] | [bigint], checkOutNs: [] | [bigint], workNote: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignToDepartment(departmentId: bigint): Promise<void>;
     createBroadcast(text: string): Promise<bigint>;
@@ -363,6 +364,7 @@ export interface backendInterface {
     deleteExpense(id: bigint): Promise<void>;
     deleteHoliday(id: bigint): Promise<void>;
     deleteNote(id: bigint): Promise<void>;
+    deleteSharedExpenseReport(reportId: bigint): Promise<void>;
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;
@@ -630,7 +632,21 @@ export class Backend implements backendInterface {
             return result;
         }
     }
-    async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
+    async adminUpdateUserAttendance(arg0: any, arg1: string, arg2: any, arg3: [] | [bigint], arg4: [] | [bigint], arg5: string): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).adminUpdateUserAttendance(arg0, arg1, arg2, arg3, arg4, arg5);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await (this.actor as any).adminUpdateUserAttendance(arg0, arg1, arg2, arg3, arg4, arg5);
+            return result;
+        }
+    }
+        async assignCallerUserRole(arg0: Principal, arg1: UserRole): Promise<void> {
         if (this.processError) {
             try {
                 const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n12(this._uploadFile, this._downloadFile, arg1));
@@ -893,6 +909,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.deleteReminder(arg0);
+            return result;
+        }
+    }
+    async deleteSharedExpenseReport(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).deleteSharedExpenseReport(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await (this.actor as any).deleteSharedExpenseReport(arg0);
             return result;
         }
     }

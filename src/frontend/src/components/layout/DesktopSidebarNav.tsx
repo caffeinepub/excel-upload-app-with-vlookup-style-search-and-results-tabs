@@ -26,6 +26,7 @@ import {
 } from "lucide-react";
 import type React from "react";
 import { ALL_TABS, type TabDef, type TabId } from "../../App";
+import { useTeamUnreadCount } from "../deskboard/TeamMessagesWidget";
 
 interface DesktopSidebarNavProps {
   activeTab: TabId;
@@ -50,10 +51,11 @@ const ACTIVITY_TABS: TabId[] = [
   "customers",
   "calendar",
   "team",
+  "departments",
   "history",
 ];
 
-const ADMIN_TABS: TabId[] = ["adminUsers", "observeUsers", "departments"];
+const ADMIN_TABS: TabId[] = ["adminUsers", "observeUsers"];
 
 const TAB_ICONS: Record<TabId, React.ReactNode> = {
   deskboard: <LayoutDashboard className="h-4 w-4" />,
@@ -81,11 +83,13 @@ function NavButton({
   label,
   active,
   onClick,
+  badge,
 }: {
   tabId: TabId;
   label: string;
   active: boolean;
   onClick: () => void;
+  badge?: number;
 }) {
   return (
     <TooltipProvider delayDuration={300}>
@@ -100,8 +104,21 @@ function NavButton({
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"
             }`}
           >
-            {TAB_ICONS[tabId]}
-            <span className="truncate">{label}</span>
+            <div className="relative flex-shrink-0">
+              {TAB_ICONS[tabId]}
+              {badge != null && badge > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 flex h-3.5 w-3.5 items-center justify-center">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+                </span>
+              )}
+            </div>
+            <span className="truncate flex-1">{label}</span>
+            {badge != null && badge > 0 && (
+              <span className="ml-auto text-[10px] bg-red-500 text-white rounded-full px-1.5 py-0.5 font-bold leading-none">
+                {badge > 99 ? "99+" : badge}
+              </span>
+            )}
           </button>
         </TooltipTrigger>
         <TooltipContent side="right">{label}</TooltipContent>
@@ -115,10 +132,17 @@ export default function DesktopSidebarNav({
   onTabChange,
   isAdmin,
 }: DesktopSidebarNavProps) {
+  const teamUnread = useTeamUnreadCount();
+
   const tabMap = Object.fromEntries(ALL_TABS.map((t) => [t.id, t])) as Record<
     TabId,
     TabDef
   >;
+
+  const getBadge = (id: TabId): number | undefined => {
+    if (id === "team") return teamUnread > 0 ? teamUnread : undefined;
+    return undefined;
+  };
 
   const renderGroup = (ids: TabId[], label: string) => {
     const visible = ids.filter((id) => tabMap[id]);
@@ -136,6 +160,7 @@ export default function DesktopSidebarNav({
               label={tabMap[id].label}
               active={activeTab === id}
               onClick={() => onTabChange(id)}
+              badge={getBadge(id)}
             />
           ))}
         </div>

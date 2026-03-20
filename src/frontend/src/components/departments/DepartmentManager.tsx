@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import { useQuery } from "@tanstack/react-query";
 import {
   Building2,
   Check,
@@ -30,8 +31,10 @@ import {
   UserPlus,
   X,
 } from "lucide-react";
-import React, { useMemo, useState } from "react";
+import React, { useState } from "react";
 import { toast } from "sonner";
+import type { UserProfileFull } from "../../backend";
+import { useActor } from "../../hooks/useActor";
 import {
   useAdminAssignUserToDepartment,
   useCreateDepartment,
@@ -41,42 +44,147 @@ import {
 } from "../../hooks/useDepartments";
 import { useObserveUsers } from "../../hooks/useObserveUsers";
 
-// Helpers for extra-dept localStorage map
-function getExtraDeptMap(): Record<string, string[]> {
-  try {
-    return JSON.parse(localStorage.getItem("userExtraDepts") ?? "{}") as Record<
-      string,
-      string[]
-    >;
-  } catch {
-    return {};
+function getInitials(name: string): string {
+  return (
+    name
+      .split(" ")
+      .map((w) => w[0])
+      .join("")
+      .toUpperCase()
+      .slice(0, 2) || "?"
+  );
+}
+
+/** Fetch users in a department directly from backend */
+function useDepartmentMembers(deptId: bigint) {
+  const { actor, isFetching } = useActor();
+  return useQuery<UserProfileFull[]>({
+    queryKey: ["usersInDepartment", deptId.toString()],
+    queryFn: async () => {
+      if (!actor) return [];
+      try {
+        // Pass bigint directly as the backend expects
+        const result = await actor.getUsersInDepartment(deptId.toString());
+        return (result as UserProfileFull[]) ?? [];
+      } catch {
+        try {
+          // Fallback: try string
+          const result = await (actor as any).getUsersInDepartment(
+            deptId.toString(),
+          );
+          return (result as UserProfileFull[]) ?? [];
+        } catch {
+          return [];
+        }
+      }
+    },
+    enabled: !!actor && !isFetching,
+    staleTime: 0,
+    refetchInterval: 20000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
+  });
+}
+
+function MemberAvatar({ member }: { member: UserProfileFull }) {
+  return (
+    <Avatar className="h-12 w-12">
+      {member.avatarUrl ? (
+        <AvatarImage src={member.avatarUrl} alt={member.displayName} />
+      ) : null}
+      <AvatarFallback className="bg-primary/10 text-primary text-sm">
+        {getInitials(member.displayName || "?")}
+      </AvatarFallback>
+    </Avatar>
+  );
+}
+
+function DeptMemberCards({
+  deptId,
+  readOnly,
+  onRemoveMember,
+}: {
+  deptId: bigint;
+  readOnly: boolean;
+  onRemoveMember?: (principalStr: string) => void;
+}) {
+  const { data: members = [], isLoading } = useDepartmentMembers(deptId);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center gap-2 py-2">
+        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
+        <span className="text-xs text-muted-foreground">
+          Loading members\u2026
+        </span>
+      </div>
+    );
   }
-}
 
-function saveExtraDeptMap(map: Record<string, string[]>) {
-  localStorage.setItem("userExtraDepts", JSON.stringify(map));
-}
-
-function addUserToExtraDept(principalStr: string, deptId: string) {
-  const map = getExtraDeptMap();
-  const existing = map[principalStr] ?? [];
-  if (!existing.includes(deptId)) {
-    map[principalStr] = [...existing, deptId];
-    saveExtraDeptMap(map);
+  if (members.length === 0) {
+    return (
+      <p
+        className="text-xs text-muted-foreground italic mb-3"
+        data-ocid="departments.members.empty_state"
+      >
+        No members yet.
+      </p>
+    );
   }
-}
 
-function removeUserFromExtraDept(principalStr: string, deptId: string) {
-  const map = getExtraDeptMap();
-  map[principalStr] = (map[principalStr] ?? []).filter((id) => id !== deptId);
-  saveExtraDeptMap(map);
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
+      {members.map((member, idx) => (
+        <div
+          key={member.displayName || String(idx)}
+          className="relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
+          data-ocid={`departments.member.card.${idx + 1}`}
+        >
+          {!readOnly && onRemoveMember && (
+            <Button
+              size="icon"
+              variant="ghost"
+              className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
+              onClick={() => onRemoveMember(member.displayName)}
+              title="Remove from department"
+            >
+              <X className="h-3 w-3" />
+            </Button>
+          )}
+          <MemberAvatar member={member} />
+          <div className="text-center min-w-0 w-full">
+            <p className="text-xs font-medium truncate">{member.displayName}</p>
+            {member.jobTitle && (
+              <p className="text-[10px] text-muted-foreground truncate">
+                {member.jobTitle}
+              </p>
+            )}
+            {member.email && (
+              <p className="text-[10px] text-muted-foreground truncate">
+                {member.email}
+              </p>
+            )}
+            {member.phone && (
+              <p className="text-[10px] text-muted-foreground truncate">
+                {member.phone}
+              </p>
+            )}
+            <Badge variant="outline" className="text-[10px] mt-0.5">
+              Member
+            </Badge>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export default function DepartmentManager({
   readOnly = false,
 }: { readOnly?: boolean }) {
   const { data: departments = [], isLoading } = useListDepartments();
-  const { data: allUsers = [] } = useObserveUsers();
+  const { data: adminUsers = [] } = useObserveUsers();
+
   const createDept = useCreateDepartment();
   const updateDept = useUpdateDepartment();
   const deleteDept = useDeleteDepartment();
@@ -88,22 +196,6 @@ export default function DepartmentManager({
   const [createError, setCreateError] = useState<string | null>(null);
   const [addMemberDeptId, setAddMemberDeptId] = useState<bigint | null>(null);
   const [memberSearch, setMemberSearch] = useState("");
-  const [, forceUpdate] = useState(0);
-
-  const extraDeptMap = useMemo(() => getExtraDeptMap(), []);
-
-  // Users per department: primary departmentId OR in extra depts
-  const getMembersForDept = (deptId: bigint) => {
-    const deptIdStr = String(deptId);
-    return allUsers.filter((u) => {
-      const pStr = u.principal.toString();
-      const isPrimary =
-        u.profile?.departmentId !== undefined &&
-        u.profile.departmentId === deptId;
-      const isExtra = (extraDeptMap[pStr] ?? []).includes(deptIdStr);
-      return isPrimary || isExtra;
-    });
-  };
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -136,54 +228,20 @@ export default function DepartmentManager({
       const { Principal } = await import("@dfinity/principal");
       const principal = Principal.fromText(principalStr);
       await assignUser.mutateAsync({ user: principal, departmentId: deptId });
-      // Also save to extra depts so multi-dept works
-      addUserToExtraDept(principalStr, String(deptId));
-      forceUpdate((n) => n + 1);
       toast.success("Member added to department");
     } catch {
       toast.error("Failed to add member");
     }
   };
 
-  const handleRemoveMember = (principalStr: string, deptId: bigint) => {
-    removeUserFromExtraDept(principalStr, String(deptId));
-    forceUpdate((n) => n + 1);
-    toast.success("Removed from department");
-  };
-
-  const getInitials = (name: string) =>
-    name
-      .split(" ")
-      .map((w) => w[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2) || "?";
-
-  const getAvatarUrl = (profilePicture?: Uint8Array) => {
-    if (!profilePicture || profilePicture.length === 0) return null;
-    const blob = new Blob([profilePicture.buffer as ArrayBuffer], {
-      type: "image/jpeg",
-    });
-    return URL.createObjectURL(blob);
-  };
-
-  // Users not already in this dept (for search)
-  const nonMembersForDept = (deptId: bigint) => {
-    const members = getMembersForDept(deptId);
-    const memberPrincipals = new Set(
-      members.map((m) => m.principal.toString()),
-    );
-    return allUsers.filter(
-      (u) => !memberPrincipals.has(u.principal.toString()) && u.profile,
-    );
-  };
-
   const filteredNonMembers = addMemberDeptId
-    ? nonMembersForDept(addMemberDeptId).filter((u) =>
-        (u.profile?.displayName ?? "")
-          .toLowerCase()
-          .includes(memberSearch.toLowerCase()),
-      )
+    ? adminUsers
+        .filter((u) => u.profile?.displayName)
+        .filter((u) =>
+          (u.profile?.displayName ?? "")
+            .toLowerCase()
+            .includes(memberSearch.toLowerCase()),
+        )
     : [];
 
   return (
@@ -203,7 +261,7 @@ export default function DepartmentManager({
           <CardContent>
             <div className="flex gap-2">
               <Input
-                placeholder="New department name…"
+                placeholder="New department name\u2026"
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleCreate()}
@@ -232,20 +290,32 @@ export default function DepartmentManager({
         </Card>
       )}
 
-      {/* Department list with members */}
+      {/* Read-only header */}
+      {readOnly && (
+        <div className="flex items-center gap-2 mb-2">
+          <Building2 className="h-4 w-4 text-primary" />
+          <h3 className="text-base font-semibold text-foreground">
+            Departments
+          </h3>
+          <Badge variant="secondary" className="ml-1">
+            {departments.length}
+          </Badge>
+        </div>
+      )}
+
+      {/* Department list */}
       {isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading\u2026</p>
       ) : departments.length === 0 ? (
         <p
           className="text-sm text-muted-foreground text-center py-8"
           data-ocid="departments.empty_state"
         >
-          No departments yet. Create one above.
+          No departments yet.
         </p>
       ) : (
         <div className="space-y-4">
           {departments.map((dept) => {
-            const members = getMembersForDept(dept.id);
             return (
               <Card key={String(dept.id)} className="overflow-hidden">
                 <CardHeader className="pb-2 bg-muted/30">
@@ -286,10 +356,6 @@ export default function DepartmentManager({
                         <span className="flex-1 font-semibold text-sm">
                           {dept.name}
                         </span>
-                        <Badge variant="outline" className="text-xs">
-                          {members.length} member
-                          {members.length !== 1 ? "s" : ""}
-                        </Badge>
                         {!readOnly && (
                           <Button
                             size="icon"
@@ -317,8 +383,9 @@ export default function DepartmentManager({
                                   Delete Department
                                 </AlertDialogTitle>
                                 <AlertDialogDescription>
-                                  Are you sure you want to delete "{dept.name}"?
-                                  This action cannot be undone.
+                                  Are you sure you want to delete &ldquo;
+                                  {dept.name}&rdquo;? This action cannot be
+                                  undone.
                                 </AlertDialogDescription>
                               </AlertDialogHeader>
                               <AlertDialogFooter>
@@ -341,74 +408,8 @@ export default function DepartmentManager({
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3 pb-4">
-                  {/* Member cards grid */}
-                  {members.length === 0 ? (
-                    <p className="text-xs text-muted-foreground italic mb-3">
-                      No members yet.
-                    </p>
-                  ) : (
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
-                      {members.map((user) => {
-                        const profile = user.profile;
-                        const name = profile?.displayName || "Unknown";
-                        const initials = getInitials(name);
-                        const avatarUrl = profile?.profilePicture
-                          ? getAvatarUrl(profile.profilePicture)
-                          : null;
-                        const pStr = user.principal.toString();
-                        return (
-                          <div
-                            key={pStr}
-                            className="relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
-                          >
-                            {!readOnly && (
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="absolute top-1 right-1 h-5 w-5 opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"
-                                onClick={() =>
-                                  handleRemoveMember(pStr, dept.id)
-                                }
-                                title="Remove from department"
-                              >
-                                <X className="h-3 w-3" />
-                              </Button>
-                            )}
-                            <Avatar className="h-12 w-12">
-                              {avatarUrl ? (
-                                <AvatarImage src={avatarUrl} alt={name} />
-                              ) : null}
-                              <AvatarFallback className="bg-primary/10 text-primary text-sm">
-                                {initials}
-                              </AvatarFallback>
-                            </Avatar>
-                            <div className="text-center min-w-0 w-full">
-                              <p className="text-xs font-medium truncate">
-                                {name}
-                              </p>
-                              {profile?.departmentId !== undefined &&
-                              profile.departmentId === dept.id ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="text-[10px] mt-0.5"
-                                >
-                                  Primary
-                                </Badge>
-                              ) : (
-                                <Badge
-                                  variant="outline"
-                                  className="text-[10px] mt-0.5"
-                                >
-                                  Secondary
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                  {/* Add Member button */}
+                  {/* Show member cards in both admin AND read-only mode */}
+                  <DeptMemberCards deptId={dept.id} readOnly={readOnly} />
                   {!readOnly && (
                     <Button
                       variant="outline"
@@ -445,7 +446,7 @@ export default function DepartmentManager({
           </DialogHeader>
           <div className="space-y-3">
             <Input
-              placeholder="Search users by name…"
+              placeholder="Search users by name\u2026"
               value={memberSearch}
               onChange={(e) => setMemberSearch(e.target.value)}
               data-ocid="departments.search_input"
@@ -478,9 +479,6 @@ export default function DepartmentManager({
                       </Avatar>
                       <div className="min-w-0">
                         <p className="text-sm font-medium truncate">{name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {pStr.slice(0, 20)}…
-                        </p>
                       </div>
                     </button>
                   );

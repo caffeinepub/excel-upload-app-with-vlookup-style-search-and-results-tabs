@@ -191,7 +191,9 @@ function AppContent() {
   const renderTab = () => {
     switch (activeTab) {
       case "deskboard":
-        return <DeskboardTab />;
+        return (
+          <DeskboardTab onNavigate={(tab) => setActiveTab(tab as TabId)} />
+        );
       case "upload":
         return <UploadTab />;
       case "search":
