@@ -75,6 +75,10 @@ import {
   useGrantCustomDatePermission,
   useRevokeCustomDatePermission,
 } from "../hooks/useAttendance";
+import {
+  useMaintenanceMode,
+  useSetMaintenanceMode,
+} from "../hooks/useMaintenanceMode";
 import { useGetAllUsers } from "../hooks/useTeamMessaging";
 import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
@@ -737,6 +741,62 @@ function AdminEmployeeAttendancePanel() {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 
+function MaintenanceModePanel() {
+  const { data: isMaintenanceMode = false } = useMaintenanceMode();
+  const setMaintenance = useSetMaintenanceMode();
+  const handleToggle = () => {
+    setMaintenance.mutate(!isMaintenanceMode);
+  };
+  return (
+    <div className="mt-6 border-t pt-4">
+      <div
+        className={[
+          "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+          isMaintenanceMode
+            ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
+            : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900",
+        ].join(" ")}
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">&#x1F6E0;</span>
+          <div>
+            <p className="font-semibold text-sm">Maintenance Mode</p>
+            <p className="text-xs text-muted-foreground">
+              {isMaintenanceMode
+                ? "All non-admin users see only the maintenance screen"
+                : "App is operating normally for all users"}
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          onClick={handleToggle}
+          disabled={setMaintenance.isPending}
+          className={[
+            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+            isMaintenanceMode
+              ? "bg-orange-500"
+              : "bg-gray-300 dark:bg-gray-600",
+          ].join(" ")}
+          aria-label="Toggle maintenance mode"
+        >
+          <span
+            className={[
+              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+              isMaintenanceMode ? "translate-x-8" : "translate-x-1",
+            ].join(" ")}
+          />
+        </button>
+      </div>
+      {isMaintenanceMode && (
+        <p className="mt-2 text-xs text-orange-600 dark:text-orange-400 text-center font-medium">
+          Maintenance is active - regular users cannot access the app
+        </p>
+      )}
+    </div>
+  );
+}
+
 export function AdminUsersTab() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const {
@@ -1381,6 +1441,7 @@ export function AdminUsersTab() {
           </Card>
         </TabsContent>
       </Tabs>
+      <MaintenanceModePanel />
     </div>
   );
 }

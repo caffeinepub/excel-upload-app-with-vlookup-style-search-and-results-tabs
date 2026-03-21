@@ -62,25 +62,34 @@ function useDepartmentMembers(deptId: bigint) {
     queryKey: ["usersInDepartment", deptId.toString()],
     queryFn: async () => {
       if (!actor) return [];
+      // Try the string form (canonical)
       try {
-        // Pass bigint directly as the backend expects
         const result = await actor.getUsersInDepartment(deptId.toString());
         return (result as UserProfileFull[]) ?? [];
       } catch {
+        // Fallback: try Number().toString()
         try {
-          // Fallback: try string
-          const result = await (actor as any).getUsersInDepartment(
-            deptId.toString(),
+          const result = await actor.getUsersInDepartment(
+            Number(deptId).toString(),
           );
           return (result as UserProfileFull[]) ?? [];
         } catch {
-          return [];
+          // Last fallback
+          try {
+            const result = await (actor as any).getUsersInDepartment(
+              String(deptId),
+            );
+            return (result as UserProfileFull[]) ?? [];
+          } catch {
+            return [];
+          }
         }
       }
     },
     enabled: !!actor && !isFetching,
     staleTime: 0,
-    refetchInterval: 20000,
+    gcTime: 0,
+    refetchInterval: 10_000,
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });

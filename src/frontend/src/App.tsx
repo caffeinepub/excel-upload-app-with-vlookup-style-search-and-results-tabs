@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { BirthdayPopup } from "./components/BirthdayPopup";
+import { MaintenanceOverlay } from "./components/MaintenanceOverlay";
 import { WelcomeSplash } from "./components/WelcomeSplash";
 import { ApprovalGate } from "./components/auth/ApprovalGate";
 import UserProfileSetup from "./components/auth/UserProfileSetup";
@@ -13,6 +14,7 @@ import { ReminderEventsProvider } from "./context/ReminderEventsContext";
 import { useIsCallerAdmin } from "./hooks/useApproval";
 import { useGetActiveBroadcasts } from "./hooks/useBroadcasts";
 import { useInternetIdentity } from "./hooks/useInternetIdentity";
+import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { useGetCallerUserProfile } from "./hooks/useUserProfile";
 import { AdminUsersTab } from "./pages/AdminUsersTab";
 import AttendanceTab from "./pages/AttendanceTab";
@@ -152,6 +154,7 @@ function AppContent() {
   const { identity, isInitializing } = useInternetIdentity();
   const isAuthenticated = !!identity;
   const { data: isAdmin = false } = useIsCallerAdmin();
+  const { data: isMaintenanceMode = false } = useMaintenanceMode();
   const { reset } = useAppState();
 
   const {
@@ -273,6 +276,9 @@ function AppContent() {
         isAdmin={isAdmin}
         tabs={ALL_TABS}
       >
+        {isAuthenticated && isMaintenanceMode && !isAdmin && (
+          <MaintenanceOverlay />
+        )}
         {isAuthenticated ? (
           <ApprovalGate>{renderTab()}</ApprovalGate>
         ) : (

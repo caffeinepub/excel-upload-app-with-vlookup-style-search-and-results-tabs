@@ -343,6 +343,7 @@ actor {
 
   // New state for shared reports
   var nextSharedReportId = 0;
+  var maintenanceMode : Bool = false;
   let sharedReports = Map.empty<Nat, SharedReport>();
 
   // New state for extended user profiles
@@ -1949,6 +1950,18 @@ actor {
       };
     };
     userEntries.add(date, entry);
+  };
+
+  public query func getMaintenanceMode() : async Bool {
+    maintenanceMode
+  };
+
+  public shared ({ caller }) func setMaintenanceMode(enabled : Bool) : async Bool {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      return false;
+    };
+    maintenanceMode := enabled;
+    true
   };
 
   public shared ({ caller }) func deleteSharedExpenseReport(reportId : Nat) : async () {

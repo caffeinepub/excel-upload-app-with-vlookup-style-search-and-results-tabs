@@ -5,6 +5,7 @@ import { Download, FileText, Pencil, Smile, Trash2 } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import type { ChannelMessage, DirectMessage } from "../../backend";
+import { useAllUsersPublic } from "../../hooks/useAllUsersPublic";
 import { useAvatarUrl } from "../../hooks/useAvatarUrl";
 import { useGetUserProfile } from "../../hooks/useUserProfile";
 import { getInitials } from "../../lib/avatarUtils";
@@ -69,6 +70,65 @@ interface ReactionCounts {
   [emoji: string]: number;
 }
 
+/** Build a stable storage key for reactions */
+function getReactionKey(
+  msg: Message,
+  channelId?: string,
+  otherPrincipal?: string,
+): string {
+  if (isChannelMessage(msg) && channelId) {
+    return `msgReactions_${channelId}_${msg.id.toString()}`;
+  }
+  if (!isChannelMessage(msg) && otherPrincipal) {
+    const from = msg.fromPrincipal.toString();
+    const to = msg.toPrincipal.toString();
+    const convKey = [from, to].sort().join("__");
+    return `msgReactions_dm_${convKey}_${msg.id.toString()}`;
+  }
+  return `msgReactions_fallback_${msg.id.toString()}`;
+}
+
+function loadReactionsFromStorage(key: string): {
+  counts: ReactionCounts;
+  myReactions: string[];
+} {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) return JSON.parse(raw);
+  } catch {
+    // ignore
+  }
+  return { counts: {}, myReactions: [] };
+}
+
+function saveReactionsToStorage(
+  key: string,
+  counts: ReactionCounts,
+  myReactions: Set<string>,
+) {
+  try {
+    localStorage.setItem(
+      key,
+      JSON.stringify({ counts, myReactions: Array.from(myReactions) }),
+    );
+  } catch {
+    // ignore
+  }
+}
+
+/** Format seen-by principals to display names, truncated */
+function formatSeenByNames(
+  principals: string[],
+  userMap: Map<string, string>,
+): string {
+  if (principals.length === 0) return "";
+  const names = principals.map((p) => userMap.get(p) || `${p.slice(0, 8)}…`);
+  if (names.length <= 3) return names.join(", ");
+  const shown = names.slice(0, 3);
+  const rest = names.length - 3;
+  return `${shown.join(", ")} +${rest} more`;
+}
+
 interface MessageBubbleProps {
   msg: Message;
   isOwn: boolean;
@@ -80,6 +140,7 @@ interface MessageBubbleProps {
   markerIndex: number;
   isGroupStart: boolean;
   channelId?: string;
+  userMap: Map<string, string>;
 }
 
 function MessageBubble({
@@ -93,10 +154,20 @@ function MessageBubble({
   markerIndex,
   isGroupStart,
   channelId,
+  userMap,
 }: MessageBubbleProps) {
+  const reactionKey = getReactionKey(msg, channelId, otherPrincipal);
+
+  // Load persisted reactions on mount
+  const [reactions, setReactions] = useState<ReactionCounts>(() => {
+    return loadReactionsFromStorage(reactionKey).counts;
+  });
+  const [myReactions, setMyReactions] = useState<Set<string>>(() => {
+    const saved = loadReactionsFromStorage(reactionKey).myReactions;
+    return new Set(saved);
+  });
+
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
-  const [reactions, setReactions] = useState<ReactionCounts>({});
-  const [myReactions, setMyReactions] = useState<Set<string>>(new Set());
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(msg.text || "");
   const [isSavingEdit, setIsSavingEdit] = useState(false);
@@ -135,16 +206,20 @@ function MessageBubble({
     setShowEmojiPicker(false);
     setReactions((prev) => {
       const current = prev[emoji] ?? 0;
+      let newCounts: ReactionCounts;
+      let newMyReactions: Set<string>;
       if (myReactions.has(emoji)) {
-        setMyReactions((s) => {
-          const n = new Set(s);
-          n.delete(emoji);
-          return n;
-        });
-        return { ...prev, [emoji]: Math.max(0, current - 1) };
+        newMyReactions = new Set(myReactions);
+        newMyReactions.delete(emoji);
+        newCounts = { ...prev, [emoji]: Math.max(0, current - 1) };
+      } else {
+        newMyReactions = new Set(myReactions);
+        newMyReactions.add(emoji);
+        newCounts = { ...prev, [emoji]: current + 1 };
       }
-      setMyReactions((s) => new Set(s).add(emoji));
-      return { ...prev, [emoji]: current + 1 };
+      setMyReactions(newMyReactions);
+      saveReactionsToStorage(reactionKey, newCounts, newMyReactions);
+      return newCounts;
     });
   };
 
@@ -419,7 +494,7 @@ function MessageBubble({
                         d="M9 12l5 5L20 4"
                       />
                     </svg>
-                    Seen by {channelSeenBy.length}
+                    Seen by {formatSeenByNames(channelSeenBy, userMap)}
                   </span>
                 )}
                 {isChannelMessage(msg) && channelSeenBy.length === 0 && (
@@ -472,7 +547,7 @@ function MessageBubble({
                         d="M9 12l5 5L20 4"
                       />
                     </svg>
-                    Seen
+                    Seen by {formatSeenByNames(dmSeenBy, userMap)}
                   </span>
                 )}
                 {!isChannelMessage(msg) && dmSeenBy.length === 0 && (
@@ -545,6 +620,7 @@ export default function MessageFeed({
   otherPrincipal,
 }: MessageFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
+  const userMap = useAllUsersPublic();
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: messages.length triggers scroll-to-bottom
   useEffect(() => {
@@ -629,6 +705,7 @@ export default function MessageFeed({
                     markerIndex={msgIndex}
                     isGroupStart={isGroupStart}
                     channelId={channelId}
+                    userMap={userMap}
                   />
                 </div>
               );

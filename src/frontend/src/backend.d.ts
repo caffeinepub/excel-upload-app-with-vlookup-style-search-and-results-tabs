@@ -265,6 +265,8 @@ export interface backendInterface {
     deleteHoliday(id: bigint): Promise<void>;
     deleteNote(id: bigint): Promise<void>;
     deleteSharedExpenseReport(reportId: bigint): Promise<void>;
+    getMaintenanceMode(): Promise<boolean>;
+    setMaintenanceMode(enabled: boolean): Promise<boolean>;
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;
