@@ -807,36 +807,12 @@ function WeekOffBulkPanel() {
     if (!actor || !selectedDate) return;
     setIsProcessing(true);
     try {
-      const users = await actor.getAllUsersForAdmin();
-      const { ApprovalStatus } = await import("../backend");
-      const approved = users.filter((u: any) => {
-        const st = u.status;
-        return "approved" in st || st === ApprovalStatus.approved;
-      });
-      toast.info(`Marking week off for ${approved.length} users...`);
-      let successCount = 0;
-      await Promise.all(
-        approved.map(async (u: any) => {
-          try {
-            await actor.adminUpdateUserAttendance(
-              u.principal,
-              selectedDate,
-              { weeklyOff: null },
-              [],
-              [],
-              "Week Off",
-            );
-            successCount++;
-          } catch {
-            // continue with others
-          }
-        }),
-      );
-      toast.success(
-        `Week Off marked for ${successCount} users on ${selectedDate}`,
-      );
+      toast.info("Marking Week Off for all approved users...");
+      const count = await (actor as any).adminBulkMarkWeekOff(selectedDate);
+      const n = typeof count === "bigint" ? Number(count) : (count as number);
+      toast.success(`Week Off marked for ${n} users on ${selectedDate}`);
     } catch (e) {
-      toast.error(`Failed: ${String(e)}`);
+      toast.error(`Failed to mark week off: ${String(e)}`);
     } finally {
       setIsProcessing(false);
     }

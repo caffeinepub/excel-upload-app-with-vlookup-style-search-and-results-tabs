@@ -267,6 +267,7 @@ export interface backendInterface {
     deleteSharedExpenseReport(reportId: bigint): Promise<void>;
     getMaintenanceMode(): Promise<boolean>;
     setMaintenanceMode(enabled: boolean): Promise<boolean>;
+    adminBulkMarkWeekOff(date: string): Promise<bigint>;
     deleteReminder(id: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;

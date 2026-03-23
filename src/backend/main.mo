@@ -1958,10 +1958,47 @@ actor {
 
   public shared ({ caller }) func setMaintenanceMode(enabled : Bool) : async Bool {
     if (not AccessControl.isAdmin(accessControlState, caller)) {
-      return false;
+      Runtime.trap("Unauthorized: Only admins can set maintenance mode");
     };
     maintenanceMode := enabled;
     true
+  };
+
+  public shared ({ caller }) func adminBulkMarkWeekOff(date : Text) : async Nat {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can bulk mark week off");
+    };
+    let approvalIter = approvalState.approvalStatus.entries();
+    var successCount : Nat = 0;
+    for ((principal, status) in approvalIter) {
+      if (status == #approved) {
+        let existing : ?AttendanceDayEntry = switch (attendanceEntries.get(principal)) {
+          case (null) { null };
+          case (?m) { m.get(date) };
+        };
+        let prevCheckIn = switch (existing) { case (?e) { e.checkIn }; case (null) { null } };
+        let prevCheckOut = switch (existing) { case (?e) { e.checkOut }; case (null) { null } };
+        let prevWorkingTime = switch (existing) { case (?e) { e.workingTime }; case (null) { 0 } };
+        let entry : AttendanceDayEntry = {
+          checkIn = prevCheckIn;
+          checkOut = prevCheckOut;
+          note = "Week Off";
+          status = #weeklyOff;
+          workingTime = prevWorkingTime;
+        };
+        let userEntries = switch (attendanceEntries.get(principal)) {
+          case (?m) { m };
+          case (null) {
+            let m = Map.empty<Text, AttendanceDayEntry>();
+            attendanceEntries.add(principal, m);
+            m;
+          };
+        };
+        userEntries.add(date, entry);
+        successCount += 1;
+      };
+    };
+    successCount
   };
 
   public shared ({ caller }) func deleteSharedExpenseReport(reportId : Nat) : async () {

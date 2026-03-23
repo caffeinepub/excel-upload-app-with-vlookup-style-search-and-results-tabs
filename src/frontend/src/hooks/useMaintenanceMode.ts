@@ -22,8 +22,8 @@ export function useMaintenanceMode() {
       }
     },
     enabled: !!actor,
-    refetchInterval: 10_000,
-    staleTime: 5_000,
+    refetchInterval: 8_000,
+    staleTime: 3_000,
   });
 }
 
@@ -32,18 +32,28 @@ export function useSetMaintenanceMode() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (enabled: boolean) => {
-      if (!actor) return false;
-      return await (actor as unknown as MaintenanceActor).setMaintenanceMode(
-        enabled,
-      );
+      if (!actor) throw new Error("Not connected");
+      const result = await (
+        actor as unknown as MaintenanceActor
+      ).setMaintenanceMode(enabled);
+      if (!result) {
+        throw new Error(
+          "Failed to update maintenance mode — admin access required",
+        );
+      }
+      return result;
     },
     onSuccess: (_data, enabled) => {
       void queryClient.invalidateQueries({ queryKey: ["maintenanceMode"] });
       void queryClient.refetchQueries({ queryKey: ["maintenanceMode"] });
-      toast.success(enabled ? "Maintenance mode ON" : "Maintenance mode OFF");
+      toast.success(
+        enabled
+          ? "Maintenance mode ON — users are locked to dashboard"
+          : "Maintenance mode OFF — app restored to normal",
+      );
     },
-    onError: () => {
-      toast.error("Failed to toggle maintenance mode");
+    onError: (err) => {
+      toast.error(`Maintenance mode update failed: ${String(err)}`);
     },
   });
 }
