@@ -797,6 +797,85 @@ function MaintenanceModePanel() {
   );
 }
 
+// ── Week Off Bulk Panel ──────────────────────────────────────────────────────
+function WeekOffBulkPanel() {
+  const { actor } = useActor();
+  const [selectedDate, setSelectedDate] = useState("");
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleMarkWeekOff = async () => {
+    if (!actor || !selectedDate) return;
+    setIsProcessing(true);
+    try {
+      const users = await actor.getAllUsersForAdmin();
+      const { ApprovalStatus } = await import("../backend");
+      const approved = users.filter((u: any) => {
+        const st = u.status;
+        return "approved" in st || st === ApprovalStatus.approved;
+      });
+      toast.info(`Marking week off for ${approved.length} users...`);
+      let successCount = 0;
+      await Promise.all(
+        approved.map(async (u: any) => {
+          try {
+            await actor.adminUpdateUserAttendance(
+              u.principal,
+              selectedDate,
+              { weeklyOff: null },
+              [],
+              [],
+              "Week Off",
+            );
+            successCount++;
+          } catch {
+            // continue with others
+          }
+        }),
+      );
+      toast.success(
+        `Week Off marked for ${successCount} users on ${selectedDate}`,
+      );
+    } catch (e) {
+      toast.error(`Failed: ${String(e)}`);
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  return (
+    <div className="mt-4 border-t pt-4">
+      <div className="flex items-center justify-between p-4 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+        <div className="flex items-center gap-3">
+          <span className="text-2xl">📅</span>
+          <div>
+            <p className="font-semibold text-sm">Bulk Mark Week Off</p>
+            <p className="text-xs text-muted-foreground">
+              Mark a specific date as Week Off for all approved users
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="date"
+            value={selectedDate}
+            onChange={(e) => setSelectedDate(e.target.value)}
+            className="h-8 text-xs w-40"
+          />
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 text-xs border-blue-400 text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-600"
+            onClick={() => void handleMarkWeekOff()}
+            disabled={isProcessing || !selectedDate}
+          >
+            {isProcessing ? <span className="animate-spin mr-1">✳</span> : null}
+            Mark Week Off for All Users
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
 export function AdminUsersTab() {
   const { data: isAdmin, isLoading: adminLoading } = useIsCallerAdmin();
   const {
@@ -1442,6 +1521,7 @@ export function AdminUsersTab() {
         </TabsContent>
       </Tabs>
       <MaintenanceModePanel />
+      <WeekOffBulkPanel />
     </div>
   );
 }

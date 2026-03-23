@@ -42,7 +42,11 @@ import {
   useListDepartments,
   useUpdateDepartment,
 } from "../../hooks/useDepartments";
-import { useObserveUsers } from "../../hooks/useObserveUsers";
+import {
+  useObserveUsers,
+  usePublicUsersForDepts,
+} from "../../hooks/useObserveUsers";
+import type { ObservableUser } from "../../hooks/useObserveUsers";
 
 function getInitials(name: string): string {
   return (
@@ -112,12 +116,41 @@ function DeptMemberCards({
   deptId,
   readOnly,
   onRemoveMember,
+  fallbackUsers,
 }: {
   deptId: bigint;
   readOnly: boolean;
   onRemoveMember?: (principalStr: string) => void;
+  fallbackUsers?: ObservableUser[];
 }) {
   const { data: members = [], isLoading } = useDepartmentMembers(deptId);
+
+  // Build effective members list, using fallback when backend returns empty
+  const effectiveMembers: UserProfileFull[] = (() => {
+    if (members.length > 0) return members;
+    if (!fallbackUsers) return [];
+    return fallbackUsers
+      .filter((u) => {
+        const deptId2 = u.profile?.departmentId;
+        if (!deptId2) return false;
+        return deptId2.toString() === deptId.toString();
+      })
+      .map(
+        (u) =>
+          ({
+            displayName: u.profile?.displayName || "Unknown",
+            email: "",
+            phone: "",
+            jobTitle: "",
+            department: "",
+            bio: "",
+            avatarUrl: null,
+            birthDate: null,
+            joiningDate: null,
+            principal: u.principal,
+          }) as unknown as UserProfileFull,
+      );
+  })();
 
   if (isLoading) {
     return (
@@ -130,7 +163,7 @@ function DeptMemberCards({
     );
   }
 
-  if (members.length === 0) {
+  if (effectiveMembers.length === 0) {
     return (
       <p
         className="text-xs text-muted-foreground italic mb-3"
@@ -143,7 +176,7 @@ function DeptMemberCards({
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3 mb-3">
-      {members.map((member, idx) => (
+      {effectiveMembers.map((member, idx) => (
         <div
           key={member.displayName || String(idx)}
           className="relative flex flex-col items-center gap-2 p-3 rounded-lg border border-border bg-card hover:bg-muted/30 transition-colors group"
@@ -193,6 +226,7 @@ export default function DepartmentManager({
 }: { readOnly?: boolean }) {
   const { data: departments = [], isLoading } = useListDepartments();
   const { data: adminUsers = [] } = useObserveUsers();
+  const { data: publicUsers = [] } = usePublicUsersForDepts();
 
   const createDept = useCreateDepartment();
   const updateDept = useUpdateDepartment();
@@ -418,7 +452,22 @@ export default function DepartmentManager({
                 </CardHeader>
                 <CardContent className="pt-3 pb-4">
                   {/* Show member cards in both admin AND read-only mode */}
-                  <DeptMemberCards deptId={dept.id} readOnly={readOnly} />
+                  <DeptMemberCards
+                    deptId={dept.id}
+                    readOnly={readOnly}
+                    fallbackUsers={
+                      readOnly
+                        ? publicUsers.map((u) => ({
+                            principal: u.principal,
+                            status: { approved: null } as any,
+                            profile: {
+                              displayName: u.displayName,
+                              departmentId: dept.id,
+                            } as any,
+                          }))
+                        : adminUsers
+                    }
+                  />
                   {!readOnly && (
                     <Button
                       variant="outline"

@@ -182,6 +182,13 @@ function AppContent() {
     }
   }, [isAuthenticated, activeTab]);
 
+  // Redirect to deskboard when maintenance mode is on (for non-admins)
+  useEffect(() => {
+    if (isMaintenanceMode && !isAdmin) {
+      setActiveTab("deskboard");
+    }
+  }, [isMaintenanceMode, isAdmin]);
+
   // Show profile setup if authenticated and profile is null, undefined, or errored.
   const showProfileSetup =
     isAuthenticated &&

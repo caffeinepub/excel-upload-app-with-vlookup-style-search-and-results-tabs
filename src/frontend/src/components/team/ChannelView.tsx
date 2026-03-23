@@ -30,8 +30,23 @@ export default function ChannelView({
   const { isAdmin } = useApproval();
   const channelIdStr = channelId.toString();
   const prevMessagesRef = useRef<string[]>([]);
+  const postedSeenReceiptsRef = useRef<Set<string>>(new Set());
+
+  // Load persisted seen receipts for this channel on mount
+  useEffect(() => {
+    const storageKey = `seenPosted_${channelIdStr}`;
+    try {
+      const posted = JSON.parse(
+        localStorage.getItem(storageKey) || "[]",
+      ) as string[];
+      postedSeenReceiptsRef.current = new Set(posted);
+    } catch {
+      postedSeenReceiptsRef.current = new Set();
+    }
+  }, [channelIdStr]);
 
   // Mark all visible messages as "seen" by current user
+  // biome-ignore lint/correctness/useExhaustiveDependencies: postMessage is stable mutation
   useEffect(() => {
     if (!callerPrincipal || messages.length === 0) return;
     const messageIds = messages.map((m) => m.id.toString());
@@ -41,8 +56,43 @@ export default function ChannelView({
     if (newIds.length > 0) {
       markMessagesSeen(channelIdStr, callerPrincipal, newIds);
       prevMessagesRef.current = messageIds;
+
+      // Post backend seen receipts for messages NOT sent by current user
+      const storageKey = `seenPosted_${channelIdStr}`;
+      for (const msg of messages) {
+        const msgId = msg.id.toString();
+        const senderId = "senderId" in msg ? msg.senderId.toString() : "";
+        if (
+          senderId !== callerPrincipal &&
+          !postedSeenReceiptsRef.current.has(msgId)
+        ) {
+          postedSeenReceiptsRef.current.add(msgId);
+          // Fire and forget
+          postMessage
+            .mutateAsync({
+              channelId,
+              senderName,
+              text: `__seen:${msgId}`,
+              fileUrl: null,
+              fileName: null,
+            })
+            .catch(() => {
+              // ignore errors for seen receipts
+              postedSeenReceiptsRef.current.delete(msgId);
+            });
+        }
+      }
+      // Persist updated seen receipts
+      try {
+        localStorage.setItem(
+          storageKey,
+          JSON.stringify([...postedSeenReceiptsRef.current]),
+        );
+      } catch {
+        // ignore
+      }
     }
-  }, [messages, callerPrincipal, channelIdStr]);
+  }, [messages, callerPrincipal, channelIdStr, channelId, senderName]);
 
   const handleSend = async (
     text: string,

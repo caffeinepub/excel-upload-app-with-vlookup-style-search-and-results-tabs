@@ -141,6 +141,7 @@ interface MessageBubbleProps {
   isGroupStart: boolean;
   channelId?: string;
   userMap: Map<string, string>;
+  backendSeenByMap?: Map<string, string[]>;
 }
 
 function MessageBubble({
@@ -155,6 +156,7 @@ function MessageBubble({
   isGroupStart,
   channelId,
   userMap,
+  backendSeenByMap,
 }: MessageBubbleProps) {
   const reactionKey = getReactionKey(msg, channelId, otherPrincipal);
 
@@ -187,12 +189,24 @@ function MessageBubble({
   const canEdit = isOwn;
 
   // Seen indicators for channel messages
-  const channelSeenBy =
+  const channelSeenByPrincipals =
     channelId && isChannelMessage(msg)
       ? getSeenBy(channelId, msg.id.toString()).filter(
           (p) => p !== callerPrincipal,
         )
       : [];
+  const channelSeenByLocalNames = channelSeenByPrincipals.map(
+    (p) => userMap.get(p) || `${p.slice(0, 8)}…`,
+  );
+  const backendSeenNames =
+    isChannelMessage(msg) && backendSeenByMap
+      ? (backendSeenByMap.get(msg.id.toString()) ?? []).filter(
+          (n) => n !== "" && !channelSeenByLocalNames.includes(n),
+        )
+      : [];
+  const allChannelSeenNames = [
+    ...new Set([...channelSeenByLocalNames, ...backendSeenNames]),
+  ];
 
   // Seen indicators for DM messages
   const dmSeenBy =
@@ -464,7 +478,7 @@ function MessageBubble({
             {isOwn && (
               <div className="flex items-center gap-1 mt-0.5 justify-end">
                 {/* Channel message seen indicator */}
-                {isChannelMessage(msg) && channelSeenBy.length > 0 && (
+                {isChannelMessage(msg) && allChannelSeenNames.length > 0 && (
                   <span className="text-[10px] text-blue-400 font-medium flex items-center gap-0.5">
                     <svg
                       className="h-3.5 w-3.5"
@@ -494,10 +508,13 @@ function MessageBubble({
                         d="M9 12l5 5L20 4"
                       />
                     </svg>
-                    Seen by {formatSeenByNames(channelSeenBy, userMap)}
+                    Seen by{" "}
+                    {allChannelSeenNames.length <= 3
+                      ? allChannelSeenNames.join(", ")
+                      : `${allChannelSeenNames.slice(0, 3).join(", ")} +${allChannelSeenNames.length - 3} more`}
                   </span>
                 )}
-                {isChannelMessage(msg) && channelSeenBy.length === 0 && (
+                {isChannelMessage(msg) && allChannelSeenNames.length === 0 && (
                   <span className="text-[10px] text-muted-foreground/50 flex items-center gap-0.5">
                     <svg
                       className="h-3.5 w-3.5"
@@ -608,6 +625,7 @@ export interface MessageFeedProps {
   onEditMessage?: (messageId: bigint, newText: string) => void;
   channelId?: string;
   otherPrincipal?: string;
+  backendSeenByMap?: Map<string, string[]>;
 }
 
 export default function MessageFeed({
@@ -618,6 +636,7 @@ export default function MessageFeed({
   onEditMessage,
   channelId,
   otherPrincipal,
+  backendSeenByMap,
 }: MessageFeedProps) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const userMap = useAllUsersPublic();
@@ -634,7 +653,28 @@ export default function MessageFeed({
     markDmMessagesSeen(otherPrincipal, callerPrincipal, ids);
   }, [messages, otherPrincipal, callerPrincipal]);
 
-  if (messages.length === 0) {
+  // Separate visible messages from seen receipt messages
+  const visibleMessages = messages.filter(
+    (m) => !m.text?.startsWith("__seen:"),
+  );
+  const seenReceipts = messages.filter((m) => m.text?.startsWith("__seen:"));
+
+  // Build backendSeenByMap from receipts in the messages list
+  const computedBackendSeenByMap = new Map<string, string[]>();
+  for (const r of seenReceipts) {
+    const msgId = r.text?.replace("__seen:", "") ?? "";
+    const name = isChannelMessage(r) ? r.senderName : "";
+    if (name && msgId) {
+      const existing = computedBackendSeenByMap.get(msgId) ?? [];
+      if (!existing.includes(name)) {
+        computedBackendSeenByMap.set(msgId, [...existing, name]);
+      }
+    }
+  }
+  const effectiveBackendSeenByMap =
+    backendSeenByMap ?? computedBackendSeenByMap;
+
+  if (visibleMessages.length === 0) {
     return (
       <div
         className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-16"
@@ -658,7 +698,7 @@ export default function MessageFeed({
   const grouped: { date: string; messages: Message[] }[] = [];
   let currentDate = "";
 
-  for (const msg of messages) {
+  for (const msg of visibleMessages) {
     const dateStr = formatDateSeparator(msg.createdAt);
     if (dateStr !== currentDate) {
       currentDate = dateStr;
@@ -706,6 +746,7 @@ export default function MessageFeed({
                     isGroupStart={isGroupStart}
                     channelId={channelId}
                     userMap={userMap}
+                    backendSeenByMap={effectiveBackendSeenByMap}
                   />
                 </div>
               );

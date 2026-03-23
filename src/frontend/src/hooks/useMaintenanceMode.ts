@@ -1,5 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import { useActor } from "./useActor";
+
+type MaintenanceActor = {
+  getMaintenanceMode: () => Promise<boolean>;
+  setMaintenanceMode: (e: boolean) => Promise<boolean>;
+};
 
 export function useMaintenanceMode() {
   const { actor } = useActor();
@@ -8,10 +14,9 @@ export function useMaintenanceMode() {
     queryFn: async () => {
       if (!actor) return false;
       try {
-        const a = actor as unknown as {
-          getMaintenanceMode: () => Promise<boolean>;
-        };
-        return await a.getMaintenanceMode();
+        return await (
+          actor as unknown as MaintenanceActor
+        ).getMaintenanceMode();
       } catch {
         return false;
       }
@@ -28,13 +33,17 @@ export function useSetMaintenanceMode() {
   return useMutation({
     mutationFn: async (enabled: boolean) => {
       if (!actor) return false;
-      const a = actor as unknown as {
-        setMaintenanceMode: (e: boolean) => Promise<boolean>;
-      };
-      return await a.setMaintenanceMode(enabled);
+      return await (actor as unknown as MaintenanceActor).setMaintenanceMode(
+        enabled,
+      );
     },
-    onSuccess: () => {
+    onSuccess: (_data, enabled) => {
       void queryClient.invalidateQueries({ queryKey: ["maintenanceMode"] });
+      void queryClient.refetchQueries({ queryKey: ["maintenanceMode"] });
+      toast.success(enabled ? "Maintenance mode ON" : "Maintenance mode OFF");
+    },
+    onError: () => {
+      toast.error("Failed to toggle maintenance mode");
     },
   });
 }
