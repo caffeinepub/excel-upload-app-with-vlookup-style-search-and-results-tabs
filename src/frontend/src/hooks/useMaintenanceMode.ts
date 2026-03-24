@@ -32,28 +32,33 @@ export function useSetMaintenanceMode() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async (enabled: boolean) => {
-      if (!actor) throw new Error("Not connected");
-      const result = await (
-        actor as unknown as MaintenanceActor
-      ).setMaintenanceMode(enabled);
-      if (!result) {
-        throw new Error(
-          "Failed to update maintenance mode — admin access required",
+      if (!actor) throw new Error("Not connected — please reload the page");
+      try {
+        await (actor as unknown as MaintenanceActor).setMaintenanceMode(
+          enabled,
         );
+        return enabled;
+      } catch (err) {
+        const msg = String(err);
+        if (msg.includes("Unauthorized") || msg.includes("admin")) {
+          throw new Error(
+            "Admin access required. Make sure you are logged in as admin.",
+          );
+        }
+        throw new Error(`Failed: ${msg}`);
       }
-      return result;
     },
-    onSuccess: (_data, enabled) => {
+    onSuccess: (enabled) => {
+      queryClient.setQueryData(["maintenanceMode"], enabled);
       void queryClient.invalidateQueries({ queryKey: ["maintenanceMode"] });
-      void queryClient.refetchQueries({ queryKey: ["maintenanceMode"] });
       toast.success(
         enabled
           ? "Maintenance mode ON — users are locked to dashboard"
           : "Maintenance mode OFF — app restored to normal",
       );
     },
-    onError: (err) => {
-      toast.error(`Maintenance mode update failed: ${String(err)}`);
+    onError: (err: Error) => {
+      toast.error(err.message);
     },
   });
 }

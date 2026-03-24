@@ -41,6 +41,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
 import type { Principal } from "@icp-sdk/core/principal";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
   Calendar,
@@ -771,21 +772,25 @@ function MaintenanceModePanel() {
         <button
           type="button"
           onClick={handleToggle}
-          disabled={setMaintenance.isPending}
           className={[
-            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2",
+            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 cursor-pointer",
             isMaintenanceMode
               ? "bg-orange-500"
               : "bg-gray-300 dark:bg-gray-600",
           ].join(" ")}
-          aria-label="Toggle maintenance mode"
         >
-          <span
-            className={[
-              "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-              isMaintenanceMode ? "translate-x-8" : "translate-x-1",
-            ].join(" ")}
-          />
+          {setMaintenance.isPending ? (
+            <span className="absolute inset-0 flex items-center justify-center">
+              <Loader2 className="h-4 w-4 animate-spin text-white" />
+            </span>
+          ) : (
+            <span
+              className={[
+                "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
+                isMaintenanceMode ? "translate-x-8" : "translate-x-1",
+              ].join(" ")}
+            />
+          )}
         </button>
       </div>
       {isMaintenanceMode && (
@@ -800,19 +805,44 @@ function MaintenanceModePanel() {
 // ── Week Off Bulk Panel ──────────────────────────────────────────────────────
 function WeekOffBulkPanel() {
   const { actor } = useActor();
+  const queryClient = useQueryClient();
   const [selectedDate, setSelectedDate] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
+  const [lastResult, setLastResult] = useState<{
+    date: string;
+    count: number;
+  } | null>(null);
 
   const handleMarkWeekOff = async () => {
-    if (!actor || !selectedDate) return;
+    if (!actor) {
+      toast.error("Not connected — please reload the page");
+      return;
+    }
+    if (!selectedDate) {
+      toast.error("Please select a date first");
+      return;
+    }
     setIsProcessing(true);
+    setLastResult(null);
     try {
-      toast.info("Marking Week Off for all approved users...");
+      toast.info(`Marking Week Off for all users on ${selectedDate}...`);
       const count = await (actor as any).adminBulkMarkWeekOff(selectedDate);
       const n = typeof count === "bigint" ? Number(count) : (count as number);
-      toast.success(`Week Off marked for ${n} users on ${selectedDate}`);
+      setLastResult({ date: selectedDate, count: n });
+      toast.success(`✅ Week Off marked for ${n} user(s) on ${selectedDate}`);
+      // Invalidate attendance queries so users see updated history
+      void queryClient.invalidateQueries({ queryKey: ["attendanceEntries"] });
+      void queryClient.invalidateQueries({ queryKey: ["attendance"] });
+      void queryClient.invalidateQueries({ queryKey: ["employeeAttendance"] });
     } catch (e) {
-      toast.error(`Failed to mark week off: ${String(e)}`);
+      const msg = String(e);
+      if (msg.includes("Unauthorized") || msg.includes("admin")) {
+        toast.error(
+          "Admin access required. Make sure you are logged in as admin.",
+        );
+      } else {
+        toast.error(`Failed to mark week off: ${msg}`);
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -820,7 +850,7 @@ function WeekOffBulkPanel() {
 
   return (
     <div className="mt-4 border-t pt-4">
-      <div className="flex items-center justify-between p-4 rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30">
+      <div className="rounded-xl border-2 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 p-4 space-y-3">
         <div className="flex items-center gap-3">
           <span className="text-2xl">📅</span>
           <div>
@@ -830,24 +860,52 @@ function WeekOffBulkPanel() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="h-8 text-xs w-40"
-          />
+        <div className="space-y-2">
+          <div>
+            <label
+              htmlFor="weekoff-date"
+              className="text-xs font-medium text-muted-foreground block mb-1"
+            >
+              Select date:
+            </label>
+            <Input
+              id="weekoff-date"
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={[
+                "h-9 text-sm w-44",
+                !selectedDate ? "border-yellow-400 ring-1 ring-yellow-400" : "",
+              ].join(" ")}
+            />
+            {!selectedDate && (
+              <p className="text-xs text-yellow-600 dark:text-yellow-400 mt-1">
+                Please select a date above
+              </p>
+            )}
+          </div>
           <Button
             size="sm"
-            variant="outline"
-            className="h-8 text-xs border-blue-400 text-blue-700 hover:bg-blue-100 dark:text-blue-300 dark:border-blue-600"
+            className="h-9 text-sm bg-blue-600 hover:bg-blue-700 text-white"
             onClick={() => void handleMarkWeekOff()}
-            disabled={isProcessing || !selectedDate}
+            disabled={isProcessing}
           >
-            {isProcessing ? <span className="animate-spin mr-1">✳</span> : null}
-            Mark Week Off for All Users
+            {isProcessing ? (
+              <>
+                <span className="animate-spin mr-1 inline-block">✳</span>{" "}
+                Processing...
+              </>
+            ) : (
+              "Mark Week Off for All Users"
+            )}
           </Button>
         </div>
+        {lastResult && (
+          <p className="text-xs text-green-700 dark:text-green-400 font-medium">
+            ✅ Week Off applied for {lastResult.count} user(s) on{" "}
+            {lastResult.date}
+          </p>
+        )}
       </div>
     </div>
   );

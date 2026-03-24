@@ -343,7 +343,7 @@ actor {
 
   // New state for shared reports
   var nextSharedReportId = 0;
-  var maintenanceMode : Bool = false;
+  stable var maintenanceMode : Bool = false;
   let sharedReports = Map.empty<Nat, SharedReport>();
 
   // New state for extended user profiles
