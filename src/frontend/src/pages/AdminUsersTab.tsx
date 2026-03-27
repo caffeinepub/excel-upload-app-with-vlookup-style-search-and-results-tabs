@@ -423,7 +423,10 @@ function AdminEmployeeAttendancePanel() {
 
   const openEdit = (date: string, entry: AttendanceDayEntry) => {
     setEditingEntry({ date, entry });
-    const statusKey = Object.keys(entry.status)[0] ?? "present";
+    const statusKey =
+      typeof entry.status === "string"
+        ? entry.status
+        : (Object.keys(entry.status as object)[0] ?? "present");
     setEditDayType(statusKey);
     setEditWorkNote(entry.note ?? "");
     if (entry.checkIn) {
@@ -743,61 +746,106 @@ function AdminEmployeeAttendancePanel() {
 // ── Main Component ─────────────────────────────────────────────────────────────
 
 function MaintenanceModePanel() {
-  const { data: isMaintenanceMode = false } = useMaintenanceMode();
+  const { data: isMaintenanceMode = false, refetch } = useMaintenanceMode();
   const setMaintenance = useSetMaintenanceMode();
-  const handleToggle = () => {
-    setMaintenance.mutate(!isMaintenanceMode);
+  const [code, setCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+
+  const handleCodeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      if (code.trim() === "2024") {
+        setCodeError("");
+        setCode("");
+        setMaintenance.mutate(true, {
+          onSuccess: () => {
+            void refetch();
+          },
+        });
+      } else {
+        setCodeError("Invalid code. Please try again.");
+      }
+    }
   };
+
+  const handleTurnOff = () => {
+    setMaintenance.mutate(false, {
+      onSuccess: () => {
+        void refetch();
+      },
+    });
+  };
+
   return (
     <div className="mt-6 border-t pt-4">
       <div
         className={[
-          "flex items-center justify-between p-4 rounded-xl border-2 transition-all",
+          "p-4 rounded-xl border-2 transition-all",
           isMaintenanceMode
             ? "border-orange-500 bg-orange-50 dark:bg-orange-950/30"
             : "border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900",
         ].join(" ")}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 mb-3">
           <span className="text-2xl">&#x1F6E0;</span>
           <div>
             <p className="font-semibold text-sm">Maintenance Mode</p>
             <p className="text-xs text-muted-foreground">
               {isMaintenanceMode
-                ? "All non-admin users see only the maintenance screen"
-                : "App is operating normally for all users"}
+                ? "ACTIVE — all non-admin users see only the maintenance screen"
+                : "Enter code 2024 and press Enter to activate"}
             </p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={handleToggle}
-          className={[
-            "relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 cursor-pointer",
-            isMaintenanceMode
-              ? "bg-orange-500"
-              : "bg-gray-300 dark:bg-gray-600",
-          ].join(" ")}
-        >
-          {setMaintenance.isPending ? (
-            <span className="absolute inset-0 flex items-center justify-center">
-              <Loader2 className="h-4 w-4 animate-spin text-white" />
-            </span>
-          ) : (
-            <span
-              className={[
-                "inline-block h-5 w-5 rounded-full bg-white shadow transition-transform",
-                isMaintenanceMode ? "translate-x-8" : "translate-x-1",
-              ].join(" ")}
-            />
-          )}
-        </button>
+
+        {!isMaintenanceMode ? (
+          <div className="flex flex-col gap-1">
+            <div className="flex gap-2">
+              <input
+                type="password"
+                placeholder="Enter code and press Enter..."
+                value={code}
+                onChange={(e) => {
+                  setCode(e.target.value);
+                  setCodeError("");
+                }}
+                onKeyDown={handleCodeKeyDown}
+                disabled={setMaintenance.isPending}
+                className="flex-1 px-3 py-2 text-sm rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-400"
+              />
+              {setMaintenance.isPending && (
+                <span className="flex items-center px-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-orange-500" />
+                </span>
+              )}
+            </div>
+            {codeError && (
+              <p className="text-xs text-red-500 font-medium">{codeError}</p>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2 p-2 bg-orange-100 dark:bg-orange-900/40 rounded-lg">
+              <span className="text-orange-600 dark:text-orange-400 text-xs font-semibold flex-1">
+                &#x26A0; Maintenance is ON — users are locked to dashboard
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleTurnOff}
+              disabled={setMaintenance.isPending}
+              className="w-full py-2 px-4 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              {setMaintenance.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" /> Turning Off...
+                </>
+              ) : (
+                "Turn Off Maintenance Mode"
+              )}
+            </button>
+          </div>
+        )}
       </div>
-      {isMaintenanceMode && (
-        <p className="mt-2 text-xs text-orange-600 dark:text-orange-400 text-center font-medium">
-          Maintenance is active - regular users cannot access the app
-        </p>
-      )}
     </div>
   );
 }

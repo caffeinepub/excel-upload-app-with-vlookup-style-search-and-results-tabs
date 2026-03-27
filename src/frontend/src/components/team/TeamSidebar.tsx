@@ -81,9 +81,9 @@ function CallerAvatar() {
   const avatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
   const initials = getInitials(profile?.displayName);
   return (
-    <Avatar className="h-8 w-8 ring-2 ring-white/30 shadow-md">
+    <Avatar className="h-9 w-9 ring-2 ring-white/20 shadow-md">
       {avatarUrl && <AvatarImage src={avatarUrl} alt={profile?.displayName} />}
-      <AvatarFallback className="text-xs font-bold bg-indigo-400/40 text-white">
+      <AvatarFallback className="text-xs font-bold bg-indigo-400/30 text-white">
         {initials}
       </AvatarFallback>
     </Avatar>
@@ -119,70 +119,31 @@ function UserDmItem({
     <button
       type="button"
       onClick={onClick}
-      className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-white/80 text-sm transition-all ${
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150 ${
         isSelected
-          ? "bg-white/20 text-white font-medium shadow-sm"
-          : "hover:bg-white/10 hover:text-white"
+          ? "bg-white/20 text-white font-semibold shadow-sm backdrop-blur-sm"
+          : "text-white/65 hover:bg-white/12 hover:text-white"
       }`}
     >
       <div className="relative flex-shrink-0">
-        <Avatar className="h-6 w-6">
+        <Avatar className="h-7 w-7">
           {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
           <AvatarFallback className="text-[9px] bg-indigo-400/30 text-white font-medium">
             {initials}
           </AvatarFallback>
         </Avatar>
         <span
-          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-[#1e1b4b] ${statusColor(status)}`}
-          title={statusLabel(status)}
+          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-[#1a1744] ${statusColor(
+            status,
+          )} ${status === UserStatusKind.online ? "animate-pulse" : ""}`}
         />
       </div>
       <span className="truncate flex-1 text-left">{displayName}</span>
       {unreadCount > 0 && (
-        <Badge className="h-4 min-w-[1rem] px-1 text-[10px] bg-red-500 text-white rounded-full flex-shrink-0">
+        <Badge className="h-4 min-w-[1rem] px-1 text-[10px] bg-rose-500 text-white rounded-full flex-shrink-0">
           {unreadCount > 99 ? "99+" : unreadCount}
         </Badge>
       )}
-    </button>
-  );
-}
-
-interface MemberItemProps {
-  user: TeamUser;
-  onlineUsers: UserStatusEntry[];
-  onClick: () => void;
-}
-
-function MemberItem({ user, onlineUsers, onClick }: MemberItemProps) {
-  const { data: profile } = useGetUserProfile(user.principalStr);
-  const avatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
-  const displayName = profile?.displayName || user.displayName || "User";
-  const initials = getInitials(displayName);
-
-  const statusEntry = onlineUsers.find(
-    (u) => u.principal.toString() === user.principalStr,
-  );
-  const status = statusEntry?.status ?? UserStatusKind.offline;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-white/70 text-sm hover:bg-white/10 hover:text-white transition-all"
-    >
-      <div className="relative flex-shrink-0">
-        <Avatar className="h-6 w-6">
-          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
-          <AvatarFallback className="text-[9px] bg-indigo-300/20 text-white">
-            {initials}
-          </AvatarFallback>
-        </Avatar>
-        <span
-          className={`absolute -bottom-0.5 -right-0.5 h-2 w-2 rounded-full border border-[#1e1b4b] ${statusColor(status)}`}
-        />
-      </div>
-      <span className="truncate flex-1 text-left text-xs">{displayName}</span>
-      <span className="text-[10px] text-white/30">{statusLabel(status)}</span>
     </button>
   );
 }
@@ -221,67 +182,86 @@ export default function TeamSidebar({
   ).length;
 
   const sectionHeader =
-    "text-white/40 text-[10px] font-bold tracking-widest uppercase px-3 py-1.5 mt-3 mb-0.5 select-none";
+    "text-white/35 text-[9px] font-black tracking-[0.15em] uppercase px-3 py-1.5 flex items-center gap-1.5 select-none";
 
   return (
     <div
       className="flex flex-col h-full w-64 flex-shrink-0"
       style={{
-        background: "linear-gradient(to bottom, #1e1b4b, #312e81)",
+        background:
+          "linear-gradient(175deg, #0f0c29 0%, #302b63 55%, #24243e 100%)",
       }}
     >
       {/* Workspace Header */}
-      <div className="flex items-center gap-2.5 px-4 py-4 border-b border-white/10">
+      <div className="flex items-center gap-3 px-4 py-4 border-b border-white/8">
         <CallerAvatar />
         <div className="flex-1 min-w-0">
-          <p className="text-white font-semibold text-sm truncate">
+          <p className="text-white font-bold text-sm truncate leading-tight">
             {callerProfile?.displayName || "You"}
           </p>
-          <p className="text-white/50 text-[11px]">Crystal Atlas</p>
-        </div>
-        {onlineCount > 0 && (
-          <div className="flex items-center gap-1">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-[10px] text-white/40">{onlineCount}</span>
+          <div className="flex items-center gap-1.5 mt-0.5">
+            <span className="text-white/40 text-[11px] font-medium">
+              Crystal Atlas
+            </span>
+            {onlineCount > 0 && (
+              <div className="flex items-center gap-1 ml-auto">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+                <span className="text-[10px] text-white/35 tabular-nums">
+                  {onlineCount}
+                </span>
+              </div>
+            )}
           </div>
-        )}
+        </div>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="py-2">
+        <div className="py-3">
           {/* Channels Section */}
           <Collapsible open={channelsOpen} onOpenChange={setChannelsOpen}>
-            <div className="flex items-center">
+            <div className="flex items-center justify-between pr-2">
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className={`${sectionHeader} flex items-center gap-1.5 hover:text-white/70 transition-colors`}
+                  className={`${sectionHeader} hover:text-white/60 transition-colors flex-1`}
                 >
                   {channelsOpen ? (
-                    <ChevronDown className="h-2.5 w-2.5" />
+                    <ChevronDown className="h-3 w-3 flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="h-2.5 w-2.5" />
+                    <ChevronRight className="h-3 w-3 flex-shrink-0" />
                   )}
-                  <Hash className="h-2.5 w-2.5" />
+                  <Hash className="h-3 w-3" />
                   Channels
+                  {channels.length > 0 && (
+                    <span className="ml-1.5 text-white/25 text-[9px]">
+                      {channels.length}
+                    </span>
+                  )}
                 </button>
               </CollapsibleTrigger>
-              {channels.length > 0 && (
-                <span className="ml-auto pr-3 text-white/30 text-[10px]">
-                  {channels.length}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onCreateChannel();
+                }}
+                className="h-5 w-5 rounded-md flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all"
+                title="Add channel"
+                data-ocid="team.channel.open_modal_button"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
-            <CollapsibleContent className="mt-0.5 space-y-0.5 px-2">
+            <CollapsibleContent className="mt-1 space-y-0.5 px-2">
               {channels.length > 3 && (
-                <div className="px-1 pb-1">
+                <div className="px-1 pb-2">
                   <div className="relative">
-                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/30" />
+                    <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/25" />
                     <Input
                       value={channelSearch}
                       onChange={(e) => setChannelSearch(e.target.value)}
-                      placeholder="Find channel\u2026"
-                      className="h-6 pl-6 text-[11px] bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-1 focus:ring-white/20"
+                      placeholder="Find channel…"
+                      className="h-7 pl-6 text-[11px] bg-white/6 border-white/8 text-white placeholder:text-white/25 rounded-lg focus:ring-1 focus:ring-indigo-400/40"
                     />
                   </div>
                 </div>
@@ -295,16 +275,18 @@ export default function TeamSidebar({
                     key={ch.id.toString()}
                     onClick={() => onSelectChannel(ch.id)}
                     data-ocid="team.channel.button"
-                    className={`w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-sm transition-all ${
+                    className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all duration-150 ${
                       isSelected
-                        ? "bg-white/20 text-white font-medium shadow-sm"
-                        : "text-white/70 hover:bg-white/10 hover:text-white"
+                        ? "bg-white/18 text-white font-semibold shadow-sm"
+                        : "text-white/60 hover:bg-white/10 hover:text-white"
                     }`}
                   >
-                    <Hash className="h-3.5 w-3.5 flex-shrink-0 opacity-60" />
+                    <Hash
+                      className={`h-3.5 w-3.5 flex-shrink-0 ${isSelected ? "text-indigo-300" : "opacity-50"}`}
+                    />
                     <span className="truncate flex-1 text-left">{ch.name}</span>
                     {unread > 0 && (
-                      <Badge className="h-4 min-w-[1rem] px-1 text-[10px] bg-red-500 text-white rounded-full flex-shrink-0">
+                      <Badge className="h-4 min-w-[1rem] px-1 text-[10px] bg-rose-500 text-white rounded-full flex-shrink-0">
                         {unread > 99 ? "99+" : unread}
                       </Badge>
                     )}
@@ -312,57 +294,70 @@ export default function TeamSidebar({
                 );
               })}
               {filteredChannels.length === 0 && channelSearch && (
-                <p className="text-[11px] text-white/30 px-3 py-1">
+                <p className="text-[11px] text-white/25 px-3 py-1">
                   No channels match
                 </p>
               )}
-              <button
-                type="button"
-                onClick={onCreateChannel}
-                data-ocid="team.channel.open_modal_button"
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-white/40 text-sm hover:bg-white/10 hover:text-white/70 transition-all"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>Add channel</span>
-              </button>
+              {channels.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onCreateChannel}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-white/35 text-sm hover:bg-white/8 hover:text-white/60 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Create first channel</span>
+                </button>
+              )}
             </CollapsibleContent>
           </Collapsible>
 
           {/* Divider */}
-          <div className="h-px mx-3 my-2 bg-white/10" />
+          <div className="h-px mx-4 my-3 bg-white/8" />
 
           {/* DMs Section */}
           <Collapsible open={dmsOpen} onOpenChange={setDmsOpen}>
-            <div className="flex items-center">
+            <div className="flex items-center justify-between pr-2">
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className={`${sectionHeader} flex items-center gap-1.5 hover:text-white/70 transition-colors`}
+                  className={`${sectionHeader} hover:text-white/60 transition-colors flex-1`}
                 >
                   {dmsOpen ? (
-                    <ChevronDown className="h-2.5 w-2.5" />
+                    <ChevronDown className="h-3 w-3 flex-shrink-0" />
                   ) : (
-                    <ChevronRight className="h-2.5 w-2.5" />
+                    <ChevronRight className="h-3 w-3 flex-shrink-0" />
                   )}
-                  <MessageSquare className="h-2.5 w-2.5" />
+                  <MessageSquare className="h-3 w-3" />
                   Direct Messages
+                  {dmUsers.length > 0 && (
+                    <span className="ml-1.5 text-white/25 text-[9px]">
+                      {dmUsers.length}
+                    </span>
+                  )}
                 </button>
               </CollapsibleTrigger>
-              {dmUsers.length > 0 && (
-                <span className="ml-auto pr-3 text-white/30 text-[10px]">
-                  {dmUsers.length}
-                </span>
-              )}
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onStartNewDm();
+                }}
+                className="h-5 w-5 rounded-md flex items-center justify-center text-white/30 hover:text-white hover:bg-white/10 transition-all"
+                title="New message"
+                data-ocid="team.dm.open_modal_button"
+              >
+                <Plus className="h-3 w-3" />
+              </button>
             </div>
-            <CollapsibleContent className="mt-0.5 space-y-0.5 px-2">
-              <div className="px-1 pb-1">
+            <CollapsibleContent className="mt-1 space-y-0.5 px-2">
+              <div className="px-1 pb-2">
                 <div className="relative">
-                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/30" />
+                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-white/25" />
                   <Input
                     value={dmSearch}
                     onChange={(e) => setDmSearch(e.target.value)}
-                    placeholder="Search DMs\u2026"
-                    className="h-6 pl-6 text-[11px] bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:ring-1 focus:ring-white/20"
+                    placeholder="Search DMs…"
+                    className="h-7 pl-6 text-[11px] bg-white/6 border-white/8 text-white placeholder:text-white/25 rounded-lg focus:ring-1 focus:ring-indigo-400/40"
                   />
                 </div>
               </div>
@@ -377,61 +372,93 @@ export default function TeamSidebar({
                 />
               ))}
               {filteredDmUsers.length === 0 && dmSearch && (
-                <p className="text-[11px] text-white/30 px-3 py-1">
+                <p className="text-[11px] text-white/25 px-3 py-1">
                   No conversations match
                 </p>
               )}
-              <button
-                type="button"
-                onClick={onStartNewDm}
-                data-ocid="team.dm.open_modal_button"
-                className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-lg text-white/40 text-sm hover:bg-white/10 hover:text-white/70 transition-all"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                <span>New message</span>
-              </button>
+              {dmUsers.length === 0 && (
+                <button
+                  type="button"
+                  onClick={onStartNewDm}
+                  className="w-full flex items-center gap-2 px-3 py-1.5 rounded-xl text-white/35 text-sm hover:bg-white/8 hover:text-white/60 transition-all"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  <span>Start a conversation</span>
+                </button>
+              )}
             </CollapsibleContent>
           </Collapsible>
 
-          {/* Divider */}
-          <div className="h-px mx-3 my-2 bg-white/10" />
-
           {/* Members Section */}
           {allUsers.length > 0 && (
-            <Collapsible open={membersOpen} onOpenChange={setMembersOpen}>
-              <div className="flex items-center">
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    className={`${sectionHeader} flex items-center gap-1.5 hover:text-white/70 transition-colors`}
-                  >
-                    {membersOpen ? (
-                      <ChevronDown className="h-2.5 w-2.5" />
-                    ) : (
-                      <ChevronRight className="h-2.5 w-2.5" />
-                    )}
-                    <Users className="h-2.5 w-2.5" />
-                    Members
-                  </button>
-                </CollapsibleTrigger>
-                <span className="ml-auto pr-3 text-white/30 text-[10px]">
-                  {allUsers.length}
-                </span>
-              </div>
-              <CollapsibleContent className="mt-0.5 space-y-0.5 px-2">
-                {allUsers.map((user) => (
-                  <MemberItem
-                    key={user.principalStr}
-                    user={user}
-                    onlineUsers={onlineUsers}
-                    onClick={() => onSelectDm(user.principalStr)}
-                  />
-                ))}
-              </CollapsibleContent>
-            </Collapsible>
+            <>
+              <div className="h-px mx-4 my-3 bg-white/8" />
+              <Collapsible open={membersOpen} onOpenChange={setMembersOpen}>
+                <div className="flex items-center">
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className={`${sectionHeader} hover:text-white/60 transition-colors w-full`}
+                    >
+                      {membersOpen ? (
+                        <ChevronDown className="h-3 w-3 flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-3 w-3 flex-shrink-0" />
+                      )}
+                      <Users className="h-3 w-3" />
+                      Members
+                      <span className="ml-1.5 text-white/25 text-[9px]">
+                        {allUsers.length}
+                      </span>
+                    </button>
+                  </CollapsibleTrigger>
+                </div>
+                <CollapsibleContent className="mt-1 space-y-0.5 px-2">
+                  {allUsers.map((user) => {
+                    const statusEntry = onlineUsers.find(
+                      (u) => u.principal.toString() === user.principalStr,
+                    );
+                    const status =
+                      statusEntry?.status ?? UserStatusKind.offline;
+                    return (
+                      <button
+                        type="button"
+                        key={user.principalStr}
+                        onClick={() => onSelectDm(user.principalStr)}
+                        className="w-full flex items-center gap-2.5 px-3 py-1.5 rounded-xl text-white/55 text-sm hover:bg-white/10 hover:text-white transition-all"
+                      >
+                        <div className="relative flex-shrink-0">
+                          <div className="h-6 w-6 rounded-full bg-indigo-400/20 flex items-center justify-center">
+                            <span className="text-[9px] text-white font-bold">
+                              {getInitials(user.displayName)}
+                            </span>
+                          </div>
+                          <span
+                            className={`absolute -bottom-0.5 -right-0.5 h-1.5 w-1.5 rounded-full border border-[#1a1744] ${statusColor(status)}`}
+                          />
+                        </div>
+                        <span className="truncate flex-1 text-left text-xs">
+                          {user.displayName}
+                        </span>
+                        <span className="text-[9px] text-white/25">
+                          {statusLabel(status)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </CollapsibleContent>
+              </Collapsible>
+            </>
           )}
         </div>
       </ScrollArea>
+
+      {/* Bottom workspace info */}
+      <div className="px-4 py-2.5 border-t border-white/8">
+        <p className="text-[10px] text-white/20 text-center">
+          Crystal Atlas Workspace
+        </p>
+      </div>
     </div>
   );
 }

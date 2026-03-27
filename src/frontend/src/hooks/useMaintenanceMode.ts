@@ -2,11 +2,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useActor } from "./useActor";
 
-type MaintenanceActor = {
-  getMaintenanceMode: () => Promise<boolean>;
-  setMaintenanceMode: (e: boolean) => Promise<boolean>;
-};
-
 export function useMaintenanceMode() {
   const { actor } = useActor();
   return useQuery({
@@ -14,9 +9,7 @@ export function useMaintenanceMode() {
     queryFn: async () => {
       if (!actor) return false;
       try {
-        return await (
-          actor as unknown as MaintenanceActor
-        ).getMaintenanceMode();
+        return await (actor as any).getMaintenanceMode();
       } catch {
         return false;
       }
@@ -34,13 +27,15 @@ export function useSetMaintenanceMode() {
     mutationFn: async (enabled: boolean) => {
       if (!actor) throw new Error("Not connected — please reload the page");
       try {
-        await (actor as unknown as MaintenanceActor).setMaintenanceMode(
-          enabled,
-        );
+        await (actor as any).setMaintenanceMode(enabled);
         return enabled;
       } catch (err) {
         const msg = String(err);
-        if (msg.includes("Unauthorized") || msg.includes("admin")) {
+        if (
+          msg.includes("Unauthorized") ||
+          msg.includes("admin") ||
+          msg.includes("not registered")
+        ) {
           throw new Error(
             "Admin access required. Make sure you are logged in as admin.",
           );

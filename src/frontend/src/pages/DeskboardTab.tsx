@@ -66,14 +66,14 @@ export default function DeskboardTab({
   });
 
   const upcomingEvents = calendarEvents
-    .filter((e) => Number(e.dateTime) / 1_000_000 > now)
+    .filter((e) => Number(e.dateTime) > now)
     .sort((a, b) => Number(a.dateTime) - Number(b.dateTime))
-    .slice(0, 3);
+    .slice(0, 5);
 
   const incompleteTodos = todos.filter((t) => !t.completed).slice(0, 5);
 
   const formatEventDate = (dateTimeBigint: bigint) => {
-    const ms = Number(dateTimeBigint) / 1_000_000;
+    const ms = Number(dateTimeBigint);
     return new Date(ms).toLocaleDateString(undefined, {
       month: "short",
       day: "numeric",
@@ -280,7 +280,7 @@ export default function DeskboardTab({
               </div>
             )}
             {upcomingEvents.map((event) => {
-              const ms = Number(event.dateTime) / 1_000_000;
+              const ms = Number(event.dateTime);
               const eventDate = new Date(ms);
               const isToday =
                 eventDate.toDateString() === new Date().toDateString();

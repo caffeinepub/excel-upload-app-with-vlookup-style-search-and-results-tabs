@@ -320,15 +320,20 @@ actor {
 
   // New state for channels
   let channels = Map.empty<Nat, Channel>();
-  var nextChannelId = 0;
+  stable var nextChannelId = 0;
 
   // New state for channel messages
   let channelMessages = Map.empty<Nat, ChannelMessage>();
-  var nextMessageId = 0;
+  stable var nextMessageId = 0;
 
   // New state for direct messages
   let directMessages = Map.empty<Nat, DirectMessage>();
-  var nextDirectMessageId = 0;
+  stable var nextDirectMessageId = 0;
+
+  // Stable backup arrays for persistence across upgrades
+  stable var stableChannels : [(Nat, Channel)] = [];
+  stable var stableChannelMessages : [(Nat, ChannelMessage)] = [];
+  stable var stableDirectMessages : [(Nat, DirectMessage)] = [];
 
   // New state for files
   let files = Map.empty<Nat, FileData>();
@@ -1502,10 +1507,10 @@ actor {
     ).toArray();
 
     let size = all.size();
-    if (size <= 50) {
+    if (size <= 500) {
       all;
     } else {
-      let start : Nat = if (size > 50) { size - 50 : Nat } else { 0 };
+      let start : Nat = if (size > 500) { size - 500 : Nat } else { 0 };
       if (start < size) {
         all.sliceToArray(start, size);
       } else {
@@ -1553,10 +1558,10 @@ actor {
     ).toArray();
 
     let size = all.size();
-    if (size <= 50) {
+    if (size <= 500) {
       all;
     } else {
-      let start : Nat = if (size > 50) { size - 50 : Nat } else { 0 };
+      let start : Nat = if (size > 500) { size - 500 : Nat } else { 0 };
       if (start < size) {
         all.sliceToArray(start, size);
       } else {
@@ -2016,6 +2021,30 @@ actor {
         sharedReports.remove(reportId);
       };
     };
+  };
+
+  // Persist mutable maps to stable storage before upgrade
+  system func preupgrade() {
+    stableChannels := channels.entries().toArray();
+    stableChannelMessages := channelMessages.entries().toArray();
+    stableDirectMessages := directMessages.entries().toArray();
+  };
+
+  // Restore mutable maps from stable storage after upgrade
+  system func postupgrade() {
+    for ((k, v) in stableChannels.values()) {
+      channels.add(k, v);
+    };
+    for ((k, v) in stableChannelMessages.values()) {
+      channelMessages.add(k, v);
+    };
+    for ((k, v) in stableDirectMessages.values()) {
+      directMessages.add(k, v);
+    };
+    // Clear stable backups to free memory
+    stableChannels := [];
+    stableChannelMessages := [];
+    stableDirectMessages := [];
   };
 
 

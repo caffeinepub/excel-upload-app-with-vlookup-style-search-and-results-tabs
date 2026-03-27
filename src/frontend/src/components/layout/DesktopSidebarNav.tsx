@@ -11,6 +11,7 @@ import {
   CalendarDays,
   CheckSquare,
   Eye,
+  FlaskConical,
   History,
   LayoutDashboard,
   MessageSquare,
@@ -53,6 +54,7 @@ const ACTIVITY_TABS: TabId[] = [
   "team",
   "departments",
   "history",
+  "drugAnalyzer",
 ];
 
 const ADMIN_TABS: TabId[] = ["adminUsers", "observeUsers"];
@@ -76,6 +78,7 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
   observeUsers: <Eye className="h-4 w-4" />,
   departments: <Building2 className="h-4 w-4" />,
   userProfile: <UserCircle className="h-4 w-4" />,
+  drugAnalyzer: <FlaskConical className="h-4 w-4" />,
 };
 
 function NavButton({

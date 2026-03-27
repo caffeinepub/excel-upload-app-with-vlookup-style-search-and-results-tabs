@@ -1,4 +1,5 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -7,17 +8,27 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Check,
   Copy,
   Hash,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   Phone,
   Search,
   UserPlus,
+  Users,
   Video,
+  X,
 } from "lucide-react";
 import React, { useState, useCallback, useEffect } from "react";
 import { UserStatusKind } from "../backend";
@@ -35,10 +46,12 @@ import {
   useGetUserStatuses,
   useListChannels,
 } from "../hooks/useTeamMessaging";
-import { useGetCallerUserProfile } from "../hooks/useUserProfile";
+import {
+  useGetCallerUserProfile,
+  useGetUserProfile,
+} from "../hooks/useUserProfile";
 import { getInitials } from "../lib/avatarUtils";
 
-// Key used to persist DM conversation list in localStorage
 const DM_USERS_KEY_PREFIX = "dmUsers_";
 
 function loadDmUsers(principal: string): TeamUser[] {
@@ -62,17 +75,87 @@ function saveDmUsers(principal: string, users: TeamUser[]) {
   }
 }
 
+function statusColor(status: UserStatusKind | string): string {
+  switch (status) {
+    case UserStatusKind.online:
+      return "bg-emerald-400";
+    case UserStatusKind.away:
+      return "bg-amber-400";
+    case UserStatusKind.busy:
+      return "bg-rose-500";
+    default:
+      return "bg-slate-500";
+  }
+}
+
+function statusLabel(status: UserStatusKind | string): string {
+  switch (status) {
+    case UserStatusKind.online:
+      return "Online";
+    case UserStatusKind.away:
+      return "Away";
+    case UserStatusKind.busy:
+      return "Busy";
+    default:
+      return "Offline";
+  }
+}
+
+interface MemberPanelItemProps {
+  user: TeamUser;
+  statuses: { principal: { toString(): string }; status: UserStatusKind }[];
+  onStartDm: () => void;
+}
+
+function MemberPanelItem({ user, statuses, onStartDm }: MemberPanelItemProps) {
+  const { data: profile } = useGetUserProfile(user.principalStr);
+  const avatarUrl = useAvatarUrl(profile?.profilePicture ?? null);
+  const displayName = profile?.displayName || user.displayName || "User";
+  const initials = getInitials(displayName);
+  const statusEntry = statuses.find(
+    (s) => s.principal.toString() === user.principalStr,
+  );
+  const status = statusEntry?.status ?? UserStatusKind.offline;
+
+  return (
+    <button
+      type="button"
+      onClick={onStartDm}
+      className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-accent/60 transition-colors text-left group"
+    >
+      <div className="relative flex-shrink-0">
+        <Avatar className="h-8 w-8">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt={displayName} />}
+          <AvatarFallback className="text-xs bg-primary/10 text-primary font-semibold">
+            {initials}
+          </AvatarFallback>
+        </Avatar>
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${statusColor(status)} ${
+            status === UserStatusKind.online ? "animate-pulse" : ""
+          }`}
+        />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium truncate">{displayName}</p>
+        <p className="text-xs text-muted-foreground">{statusLabel(status)}</p>
+      </div>
+    </button>
+  );
+}
+
 export default function TeamTab() {
   const { identity } = useInternetIdentity();
   const callerPrincipal = identity?.getPrincipal().toString() ?? "";
 
   const { data: callerProfile } = useGetCallerUserProfile();
+  const callerAvatarUrl = useAvatarUrl(callerProfile?.profilePicture ?? null);
+  const callerInitials = getInitials(callerProfile?.displayName);
 
   const { data: channels = [] } = useListChannels();
   const { data: userStatuses = [] } = useGetUserStatuses();
   const { data: allUsers = [] } = useGetAllUsers();
 
-  // Resolve caller's current status from polling data
   const callerStatusEntry = userStatuses.find(
     (s) => s.principal.toString() === callerPrincipal,
   );
@@ -85,20 +168,20 @@ export default function TeamTab() {
   const [selectedDmPrincipal, setSelectedDmPrincipal] = useState<string | null>(
     null,
   );
+  const [showMembersPanel, setShowMembersPanel] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
-  // Persist DM user list so conversations survive page refresh
   const [dmUsers, setDmUsers] = useState<TeamUser[]>(() =>
     callerPrincipal ? loadDmUsers(callerPrincipal) : [],
   );
 
-  // Reload persisted DM list when caller principal is resolved
   useEffect(() => {
     if (callerPrincipal) {
       setDmUsers(loadDmUsers(callerPrincipal));
     }
   }, [callerPrincipal]);
 
-  // Sync allUsers displayNames into dmUsers so names update if profile changes
   useEffect(() => {
     if (allUsers.length === 0) return;
     setDmUsers((prev) => {
@@ -117,7 +200,6 @@ export default function TeamTab() {
     });
   }, [allUsers, callerPrincipal]);
 
-  // Auto-select channel from dashboard navigation
   useEffect(() => {
     if (channels.length === 0) return;
     const pending = localStorage.getItem("pendingTeamChannel");
@@ -144,12 +226,16 @@ export default function TeamTab() {
   const handleSelectChannel = useCallback((id: bigint) => {
     setSelectedChannelId(id);
     setSelectedDmPrincipal(null);
+    setSearchQuery("");
+    setShowSearch(false);
   }, []);
 
   const handleSelectDm = useCallback(
     (principalStr: string) => {
       setSelectedDmPrincipal(principalStr);
       setSelectedChannelId(null);
+      setSearchQuery("");
+      setShowSearch(false);
       setDmUsers((prev) => {
         if (prev.find((u) => u.principalStr === principalStr)) return prev;
         const found = allUsers.find((u) => u.principalStr === principalStr);
@@ -196,7 +282,6 @@ export default function TeamTab() {
     (u) => u.principalStr === selectedDmPrincipal,
   );
 
-  // If selected DM user's display name is empty, try to get it from allUsers
   const selectedDmDisplayName =
     selectedDmUser?.displayName ||
     allUsers.find((u) => u.principalStr === selectedDmPrincipal)?.displayName ||
@@ -204,19 +289,27 @@ export default function TeamTab() {
       ? `User-${selectedDmPrincipal.slice(-4).toUpperCase()}`
       : "");
 
-  // Filter out the caller; if search query is empty show all registered users
   const filteredUsers = allUsers.filter((u) => {
     if (u.principalStr === callerPrincipal) return false;
     if (!dmSearchQuery.trim()) return true;
     const q = dmSearchQuery.toLowerCase();
-    const nameMatch = u.displayName.toLowerCase().includes(q);
-    const principalMatch = u.principalStr.toLowerCase().includes(q);
-    return nameMatch || principalMatch;
+    return (
+      u.displayName.toLowerCase().includes(q) ||
+      u.principalStr.toLowerCase().includes(q)
+    );
   });
+
+  const onlineCount = userStatuses.filter(
+    (u) => u.status === UserStatusKind.online,
+  ).length;
+
+  const otherMembers = allUsers.filter(
+    (u) => u.principalStr !== callerPrincipal,
+  );
 
   return (
     <div
-      className="flex h-[calc(100vh-8rem)] min-h-[500px] overflow-hidden rounded-xl border border-border shadow-2xl animate-in fade-in slide-in-from-right-2 duration-300 bg-background"
+      className="flex h-[calc(100vh-8rem)] min-h-[500px] overflow-hidden rounded-2xl shadow-2xl border border-white/5 team-chat-entrance"
       data-ocid="team.panel"
     >
       {/* Sidebar */}
@@ -236,38 +329,86 @@ export default function TeamTab() {
       />
 
       {/* Main content */}
-      <div className="flex flex-col flex-1 min-w-0">
+      <div className="flex flex-col flex-1 min-w-0 bg-[#f8f9fb] dark:bg-[#0d0d14]">
         {/* Top bar */}
-        <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-background/95 backdrop-blur-sm h-14 flex-shrink-0">
-          <div className="flex items-center gap-2 min-w-0">
+        <div
+          className="flex items-center justify-between px-4 border-b border-black/5 dark:border-white/5 h-14 flex-shrink-0"
+          style={{
+            background: "rgba(255,255,255,0.85)",
+            backdropFilter: "blur(12px)",
+          }}
+        >
+          <div className="flex items-center gap-3 min-w-0 flex-1">
             {selectedChannel ? (
               <>
-                <Hash className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-semibold text-sm truncate">
-                  {selectedChannel.name}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+                    <Hash className="h-3.5 w-3.5 text-indigo-600" />
+                  </div>
+                  <div className="min-w-0">
+                    <span className="font-bold text-sm text-gray-900 truncate block">
+                      {selectedChannel.name}
+                    </span>
+                  </div>
+                </div>
+                <span className="text-xs text-gray-400 hidden sm:block">
+                  Channel
                 </span>
               </>
             ) : selectedDmPrincipal !== null ? (
               <>
-                <MessageSquare className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                <span className="font-semibold text-sm truncate">
-                  {selectedDmDisplayName}
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <div className="w-7 h-7 rounded-lg bg-violet-500/10 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="h-3.5 w-3.5 text-violet-600" />
+                  </div>
+                  <span className="font-bold text-sm text-gray-900 truncate">
+                    {selectedDmDisplayName}
+                  </span>
+                </div>
+                <span className="text-xs text-gray-400 hidden sm:block">
+                  Direct Message
                 </span>
               </>
             ) : (
-              <span className="text-sm text-muted-foreground">
-                Select a channel or DM to start
-              </span>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg bg-gray-100 flex items-center justify-center">
+                  <MessageSquare className="h-3.5 w-3.5 text-gray-400" />
+                </div>
+                <span className="text-sm text-gray-400 font-medium">
+                  Select a channel or DM
+                </span>
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-1.5 flex-shrink-0">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Search toggle */}
+            {(selectedChannelId !== null || selectedDmPrincipal !== null) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className={`h-8 w-8 rounded-lg transition-all ${
+                  showSearch
+                    ? "bg-indigo-100 text-indigo-600"
+                    : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                }`}
+                onClick={() => {
+                  setShowSearch((v) => !v);
+                  if (showSearch) setSearchQuery("");
+                }}
+                title="Search messages"
+                data-ocid="team.search.button"
+              >
+                <Search className="h-4 w-4" />
+              </Button>
+            )}
+
             {(selectedChannelId !== null || selectedDmPrincipal !== null) && (
               <>
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                   onClick={() => setCallModal("voice")}
                   title="Voice call (coming soon)"
                   data-ocid="team.voice_call.button"
@@ -277,7 +418,7 @@ export default function TeamTab() {
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8"
+                  className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
                   onClick={() => setCallModal("video")}
                   title="Video call (coming soon)"
                   data-ocid="team.video_call.button"
@@ -286,99 +427,321 @@ export default function TeamTab() {
                 </Button>
               </>
             )}
+
+            {/* Members panel toggle */}
             <Button
               variant="ghost"
               size="icon"
-              className="h-8 w-8"
+              className={`h-8 w-8 rounded-lg transition-all ${
+                showMembersPanel
+                  ? "bg-indigo-100 text-indigo-600"
+                  : "text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+              }`}
+              onClick={() => setShowMembersPanel((v) => !v)}
+              title="Toggle members panel"
+              data-ocid="team.members.toggle"
+            >
+              <Users className="h-4 w-4" />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
               onClick={() => setShowInviteDialog(true)}
               title="Invite teammates"
               data-ocid="team.invite.open_modal_button"
             >
               <UserPlus className="h-4 w-4" />
             </Button>
-            <div className="flex items-center gap-1 pl-1 border-l border-border/50 ml-1">
+
+            {/* Status + More menu */}
+            <div className="flex items-center gap-1 pl-2 border-l border-gray-200">
               <StatusSelector currentStatus={callerStatus} />
             </div>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-lg text-gray-500 hover:text-gray-900 hover:bg-gray-100"
+                  data-ocid="team.more.dropdown_menu"
+                >
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem
+                  onClick={() => setShowMembersPanel(true)}
+                  data-ocid="team.members.button"
+                >
+                  <Users className="h-4 w-4 mr-2" />
+                  View Members
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={copyInviteLink}
+                  data-ocid="team.copy_link.button"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Channel Link
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSearchQuery("");
+                    setShowSearch(false);
+                  }}
+                  data-ocid="team.clear_search.button"
+                >
+                  <X className="h-4 w-4 mr-2" />
+                  Clear Search
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
-        {/* Chat area */}
-        {selectedChannelId !== null ? (
-          <ChannelView
-            channelId={selectedChannelId}
-            callerPrincipal={callerPrincipal}
-            senderName={
-              callerProfile?.displayName ||
-              `User-${callerPrincipal.slice(-4).toUpperCase()}`
-            }
-          />
-        ) : selectedDmPrincipal !== null ? (
-          <DirectMessageView
-            otherPrincipal={selectedDmPrincipal}
-            callerPrincipal={callerPrincipal}
-          />
-        ) : (
-          // Welcome / empty state
-          <div className="flex-1 flex flex-col items-center justify-center gap-5 p-8">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-primary/15 to-primary/30 flex items-center justify-center">
-              <MessageSquare className="h-9 w-9 text-primary/60" />
+        {/* Search bar (inline) */}
+        {showSearch && (
+          <div className="px-4 py-2 border-b border-gray-100 bg-white/70 backdrop-blur-sm">
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-400" />
+              <Input
+                autoFocus
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search messages…"
+                className="pl-8 h-8 text-sm bg-gray-50 border-gray-200 rounded-lg"
+                data-ocid="team.search.input"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
             </div>
-            <div className="text-center max-w-xs">
-              <h2 className="text-lg font-semibold mb-1">
-                Welcome to Team Chat
-              </h2>
-              <p className="text-sm text-muted-foreground">
-                Select a channel from the sidebar to start messaging, or start a
-                new direct message.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowNewDm(true)}
-                className="gap-1"
-                data-ocid="team.welcome.dm_button"
-              >
-                <MessageSquare className="h-4 w-4 mr-1" />
-                New Message
-              </Button>
-            </div>
-            {allUsers.filter((u) => u.principalStr !== callerPrincipal).length >
-              0 && (
-              <div className="mt-2 w-full max-w-sm">
-                <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide mb-2">
-                  Registered Users — click to start a DM
-                </p>
-                <div className="space-y-1">
-                  {allUsers
-                    .filter((u) => u.principalStr !== callerPrincipal)
-                    .slice(0, 5)
-                    .map((u) => {
-                      const label =
-                        u.displayName ||
-                        `User-${u.principalStr.slice(-4).toUpperCase()}`;
-                      return (
-                        <button
-                          key={u.principalStr}
-                          type="button"
-                          onClick={() => handleStartDm(u.principalStr, label)}
-                          className="w-full flex items-center gap-2 p-2 rounded-lg hover:bg-accent transition-colors text-left"
-                        >
-                          <Avatar className="h-6 w-6">
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                              {getInitials(label)}
-                            </AvatarFallback>
-                          </Avatar>
-                          <span className="text-sm">{label}</span>
-                        </button>
-                      );
-                    })}
+          </div>
+        )}
+
+        {/* Main chat + optional members panel */}
+        <div className="flex flex-1 min-h-0">
+          {/* Chat area */}
+          <div className="flex flex-col flex-1 min-w-0 min-h-0">
+            {selectedChannelId !== null ? (
+              <ChannelView
+                channelId={selectedChannelId}
+                callerPrincipal={callerPrincipal}
+                senderName={
+                  callerProfile?.displayName ||
+                  `User-${callerPrincipal.slice(-4).toUpperCase()}`
+                }
+                searchQuery={searchQuery}
+              />
+            ) : selectedDmPrincipal !== null ? (
+              <DirectMessageView
+                otherPrincipal={selectedDmPrincipal}
+                callerPrincipal={callerPrincipal}
+                searchQuery={searchQuery}
+              />
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center gap-6 p-8">
+                <div className="relative">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-100 to-violet-100 flex items-center justify-center">
+                    <MessageSquare className="h-10 w-10 text-indigo-400" />
+                  </div>
+                  {onlineCount > 0 && (
+                    <div className="absolute -top-1 -right-1 flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded-full px-2 py-0.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                      <span className="text-[10px] text-emerald-600 font-medium">
+                        {onlineCount} online
+                      </span>
+                    </div>
+                  )}
                 </div>
+                <div className="text-center max-w-xs">
+                  <h2 className="text-xl font-bold text-gray-900 mb-2">
+                    Welcome to Crystal Atlas Chat
+                  </h2>
+                  <p className="text-sm text-gray-500">
+                    Select a channel from the sidebar to start messaging, or
+                    open a direct conversation.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowNewDm(true)}
+                    className="gap-2 rounded-lg border-gray-200 hover:bg-gray-50"
+                    data-ocid="team.welcome.dm_button"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                    New Message
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setShowCreateChannel(true)}
+                    className="gap-2 rounded-lg border-gray-200 hover:bg-gray-50"
+                    data-ocid="team.welcome.channel_button"
+                  >
+                    <Hash className="h-4 w-4" />
+                    Create Channel
+                  </Button>
+                </div>
+                {allUsers.filter((u) => u.principalStr !== callerPrincipal)
+                  .length > 0 && (
+                  <div className="w-full max-w-xs mt-2">
+                    <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mb-3">
+                      Start a conversation
+                    </p>
+                    <div className="grid gap-1">
+                      {allUsers
+                        .filter((u) => u.principalStr !== callerPrincipal)
+                        .slice(0, 4)
+                        .map((u) => {
+                          const label =
+                            u.displayName ||
+                            `User-${u.principalStr.slice(-4).toUpperCase()}`;
+                          return (
+                            <button
+                              key={u.principalStr}
+                              type="button"
+                              onClick={() =>
+                                handleStartDm(u.principalStr, label)
+                              }
+                              className="flex items-center gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 border border-transparent hover:border-gray-100 transition-all text-left"
+                            >
+                              <Avatar className="h-8 w-8">
+                                <AvatarFallback className="text-xs bg-indigo-50 text-indigo-600 font-medium">
+                                  {getInitials(label)}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div>
+                                <span className="text-sm font-medium text-gray-800">
+                                  {label}
+                                </span>
+                              </div>
+                            </button>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>
-        )}
+
+          {/* Right members panel */}
+          {showMembersPanel && (
+            <div
+              className="w-64 flex-shrink-0 border-l border-gray-100 dark:border-white/5 bg-white dark:bg-gray-900 flex flex-col"
+              style={{ animation: "slideInFromRight 0.2s ease" }}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Members</p>
+                  <p className="text-xs text-gray-400">
+                    {allUsers.length} total · {onlineCount} online
+                  </p>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-gray-400 hover:text-gray-700"
+                  onClick={() => setShowMembersPanel(false)}
+                  data-ocid="team.members.close_button"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+              <ScrollArea className="flex-1">
+                <div className="py-2 px-1">
+                  {/* Online section */}
+                  {userStatuses.filter(
+                    (s) =>
+                      s.status === UserStatusKind.online &&
+                      otherMembers.find(
+                        (u) => u.principalStr === s.principal.toString(),
+                      ),
+                  ).length > 0 && (
+                    <div className="mb-2">
+                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-1">
+                        Online
+                      </p>
+                      {otherMembers
+                        .filter((u) => {
+                          const s = userStatuses.find(
+                            (st) => st.principal.toString() === u.principalStr,
+                          );
+                          return s?.status === UserStatusKind.online;
+                        })
+                        .map((u) => (
+                          <MemberPanelItem
+                            key={u.principalStr}
+                            user={u}
+                            statuses={userStatuses}
+                            onStartDm={() => handleSelectDm(u.principalStr)}
+                          />
+                        ))}
+                    </div>
+                  )}
+                  {/* Others */}
+                  <div>
+                    <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-3 mb-1">
+                      All Members
+                    </p>
+                    {otherMembers.map((u) => (
+                      <MemberPanelItem
+                        key={u.principalStr}
+                        user={u}
+                        statuses={userStatuses}
+                        onStartDm={() => handleSelectDm(u.principalStr)}
+                      />
+                    ))}
+                    {/* Caller */}
+                    <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg">
+                      <div className="relative flex-shrink-0">
+                        <Avatar className="h-8 w-8">
+                          {callerAvatarUrl && (
+                            <AvatarImage
+                              src={callerAvatarUrl}
+                              alt={callerProfile?.displayName}
+                            />
+                          )}
+                          <AvatarFallback className="text-xs bg-indigo-50 text-indigo-600">
+                            {callerInitials}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span
+                          className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full border-2 border-background ${statusColor(callerStatus ?? UserStatusKind.offline)} ${callerStatus === UserStatusKind.online ? "animate-pulse" : ""}`}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {callerProfile?.displayName || "You"}
+                        </p>
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          {statusLabel(callerStatus ?? UserStatusKind.offline)}
+                          <Badge
+                            variant="secondary"
+                            className="text-[9px] h-4 px-1 ml-1"
+                          >
+                            You
+                          </Badge>
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create Channel Dialog */}
@@ -538,12 +901,25 @@ export default function TeamTab() {
         </DialogContent>
       </Dialog>
 
-      {/* Call Placeholder */}
       <CallPlaceholderModal
         open={callModal !== null}
         onClose={() => setCallModal(null)}
         type={callModal ?? "voice"}
       />
+
+      <style>{`
+        @keyframes slideInFromRight {
+          from { opacity: 0; transform: translateX(20px); }
+          to { opacity: 1; transform: translateX(0); }
+        }
+        .team-chat-entrance {
+          animation: teamChatEntrance 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        @keyframes teamChatEntrance {
+          from { opacity: 0; transform: translateY(12px) scale(0.98); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+      `}</style>
     </div>
   );
 }

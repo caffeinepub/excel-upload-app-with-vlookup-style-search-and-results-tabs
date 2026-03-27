@@ -1850,6 +1850,49 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+
+    async getMaintenanceMode(): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).getMaintenanceMode();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).getMaintenanceMode();
+            return result;
+        }
+    }
+    async setMaintenanceMode(arg0: boolean): Promise<boolean> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).setMaintenanceMode(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).setMaintenanceMode(arg0);
+            return result;
+        }
+    }
+    async adminBulkMarkWeekOff(arg0: string): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).adminBulkMarkWeekOff(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).adminBulkMarkWeekOff(arg0);
+            return result;
+        }
+    }
 }
 function from_candid_AdminUserInfo_n19(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: _AdminUserInfo): AdminUserInfo {
     return from_candid_record_n20(_uploadFile, _downloadFile, value);

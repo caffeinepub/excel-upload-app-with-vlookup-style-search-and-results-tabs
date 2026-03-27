@@ -16,12 +16,14 @@ interface ChannelViewProps {
   channelId: bigint;
   callerPrincipal: string;
   senderName: string;
+  searchQuery?: string;
 }
 
 export default function ChannelView({
   channelId,
   callerPrincipal,
   senderName,
+  searchQuery = "",
 }: ChannelViewProps) {
   const { data: messages = [], isLoading } = useGetChannelMessages(channelId);
   const postMessage = usePostChannelMessage();
@@ -32,7 +34,6 @@ export default function ChannelView({
   const prevMessagesRef = useRef<string[]>([]);
   const postedSeenReceiptsRef = useRef<Set<string>>(new Set());
 
-  // Load persisted seen receipts for this channel on mount
   useEffect(() => {
     const storageKey = `seenPosted_${channelIdStr}`;
     try {
@@ -45,7 +46,6 @@ export default function ChannelView({
     }
   }, [channelIdStr]);
 
-  // Mark all visible messages as "seen" by current user
   // biome-ignore lint/correctness/useExhaustiveDependencies: postMessage is stable mutation
   useEffect(() => {
     if (!callerPrincipal || messages.length === 0) return;
@@ -57,17 +57,18 @@ export default function ChannelView({
       markMessagesSeen(channelIdStr, callerPrincipal, newIds);
       prevMessagesRef.current = messageIds;
 
-      // Post backend seen receipts for messages NOT sent by current user
       const storageKey = `seenPosted_${channelIdStr}`;
       for (const msg of messages) {
         const msgId = msg.id.toString();
         const senderId = "senderId" in msg ? msg.senderId.toString() : "";
         if (
           senderId !== callerPrincipal &&
-          !postedSeenReceiptsRef.current.has(msgId)
+          !postedSeenReceiptsRef.current.has(msgId) &&
+          !msg.text?.startsWith("__seen:") &&
+          !msg.text?.startsWith("__react:") &&
+          !msg.text?.startsWith("__unreact:")
         ) {
           postedSeenReceiptsRef.current.add(msgId);
-          // Fire and forget
           postMessage
             .mutateAsync({
               channelId,
@@ -77,12 +78,10 @@ export default function ChannelView({
               fileName: null,
             })
             .catch(() => {
-              // ignore errors for seen receipts
               postedSeenReceiptsRef.current.delete(msgId);
             });
         }
       }
-      // Persist updated seen receipts
       try {
         localStorage.setItem(
           storageKey,
@@ -122,10 +121,24 @@ export default function ChannelView({
     [channelId, editMessage],
   );
 
+  const handleReact = useCallback(
+    async (msgId: bigint, emoji: string, add: boolean) => {
+      const prefix = add ? "__react:" : "__unreact:";
+      await postMessage.mutateAsync({
+        channelId,
+        senderName,
+        text: `${prefix}${msgId}:${emoji}:${senderName}`,
+        fileUrl: null,
+        fileName: null,
+      });
+    },
+    [channelId, senderName, postMessage],
+  );
+
   return (
     <div className="flex flex-col flex-1 min-h-0">
       {/* Pinned area */}
-      <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-border/30 bg-muted/20 text-xs text-muted-foreground">
+      <div className="flex items-center gap-1.5 px-4 py-1.5 border-b border-black/5 bg-white/40 text-xs text-gray-400">
         <Pin className="h-3 w-3" />
         <span>No pinned messages</span>
       </div>
@@ -142,6 +155,9 @@ export default function ChannelView({
           onDeleteMessage={handleDelete}
           onEditMessage={handleEdit}
           channelId={channelIdStr}
+          searchQuery={searchQuery}
+          onReact={handleReact}
+          callerDisplayName={senderName}
         />
       )}
       <MessageInput onSend={handleSend} placeholder="Message channel…" />

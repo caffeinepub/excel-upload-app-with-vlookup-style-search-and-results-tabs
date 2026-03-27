@@ -22,6 +22,7 @@ import CalendarTab from "./pages/CalendarTab";
 import CustomersTab from "./pages/CustomersTab";
 import DepartmentsAdminTab from "./pages/DepartmentsAdminTab";
 import DeskboardTab from "./pages/DeskboardTab";
+import DrugAnalyzerTab from "./pages/DrugAnalyzerTab";
 import { HistoryTab } from "./pages/HistoryTab";
 import { NotesTab } from "./pages/NotesTab";
 import { ObserveUsersTab } from "./pages/ObserveUsersTab";
@@ -44,6 +45,7 @@ import {
   CalendarDays,
   CheckSquare,
   Eye,
+  FlaskConical,
   History,
   LayoutDashboard,
   MessageSquare,
@@ -82,7 +84,8 @@ export type TabId =
   | "observeUsers"
   | "team"
   | "departments"
-  | "userProfile";
+  | "userProfile"
+  | "drugAnalyzer";
 
 export interface TabDef {
   id: TabId;
@@ -147,6 +150,11 @@ export const ALL_TABS: TabDef[] = [
     id: "departments",
     label: "Departments",
     icon: <Building2 className="h-4 w-4" />,
+  },
+  {
+    id: "drugAnalyzer",
+    label: "Drug Analyzer",
+    icon: <FlaskConical className="h-4 w-4" />,
   },
 ];
 
@@ -246,6 +254,8 @@ function AppContent() {
         return <DepartmentsAdminTab />;
       case "userProfile":
         return <UserProfileTab />;
+      case "drugAnalyzer":
+        return <DrugAnalyzerTab />;
       default:
         return <DeskboardTab />;
     }
