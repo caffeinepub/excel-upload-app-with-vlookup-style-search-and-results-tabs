@@ -17,6 +17,8 @@ import {
 import { useState } from "react";
 import AdminBroadcastComposer from "../components/broadcast/AdminBroadcastComposer";
 import BroadcastHistory from "../components/broadcast/BroadcastHistory";
+import FDAApprovalsKPI from "../components/dashboard/FDAApprovalsKPI";
+import OrangeBookKPI from "../components/dashboard/OrangeBookKPI";
 import ClockCalendarWidget from "../components/deskboard/ClockCalendarWidget";
 import TeamMessagesWidget from "../components/deskboard/TeamMessagesWidget";
 import ExploreHerePanel from "../components/search/ExploreHerePanel";
@@ -200,6 +202,14 @@ export default function DeskboardTab({
               <BroadcastHistory broadcasts={broadcastHistory} />
             </div>
           )}
+        </div>
+      )}
+
+      {/* FDA KPI Widgets */}
+      {isAuthenticated && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <FDAApprovalsKPI />
+          <OrangeBookKPI />
         </div>
       )}
 

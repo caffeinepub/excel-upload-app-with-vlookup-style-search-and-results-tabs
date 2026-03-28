@@ -304,17 +304,17 @@ function UploadZone({
           className={`relative flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed cursor-pointer transition-all min-h-[180px] ${
             dragOver
               ? "border-teal-400 bg-teal-500/10 scale-[1.01]"
-              : "border-slate-600 bg-slate-800/50 hover:border-teal-500/60 hover:bg-slate-800"
+              : "border-border bg-muted/50 hover:border-teal-500/60 hover:bg-muted"
           }`}
         >
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-slate-700">
+          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-muted">
             <Upload className="h-5 w-5 text-teal-400" />
           </div>
           <div className="text-center px-4">
-            <p className="text-sm font-medium text-slate-300">
+            <p className="text-sm font-medium text-foreground">
               Drop image here or click to upload
             </p>
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="text-xs text-muted-foreground mt-1">
               PNG, JPG, SVG, TIFF accepted
             </p>
           </div>
@@ -328,7 +328,7 @@ function UploadZone({
           />
         </button>
       ) : (
-        <div className="relative rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+        <div className="relative rounded-xl overflow-hidden border border-border bg-card">
           {drug.imageUrl && (
             <img
               src={drug.imageUrl}
@@ -339,7 +339,7 @@ function UploadZone({
           <button
             type="button"
             onClick={onClear}
-            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-slate-900/80 hover:bg-red-500/80 transition-colors"
+            className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-background/80 hover:bg-red-500/80 transition-colors"
             data-ocid="drug_analyzer.close_button"
           >
             <X className="h-3.5 w-3.5 text-white" />
@@ -385,9 +385,40 @@ function UploadZone({
               )}
             </div>
 
-            {(drug.status === "manual" || drug.status === "error") && (
+            {/* Fix 3: Better manual entry prominence */}
+            {drug.status === "manual" && (
+              <div className="space-y-2">
+                <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
+                  <div className="flex items-start gap-2">
+                    <span className="text-amber-400 mt-0.5">⚠️</span>
+                    <div>
+                      <p className="text-xs font-semibold text-amber-300">
+                        Auto-identification failed
+                      </p>
+                      <p className="text-xs text-amber-400/80 mt-0.5 leading-relaxed">
+                        The image structure could not be automatically
+                        recognized. Please enter the drug name manually below:
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                <Input
+                  placeholder="e.g. Aspirin, Caffeine, Ibuprofen…"
+                  defaultValue={drug.manualName ?? ""}
+                  onBlur={(e) => onManualName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter")
+                      onManualName((e.target as HTMLInputElement).value);
+                  }}
+                  className="bg-input border-amber-500/40 text-sm h-8 focus:border-amber-400"
+                  data-ocid="drug_analyzer.input"
+                />
+              </div>
+            )}
+
+            {drug.status === "error" && (
               <div className="space-y-1">
-                <p className="text-xs text-slate-400">
+                <p className="text-xs text-muted-foreground">
                   Auto-identification unavailable. Enter drug name manually:
                 </p>
                 <Input
@@ -398,7 +429,7 @@ function UploadZone({
                     if (e.key === "Enter")
                       onManualName((e.target as HTMLInputElement).value);
                   }}
-                  className="bg-slate-700 border-slate-600 text-sm h-8"
+                  className="bg-input border-border text-sm h-8"
                   data-ocid="drug_analyzer.input"
                 />
               </div>
@@ -431,23 +462,25 @@ function CompareRow({
     typeof b === "number" &&
     Math.abs(a - b) / Math.max(Math.abs(a), Math.abs(b), 1) < 0.2;
 
-  const cellBase = "px-3 py-2 text-sm";
+  const cellBase = "px-3 py-2";
   const highlight = match
     ? "bg-teal-500/10 text-teal-300"
     : similar
       ? "bg-amber-500/10 text-amber-300"
-      : "text-slate-300";
+      : "text-foreground";
 
+  // Fix 1: Updated truncation thresholds (18 for SMILES, 28 for others)
   const format = (v: string | number | undefined) => {
     if (v === undefined)
-      return <span className="text-slate-500 italic">—</span>;
-    if (typeof v === "string" && v.length > 40) {
+      return <span className="text-muted-foreground italic">—</span>;
+    const truncLimit = label === "Canonical SMILES" ? 18 : 28;
+    if (typeof v === "string" && v.length > truncLimit) {
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="cursor-help border-b border-dashed border-slate-500">
-                {v.slice(0, 40)}…
+              <span className="cursor-help border-b border-dashed border-muted-foreground break-all text-xs leading-relaxed">
+                {v.slice(0, truncLimit)}…
               </span>
             </TooltipTrigger>
             <TooltipContent className="max-w-xs break-all">{v}</TooltipContent>
@@ -455,16 +488,22 @@ function CompareRow({
         </TooltipProvider>
       );
     }
-    return String(v);
+    return (
+      <span className="break-all text-xs leading-relaxed">{String(v)}</span>
+    );
   };
 
   return (
-    <TableRow className="border-slate-700/50 hover:bg-slate-800/30">
-      <td className="px-3 py-2 text-xs font-medium text-slate-400 w-40">
+    <TableRow className="border-border/50 hover:bg-muted/30">
+      <td className="px-3 py-2 text-xs font-medium text-muted-foreground w-36">
         {label}
       </td>
-      <td className={`${cellBase} ${highlight}`}>{format(a)}</td>
-      <td className={`${cellBase} ${highlight} border-l border-slate-700/50`}>
+      <td className={`${cellBase} ${highlight} w-[calc(50%-72px)]`}>
+        {format(a)}
+      </td>
+      <td
+        className={`${cellBase} ${highlight} border-l border-border/50 w-[calc(50%-72px)]`}
+      >
         {format(b)}
       </td>
     </TableRow>
@@ -488,6 +527,7 @@ export default function DrugAnalyzerTab() {
     patch: Partial<DrugData>,
   ) => setter((prev) => ({ ...prev, ...patch }));
 
+  // Fix 2: Improved DECIMER image recognition with multiple fallback approaches
   const processImage = async (
     setter: React.Dispatch<React.SetStateAction<DrugData>>,
     file: File,
@@ -498,32 +538,98 @@ export default function DrugAnalyzerTab() {
 
     let smiles: string | undefined;
 
-    // Try DECIMER API
-    try {
-      const formData = new FormData();
-      formData.append("input", file);
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 8000);
-      const res = await fetch("https://decimer.ai/api/predict", {
-        method: "POST",
-        body: formData,
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      if (res.ok) {
-        const text = await res.text();
-        try {
-          const j = JSON.parse(text);
-          smiles = j.smiles ?? j.SMILES ?? j.result ?? j;
-        } catch {
-          smiles = text.trim();
-        }
+    const isValidSmiles = (s: string) =>
+      s.trim().length >= 3 && !/error/i.test(s) && /[A-Za-z]/.test(s);
+
+    const parseSmiles = (text: string): string | undefined => {
+      try {
+        const j = JSON.parse(text);
+        const candidate =
+          j.smiles ??
+          j.SMILES ??
+          j.result ??
+          (typeof j === "string" ? j : undefined);
+        return typeof candidate === "string" ? candidate.trim() : undefined;
+      } catch {
+        return text.trim() || undefined;
       }
-    } catch {
-      // DECIMER unavailable — fall through to manual
+    };
+
+    // Attempt 1: DECIMER primary endpoint with FormData key "input"
+    if (!smiles) {
+      try {
+        const formData = new FormData();
+        formData.append("input", file);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch("https://decimer.ai/api/predict", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const candidate = parseSmiles(await res.text());
+          if (candidate && isValidSmiles(candidate)) smiles = candidate;
+        }
+      } catch {
+        // fall through
+      }
     }
 
-    if (!smiles || smiles.trim() === "") {
+    // Attempt 2: DECIMER alternate endpoint with FormData key "file"
+    if (!smiles) {
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch("https://api.decimer.ai/predict", {
+          method: "POST",
+          body: formData,
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const candidate = parseSmiles(await res.text());
+          if (candidate && isValidSmiles(candidate)) smiles = candidate;
+        }
+      } catch {
+        // fall through
+      }
+    }
+
+    // Attempt 3: base64 JSON POST to DECIMER primary endpoint
+    if (!smiles) {
+      try {
+        const base64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => {
+            const result = reader.result as string;
+            resolve(result.split(",")[1] ?? result);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 12000);
+        const res = await fetch("https://decimer.ai/api/predict", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ image: base64 }),
+          signal: controller.signal,
+        });
+        clearTimeout(timeout);
+        if (res.ok) {
+          const candidate = parseSmiles(await res.text());
+          if (candidate && isValidSmiles(candidate)) smiles = candidate;
+        }
+      } catch {
+        // all attempts exhausted
+      }
+    }
+
+    if (!smiles) {
       updateDrug(setter, { status: "manual" });
       return;
     }
@@ -562,19 +668,19 @@ export default function DrugAnalyzerTab() {
   const similarity = bothDone ? computeSimilarity(drugA, drugB) : 0;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white">
+    <div className="min-h-screen bg-background text-foreground min-h-screen">
       {/* Header */}
-      <div className="bg-gradient-to-r from-indigo-950 via-purple-950 to-slate-900 border-b border-slate-700/50">
+      <div className="bg-gradient-to-r from-primary/20 to-primary/5 border-b border-border">
         <div className="max-w-5xl mx-auto px-6 py-8">
           <div className="flex items-center gap-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/20 ring-1 ring-teal-500/40">
               <FlaskConical className="h-6 w-6 text-teal-400" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white tracking-tight">
+              <h1 className="text-2xl font-bold text-foreground tracking-tight">
                 Drug Structure Analyzer
               </h1>
-              <p className="text-sm text-slate-400 mt-0.5">
+              <p className="text-sm text-muted-foreground mt-0.5">
                 Upload drug structure images to auto-identify and compare
                 compounds
               </p>
@@ -585,12 +691,12 @@ export default function DrugAnalyzerTab() {
 
       <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
         {/* Upload Zones */}
-        <Card className="bg-slate-800/60 border-slate-700/50">
+        <Card className="bg-card border-border">
           <CardHeader className="pb-4">
-            <CardTitle className="text-base text-slate-200">
+            <CardTitle className="text-base text-foreground">
               Upload Drug Structure Images
             </CardTitle>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-muted-foreground">
               The analyzer will auto-identify each compound via DECIMER and
               fetch full data from PubChem.
             </p>
@@ -608,7 +714,7 @@ export default function DrugAnalyzerTab() {
                 }}
               />
               <div className="hidden sm:flex items-center">
-                <div className="h-full w-px bg-slate-700" />
+                <div className="h-full w-px bg-border" />
               </div>
               <UploadZone
                 label="Drug B"
@@ -637,9 +743,9 @@ export default function DrugAnalyzerTab() {
           </CardContent>
         </Card>
 
-        {/* Results */}
+        {/* Fix 4: Results section with space-y-8 */}
         {analyzed && bothDone && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             {/* Similarity + Drug Header Cards */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-start">
               <DrugHeaderCard drug={drugA} label="Drug A" />
@@ -649,12 +755,12 @@ export default function DrugAnalyzerTab() {
               <DrugHeaderCard drug={drugB} label="Drug B" />
             </div>
 
-            <Separator className="border-slate-700" />
+            <Separator className="border-border" />
 
-            {/* Comparison Table */}
-            <Card className="bg-slate-800/60 border-slate-700/50">
+            {/* Fix 1 + Fix 4: Comparison Table with overflow protection */}
+            <Card className="bg-card border-border w-full overflow-hidden">
               <CardHeader className="pb-3">
-                <CardTitle className="text-sm text-slate-200">
+                <CardTitle className="text-sm text-foreground">
                   Side-by-Side Comparison
                 </CardTitle>
                 <div className="flex gap-3 text-xs">
@@ -668,23 +774,24 @@ export default function DrugAnalyzerTab() {
                   </span>
                 </div>
               </CardHeader>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <table className="w-full">
+              {/* Fix 1: overflow-hidden + table-fixed */}
+              <CardContent className="p-0 overflow-hidden">
+                <div className="w-full overflow-x-auto">
+                  <table className="w-full table-fixed min-w-[480px]">
                     <thead>
-                      <tr className="border-b border-slate-700/50 bg-slate-900/50">
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-slate-400 w-40">
+                      <tr className="border-b border-border/50 bg-muted/50">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-muted-foreground w-36">
                           Property
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-teal-400">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-teal-400 w-[calc(50%-72px)]">
                           {drugA.name ?? "Drug A"}
                         </th>
-                        <th className="px-3 py-2 text-left text-xs font-semibold text-purple-400 border-l border-slate-700/50">
+                        <th className="px-3 py-2 text-left text-xs font-semibold text-purple-400 border-l border-border/50 w-[calc(50%-72px)]">
                           {drugB.name ?? "Drug B"}
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-slate-700/30">
+                    <tbody className="divide-y divide-border/30">
                       <CompareRow
                         label="IUPAC Name"
                         a={drugA.iupacName}
@@ -741,7 +848,7 @@ export default function DrugAnalyzerTab() {
               </CardContent>
             </Card>
 
-            {/* Descriptions */}
+            {/* Fix 5: Descriptions with proper text formatting */}
             {(drugA.description || drugB.description) && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {(
@@ -751,17 +858,14 @@ export default function DrugAnalyzerTab() {
                   ] as const
                 ).map(({ drug, lbl }) =>
                   drug.description ? (
-                    <Card
-                      key={lbl}
-                      className="bg-slate-800/60 border-slate-700/50"
-                    >
+                    <Card key={lbl} className="bg-card border-border">
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-slate-200">
+                        <CardTitle className="text-sm text-foreground">
                           {drug.name ?? lbl} — Description
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
-                        <p className="text-xs text-slate-400 leading-relaxed">
+                        <p className="text-xs text-muted-foreground leading-relaxed whitespace-pre-wrap break-words">
                           {drug.description}
                         </p>
                       </CardContent>
@@ -790,7 +894,7 @@ export default function DrugAnalyzerTab() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="border-slate-600 text-slate-300 hover:text-teal-400 hover:border-teal-500/50 gap-2"
+                      className="border-border text-muted-foreground hover:text-teal-400 hover:border-teal-500/50 gap-2"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
                       View {drug.name ?? lbl} on PubChem
@@ -804,9 +908,9 @@ export default function DrugAnalyzerTab() {
       </div>
 
       {/* Footer */}
-      <div className="border-t border-slate-800 mt-12">
+      <div className="border-t border-border mt-12">
         <div className="max-w-5xl mx-auto px-6 py-4 text-center">
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-muted-foreground">
             © {new Date().getFullYear()}. Built with love using{" "}
             <a
               href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
@@ -825,19 +929,19 @@ export default function DrugAnalyzerTab() {
 
 function DrugHeaderCard({ drug, label }: { drug: DrugData; label: string }) {
   return (
-    <Card className="bg-slate-800/60 border-slate-700/50">
+    <Card className="bg-card border-border">
       <CardContent className="pt-5 space-y-3">
         <div className="flex items-start justify-between gap-2">
           <div>
-            <p className="text-xs text-slate-500 mb-1">{label}</p>
-            <h3 className="font-bold text-white text-sm leading-tight">
+            <p className="text-xs text-muted-foreground mb-1">{label}</p>
+            <h3 className="font-bold text-foreground text-sm leading-tight">
               {drug.name ?? "Unknown"}
             </h3>
           </div>
           {drug.pubchemCID && (
             <Badge
               variant="outline"
-              className="text-[10px] border-slate-600 text-slate-400 shrink-0"
+              className="text-[10px] border-border text-muted-foreground shrink-0"
             >
               CID {drug.pubchemCID}
             </Badge>
@@ -849,16 +953,16 @@ function DrugHeaderCard({ drug, label }: { drug: DrugData; label: string }) {
           </Badge>
         )}
         {drug.molecularWeight && (
-          <p className="text-xs text-slate-400">
+          <p className="text-xs text-muted-foreground">
             MW:{" "}
-            <span className="text-slate-200 font-medium">
+            <span className="text-foreground font-medium">
               {drug.molecularWeight}
             </span>{" "}
             g/mol
           </p>
         )}
         {drug.iupacName && (
-          <p className="text-[11px] text-slate-500 leading-relaxed line-clamp-2">
+          <p className="text-[11px] text-muted-foreground leading-relaxed line-clamp-2">
             {drug.iupacName}
           </p>
         )}

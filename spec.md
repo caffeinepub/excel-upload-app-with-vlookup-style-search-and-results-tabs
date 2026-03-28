@@ -1,39 +1,28 @@
-# Crystal Atlas — Drug Structure Analyzer
+# Crystal Atlas
 
 ## Current State
-The app has a Smart Search / Explore Universe tab with PubChem integration for chemical lookups. The sidebar has tabs for Main, Activities, and Admin sections. There is no dedicated drug structure comparison feature.
+- Drug Structure Analyzer (DrugAnalyzerTab.tsx) shows comparison results in a table but the table overflows the container on PC — cells with SMILES/descriptions exceed the box width.
+- The page uses dark indigo/slate colors (standalone dark theme) that don't match the app's Blue Ocean theme.
+- DeskboardTab.tsx has AdminBroadcastComposer followed by BroadcastHistory below it. No KPI widgets after it.
 
 ## Requested Changes (Diff)
 
 ### Add
-- New `TabId`: `drugAnalyzer`
-- New sidebar entry under Activities: "Drug Analyzer" with a molecule/flask icon
-- New page: `DrugAnalyzerTab.tsx` — standalone full-page drug structure comparison tool
-- Feature: Upload 2 drug structure images simultaneously (side by side upload zones)
-- Feature: Auto-identify drug from uploaded image using DECIMER public API (https://decimer.ai/api/predict) which accepts a base64 image and returns a SMILES string, then resolve that SMILES to a compound name via PubChem
-- Fallback: If DECIMER fails, use OCR-style text extraction from image filename or allow manual name entry
-- Feature: After identification, fetch full compound data from PubChem for both drugs
-- Feature: Side-by-side comparison table showing: Molecular Formula, Molecular Weight, IUPAC Name, Canonical SMILES, Drug Class/Category, Synonyms, Description, Pharmacological properties
-- Feature: Structural similarity score (Tanimoto or simple comparison metric computed client-side)
-- Feature: Visual comparison panel with drug images and property highlights
-- Available to ALL users (not admin-only)
+- **2 KPI widgets** side by side (grid-cols-2) placed immediately after the BroadcastHistory block in DeskboardTab.tsx:
+  1. **FDA Latest Approvals KPI**: Cycles through the latest 10 FDA-approved drugs, showing 1 drug at a time every 5 seconds. Fetches from FDA openFDA API (`https://api.fda.gov/drug/drugsfda.json?sort=submissions.submission_status_date:desc&limit=10`). Drug name is clickable and opens the drug label at `https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo={application_number}`. Shows drug name, application number, company.
+  2. **Orange Book New Approvals KPI**: Shows newly approved drugs from the FDA Orange Book, fetched from `https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_type:ORIG&sort=submissions.submission_status_date:desc&limit=5`. Updates daily. Shows drug name, approval date, applicant.
 
 ### Modify
-- `App.tsx`: Add `drugAnalyzer` to TabId union and ALL_TABS array
-- `DesktopSidebarNav.tsx`: Add `drugAnalyzer` to ACTIVITY_TABS, add icon import
-- `App.tsx` renderTab(): Add case for `drugAnalyzer`
+- **DrugAnalyzerTab.tsx**: 
+  - Fix results table overflow: use `table-fixed w-full` with explicit column widths, `overflow-hidden` wrapper, `word-break: break-word`, truncate long values properly.
+  - Match app theme: replace dark slate/indigo standalone theme with the app's CSS variables (`bg-background`, `bg-card`, `text-foreground`, `border-border`, `text-primary`, etc.) — Blue Ocean theme.
+  - The page should feel consistent with the rest of the app visually.
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Create `src/frontend/src/pages/DrugAnalyzerTab.tsx` with:
-   - Two image upload zones side by side
-   - On image drop/select: call DECIMER API (POST base64 image) to get SMILES
-   - Use PubChem `/compound/smiles/{smiles}/JSON` to resolve compound details
-   - Fallback input field for manual drug name if auto-detect fails
-   - Comparison result section: two-column layout with side-by-side property table
-   - Highlight differences between the two drugs
-   - Show similarity score as a percentage
-2. Update `App.tsx`: add `drugAnalyzer` TabId and tab def with Beaker/FlaskConical icon
-3. Update `DesktopSidebarNav.tsx`: add to ACTIVITY_TABS and icon map
+1. Modify `DrugAnalyzerTab.tsx`: swap all hardcoded dark bg/text classes to theme-aware CSS variable classes; fix comparison table to use `table-fixed` with clamped column widths and `break-words` overflow handling.
+2. Create `FDAApprovalsKPI.tsx` component: fetches FDA data, cycles through drugs 1-by-1 every 5s using setInterval, shows drug name as clickable link, application number, sponsor.
+3. Create `OrangeBookKPI.tsx` component: fetches Orange Book approvals from FDA API, renders a list of 5 latest approved drugs with name and date.
+4. In `DeskboardTab.tsx`, import and place both KPIs in a `grid grid-cols-1 sm:grid-cols-2 gap-4` immediately after the BroadcastHistory block.
