@@ -66,34 +66,36 @@ function getSponsor(drug: FDADrug): string {
 }
 
 async function fetchFDAApprovals(): Promise<FDADrug[]> {
-  // Get today's date for cache key (forces daily refresh)
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
-  // Fetch latest approved drugs — sorted by approval date descending
+  // Query NDA/BLA approvals — no nested sort (not supported by FDA API)
+  // Use a recent date range to get fresh data
   const url =
-    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status:AP&sort=submissions.submission_status_date:desc&limit=10&skip=0";
-  const res = await fetch(url, {
-    headers: { "Cache-Control": "no-cache" },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("FDA API error");
+    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status%3A%22AP%22+AND+(application_number:NDA*+application_number:BLA*)&limit=20";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`FDA API error: ${res.status}`);
   const data = await res.json();
-  // Filter to only drugs that actually have at least one AP submission with a recent date
-  const results: FDADrug[] = (data?.results ?? []).filter((d: FDADrug) =>
-    (d.submissions ?? []).some(
-      (s) =>
-        s.submission_status === "AP" &&
-        s.submission_status_date &&
-        s.submission_status_date >= `${today.slice(0, 4)}0101`,
-    ),
-  );
-  // If filtered list is empty (rare), fall back to raw results
-  return results.length > 0 ? results : (data?.results ?? []);
+  const all: FDADrug[] = data?.results ?? [];
+  // Sort client-side by latest AP submission date descending
+  const sorted = all
+    .map((d) => ({
+      drug: d,
+      date:
+        (d.submissions ?? [])
+          .filter((s) => s.submission_status === "AP")
+          .map((s) => s.submission_status_date ?? "")
+          .sort()
+          .pop() ?? "",
+    }))
+    .filter((x) => x.date)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 10)
+    .map((x) => x.drug);
+  return sorted.length > 0 ? sorted : all.slice(0, 10);
 }
 
 export default function FDAApprovalsKPI() {
   const [drugs, setDrugs] = useState<FDADrug[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [current, setCurrent] = useState(0);
   const [progress, setProgress] = useState(0);
   const [lastUpdated, setLastUpdated] = useState<string>("");
@@ -102,7 +104,7 @@ export default function FDAApprovalsKPI() {
 
   const load = useCallback(() => {
     setLoading(true);
-    setError(false);
+    setError(null);
     fetchFDAApprovals()
       .then((results) => {
         setDrugs(results);
@@ -114,16 +116,14 @@ export default function FDAApprovalsKPI() {
           }),
         );
       })
-      .catch(() => {
-        setError(true);
+      .catch((err) => {
+        setError(String(err));
         setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     load();
-    // Auto-refresh every 12 hours
     const refresh = setInterval(load, 12 * 60 * 60 * 1000);
     return () => clearInterval(refresh);
   }, [load]);
@@ -132,22 +132,15 @@ export default function FDAApprovalsKPI() {
     if (drugs.length === 0) return;
     setCurrent(0);
     setProgress(0);
-
-    const startCarousel = () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      if (progressRef.current) clearInterval(progressRef.current);
-
-      intervalRef.current = setInterval(() => {
-        setCurrent((c) => (c + 1) % drugs.length);
-        setProgress(0);
-      }, 5000);
-
-      progressRef.current = setInterval(() => {
-        setProgress((p) => Math.min(p + 2, 100));
-      }, 100);
-    };
-
-    startCarousel();
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (progressRef.current) clearInterval(progressRef.current);
+    intervalRef.current = setInterval(() => {
+      setCurrent((c) => (c + 1) % drugs.length);
+      setProgress(0);
+    }, 5000);
+    progressRef.current = setInterval(() => {
+      setProgress((p) => Math.min(p + 2, 100));
+    }, 100);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (progressRef.current) clearInterval(progressRef.current);
@@ -177,7 +170,6 @@ export default function FDAApprovalsKPI() {
       className="rounded-2xl bg-card border border-border shadow-mac-soft flex flex-col overflow-hidden"
       data-ocid="fda_kpi.card"
     >
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10">
           <Pill className="h-4 w-4 text-primary" />
@@ -202,17 +194,15 @@ export default function FDAApprovalsKPI() {
         </button>
       </div>
 
-      {/* Body */}
       <div className="flex-1 px-4 py-4 flex flex-col gap-2 min-h-[150px] justify-center">
         {loading && (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
             <Skeleton className="h-3 w-2/3" />
-            <Skeleton className="h-3 w-1/3" />
           </div>
         )}
-        {error && (
+        {!loading && error && (
           <div className="text-center space-y-2">
             <p className="text-xs text-muted-foreground">
               Unable to load FDA data.
@@ -226,6 +216,11 @@ export default function FDAApprovalsKPI() {
             </button>
           </div>
         )}
+        {!loading && !error && drugs.length === 0 && (
+          <p className="text-xs text-muted-foreground text-center">
+            No approval data found.
+          </p>
+        )}
         {!loading && !error && drug && (
           <div className="space-y-2">
             <a
@@ -233,7 +228,6 @@ export default function FDAApprovalsKPI() {
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-start gap-1 group"
-              data-ocid="fda_kpi.link"
             >
               <span className="text-sm font-bold text-primary leading-tight group-hover:underline">
                 {getDrugName(drug)}
@@ -271,7 +265,6 @@ export default function FDAApprovalsKPI() {
         )}
       </div>
 
-      {/* Progress bar */}
       {!loading && !error && drugs.length > 0 && (
         <div className="px-4 pb-3 space-y-2">
           <div className="h-1 w-full bg-muted rounded-full overflow-hidden">

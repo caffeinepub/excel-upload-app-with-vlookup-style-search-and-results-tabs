@@ -57,45 +57,48 @@ function getApprovalDate(drug: FDADrug): string {
 
 function getAppType(drug: FDADrug): string {
   const app = drug.application_number ?? "";
-  if (app.startsWith("ANDA")) return "ANDA (Generic)";
-  if (app.startsWith("NDA")) return "NDA (Brand)";
-  if (app.startsWith("BLA")) return "BLA (Biologic)";
+  if (app.startsWith("ANDA")) return "Generic (ANDA)";
+  if (app.startsWith("NDA")) return "Brand (NDA)";
+  if (app.startsWith("BLA")) return "Biologic (BLA)";
   return app.slice(0, 4);
 }
 
 async function fetchOrangeBookApprovals(): Promise<FDADrug[]> {
-  // Get ANDA (generic/orange book) approvals sorted by latest approval date
+  // ANDA = generic drug applications listed in Orange Book
+  // Do not sort by nested field — sort client-side instead
   const url =
-    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_type:ANDA+AND+submissions.submission_status:AP&sort=submissions.submission_status_date:desc&limit=10";
-  const res = await fetch(url, {
-    headers: { "Cache-Control": "no-cache" },
-    cache: "no-store",
-  });
-  if (!res.ok) throw new Error("FDA Orange Book API error");
+    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status%3A%22AP%22+AND+application_number:ANDA*&limit=20";
+  const res = await fetch(url, { cache: "no-store" });
+  if (!res.ok) throw new Error(`FDA Orange Book API error: ${res.status}`);
   const data = await res.json();
-  const currentYear = new Date().getFullYear().toString();
-  const results: FDADrug[] = (data?.results ?? []).filter((d: FDADrug) =>
-    (d.submissions ?? []).some(
-      (s) =>
-        s.submission_type === "ANDA" &&
-        s.submission_status === "AP" &&
-        s.submission_status_date?.startsWith(currentYear),
-    ),
-  );
-  return results.length > 0
-    ? results.slice(0, 5)
-    : (data?.results ?? []).slice(0, 5);
+  const all: FDADrug[] = data?.results ?? [];
+  // Sort client-side by most recent AP submission date
+  const sorted = all
+    .map((d) => ({
+      drug: d,
+      date:
+        (d.submissions ?? [])
+          .filter((s) => s.submission_status === "AP")
+          .map((s) => s.submission_status_date ?? "")
+          .sort()
+          .pop() ?? "",
+    }))
+    .filter((x) => x.date)
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 5)
+    .map((x) => x.drug);
+  return sorted.length > 0 ? sorted : all.slice(0, 5);
 }
 
 export default function OrangeBookKPI() {
   const [drugs, setDrugs] = useState<FDADrug[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState("");
 
   const load = useCallback(() => {
     setLoading(true);
-    setError(false);
+    setError(null);
     fetchOrangeBookApprovals()
       .then((results) => {
         setDrugs(results);
@@ -104,19 +107,18 @@ export default function OrangeBookKPI() {
           new Date().toLocaleDateString(undefined, {
             month: "short",
             day: "numeric",
+            year: "numeric",
           }),
         );
       })
-      .catch(() => {
-        setError(true);
+      .catch((err) => {
+        setError(String(err));
         setLoading(false);
       });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     load();
-    // Auto-refresh every 12 hours
     const refresh = setInterval(load, 12 * 60 * 60 * 1000);
     return () => clearInterval(refresh);
   }, [load]);
@@ -126,7 +128,6 @@ export default function OrangeBookKPI() {
       className="rounded-2xl bg-card border border-border shadow-mac-soft flex flex-col overflow-hidden"
       data-ocid="orangebook_kpi.card"
     >
-      {/* Header */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-border/40">
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10">
           <BookOpen className="h-4 w-4 text-emerald-500" />
@@ -158,7 +159,6 @@ export default function OrangeBookKPI() {
         </button>
       </div>
 
-      {/* Body */}
       <div className="flex-1 px-4 py-3 space-y-0 divide-y divide-border/30">
         {loading && (
           <div className="space-y-3 py-2">
@@ -170,7 +170,7 @@ export default function OrangeBookKPI() {
             ))}
           </div>
         )}
-        {error && (
+        {!loading && error && (
           <div className="text-center py-6 space-y-2">
             <p className="text-xs text-muted-foreground">
               Unable to load Orange Book data.
@@ -185,11 +185,8 @@ export default function OrangeBookKPI() {
           </div>
         )}
         {!loading && !error && drugs.length === 0 && (
-          <p
-            className="text-xs text-muted-foreground text-center py-6"
-            data-ocid="orangebook_kpi.empty_state"
-          >
-            No recent approvals found for this year.
+          <p className="text-xs text-muted-foreground text-center py-6">
+            No recent generic approvals found.
           </p>
         )}
         {!loading &&
@@ -240,7 +237,6 @@ export default function OrangeBookKPI() {
           ))}
       </div>
 
-      {/* Footer */}
       <div className="px-4 py-2 border-t border-border/40 flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground">
           Generic drug approvals from FDA Orange Book
