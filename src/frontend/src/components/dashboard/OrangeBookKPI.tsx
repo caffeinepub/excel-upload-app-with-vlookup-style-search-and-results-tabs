@@ -1,15 +1,15 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BookOpen } from "lucide-react";
-import { useEffect, useState } from "react";
+import { BookOpen, ExternalLink, RefreshCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 interface FDADrug {
   application_number: string;
   sponsor_name: string;
-  brand_name?: string;
   openfda?: {
     brand_name?: string[];
     generic_name?: string[];
+    manufacturer_name?: string[];
   };
   submissions?: {
     submission_status_date?: string;
@@ -33,11 +33,14 @@ function formatDate(raw?: string): string {
 
 function getDrugName(drug: FDADrug): string {
   return (
-    drug.brand_name ??
     drug.openfda?.brand_name?.[0] ??
     drug.openfda?.generic_name?.[0] ??
     drug.application_number
   );
+}
+
+function getGeneric(drug: FDADrug): string {
+  return drug.openfda?.generic_name?.[0] ?? "";
 }
 
 function getApprovalDate(drug: FDADrug): string {
@@ -49,33 +52,74 @@ function getApprovalDate(drug: FDADrug): string {
         a.submission_status_date ?? "",
       ),
     );
-  return formatDate(
-    approved[0]?.submission_status_date ?? subs[0]?.submission_status_date,
+  return formatDate(approved[0]?.submission_status_date);
+}
+
+function getAppType(drug: FDADrug): string {
+  const app = drug.application_number ?? "";
+  if (app.startsWith("ANDA")) return "ANDA (Generic)";
+  if (app.startsWith("NDA")) return "NDA (Brand)";
+  if (app.startsWith("BLA")) return "BLA (Biologic)";
+  return app.slice(0, 4);
+}
+
+async function fetchOrangeBookApprovals(): Promise<FDADrug[]> {
+  // Get ANDA (generic/orange book) approvals sorted by latest approval date
+  const url =
+    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_type:ANDA+AND+submissions.submission_status:AP&sort=submissions.submission_status_date:desc&limit=10";
+  const res = await fetch(url, {
+    headers: { "Cache-Control": "no-cache" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("FDA Orange Book API error");
+  const data = await res.json();
+  const currentYear = new Date().getFullYear().toString();
+  const results: FDADrug[] = (data?.results ?? []).filter((d: FDADrug) =>
+    (d.submissions ?? []).some(
+      (s) =>
+        s.submission_type === "ANDA" &&
+        s.submission_status === "AP" &&
+        s.submission_status_date?.startsWith(currentYear),
+    ),
   );
+  return results.length > 0
+    ? results.slice(0, 5)
+    : (data?.results ?? []).slice(0, 5);
 }
 
 export default function OrangeBookKPI() {
   const [drugs, setDrugs] = useState<FDADrug[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState("");
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(
-      "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_type:ORIG&sort=submissions.submission_status_date:desc&limit=5",
-      { signal: controller.signal },
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        setDrugs(data?.results ?? []);
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    fetchOrangeBookApprovals()
+      .then((results) => {
+        setDrugs(results);
         setLoading(false);
+        setLastUpdated(
+          new Date().toLocaleDateString(undefined, {
+            month: "short",
+            day: "numeric",
+          }),
+        );
       })
       .catch(() => {
         setError(true);
         setLoading(false);
       });
-    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    load();
+    // Auto-refresh every 12 hours
+    const refresh = setInterval(load, 12 * 60 * 60 * 1000);
+    return () => clearInterval(refresh);
+  }, [load]);
 
   return (
     <div
@@ -87,13 +131,31 @@ export default function OrangeBookKPI() {
         <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-emerald-500/10">
           <BookOpen className="h-4 w-4 text-emerald-500" />
         </div>
-        <span className="text-sm font-semibold text-foreground flex-1">
-          Orange Book — New Approvals
-        </span>
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-semibold text-foreground">
+            Orange Book — New Approvals
+          </span>
+          {lastUpdated && (
+            <span className="ml-2 text-[10px] text-muted-foreground">
+              as of {lastUpdated}
+            </span>
+          )}
+        </div>
         <span className="flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-medium">
           <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Live
         </span>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="ml-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          title="Refresh"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+          />
+        </button>
       </div>
 
       {/* Body */}
@@ -109,16 +171,25 @@ export default function OrangeBookKPI() {
           </div>
         )}
         {error && (
-          <p className="text-xs text-muted-foreground text-center py-6">
-            Unable to load Orange Book data. Please try again later.
-          </p>
+          <div className="text-center py-6 space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Unable to load Orange Book data.
+            </p>
+            <button
+              type="button"
+              onClick={load}
+              className="text-xs text-primary underline"
+            >
+              Try again
+            </button>
+          </div>
         )}
         {!loading && !error && drugs.length === 0 && (
           <p
             className="text-xs text-muted-foreground text-center py-6"
             data-ocid="orangebook_kpi.empty_state"
           >
-            No recent approvals found.
+            No recent approvals found for this year.
           </p>
         )}
         {!loading &&
@@ -130,16 +201,29 @@ export default function OrangeBookKPI() {
               data-ocid={`orangebook_kpi.item.${idx + 1}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <span className="text-sm font-semibold text-foreground leading-tight">
-                  {getDrugName(drug)}
-                </span>
+                <a
+                  href={`https://www.accessdata.fda.gov/scripts/cder/daf/index.cfm?event=overview.process&ApplNo=${drug.application_number.replace(/^[A-Z]+/, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 group"
+                >
+                  <span className="text-sm font-semibold text-foreground leading-tight group-hover:text-emerald-600 group-hover:underline transition-colors">
+                    {getDrugName(drug)}
+                  </span>
+                  <ExternalLink className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+                </a>
                 <Badge
                   variant="outline"
                   className="text-[10px] shrink-0 border-emerald-500/30 text-emerald-600 dark:text-emerald-400"
                 >
-                  {drug.application_number.startsWith("A") ? "ANDA" : "NDA"}
+                  {getAppType(drug)}
                 </Badge>
               </div>
+              {getGeneric(drug) && getDrugName(drug) !== getGeneric(drug) && (
+                <p className="text-[11px] text-muted-foreground italic mt-0.5">
+                  {getGeneric(drug)}
+                </p>
+              )}
               <div className="flex items-center gap-3 mt-0.5">
                 {drug.sponsor_name && (
                   <span className="text-xs text-muted-foreground truncate max-w-[140px]">
@@ -147,7 +231,7 @@ export default function OrangeBookKPI() {
                   </span>
                 )}
                 {getApprovalDate(drug) && (
-                  <span className="text-[11px] text-muted-foreground ml-auto shrink-0">
+                  <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium ml-auto shrink-0">
                     {getApprovalDate(drug)}
                   </span>
                 )}
@@ -157,10 +241,18 @@ export default function OrangeBookKPI() {
       </div>
 
       {/* Footer */}
-      <div className="px-4 py-2 border-t border-border/40">
+      <div className="px-4 py-2 border-t border-border/40 flex items-center justify-between">
         <p className="text-[10px] text-muted-foreground">
-          Updated daily from FDA Orange Book
+          Generic drug approvals from FDA Orange Book
         </p>
+        <a
+          href="https://www.accessdata.fda.gov/scripts/cder/ob/index.cfm"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-primary hover:underline"
+        >
+          View Full OB
+        </a>
       </div>
     </div>
   );

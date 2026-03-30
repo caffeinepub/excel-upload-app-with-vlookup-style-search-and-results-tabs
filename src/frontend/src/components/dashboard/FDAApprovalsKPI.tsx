@@ -1,19 +1,27 @@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ChevronLeft, ChevronRight, ExternalLink, Pill } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ExternalLink,
+  Pill,
+  RefreshCw,
+} from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 interface FDADrug {
   application_number: string;
   sponsor_name: string;
-  brand_name?: string;
   openfda?: {
     brand_name?: string[];
     generic_name?: string[];
+    manufacturer_name?: string[];
   };
   submissions?: {
     submission_status_date?: string;
     submission_status?: string;
+    submission_type?: string;
+    submission_number?: string;
   }[];
 }
 
@@ -38,19 +46,48 @@ function getLatestApproval(drug: FDADrug): string {
         a.submission_status_date ?? "",
       ),
     );
-  return formatDate(
-    approved[0]?.submission_status_date ??
-      drug.submissions?.[0]?.submission_status_date,
-  );
+  return formatDate(approved[0]?.submission_status_date);
 }
 
 function getDrugName(drug: FDADrug): string {
   return (
-    drug.brand_name ??
     drug.openfda?.brand_name?.[0] ??
     drug.openfda?.generic_name?.[0] ??
     drug.application_number
   );
+}
+
+function getGenericName(drug: FDADrug): string {
+  return drug.openfda?.generic_name?.[0] ?? "";
+}
+
+function getSponsor(drug: FDADrug): string {
+  return drug.openfda?.manufacturer_name?.[0] ?? drug.sponsor_name ?? "";
+}
+
+async function fetchFDAApprovals(): Promise<FDADrug[]> {
+  // Get today's date for cache key (forces daily refresh)
+  const today = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  // Fetch latest approved drugs — sorted by approval date descending
+  const url =
+    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status:AP&sort=submissions.submission_status_date:desc&limit=10&skip=0";
+  const res = await fetch(url, {
+    headers: { "Cache-Control": "no-cache" },
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("FDA API error");
+  const data = await res.json();
+  // Filter to only drugs that actually have at least one AP submission with a recent date
+  const results: FDADrug[] = (data?.results ?? []).filter((d: FDADrug) =>
+    (d.submissions ?? []).some(
+      (s) =>
+        s.submission_status === "AP" &&
+        s.submission_status_date &&
+        s.submission_status_date >= `${today.slice(0, 4)}0101`,
+    ),
+  );
+  // If filtered list is empty (rare), fall back to raw results
+  return results.length > 0 ? results : (data?.results ?? []);
 }
 
 export default function FDAApprovalsKPI() {
@@ -59,41 +96,58 @@ export default function FDAApprovalsKPI() {
   const [error, setError] = useState(false);
   const [current, setCurrent] = useState(0);
   const [progress, setProgress] = useState(0);
+  const [lastUpdated, setLastUpdated] = useState<string>("");
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const progressRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(() => {
-    const controller = new AbortController();
-    fetch(
-      "https://api.fda.gov/drug/drugsfda.json?sort=submissions.submission_status_date:desc&limit=10",
-      { signal: controller.signal },
-    )
-      .then((r) => r.json())
-      .then((data) => {
-        const results: FDADrug[] = data?.results ?? [];
+  const load = useCallback(() => {
+    setLoading(true);
+    setError(false);
+    fetchFDAApprovals()
+      .then((results) => {
         setDrugs(results);
         setLoading(false);
+        setLastUpdated(
+          new Date().toLocaleTimeString([], {
+            hour: "2-digit",
+            minute: "2-digit",
+          }),
+        );
       })
       .catch(() => {
         setError(true);
         setLoading(false);
       });
-    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
+    load();
+    // Auto-refresh every 12 hours
+    const refresh = setInterval(load, 12 * 60 * 60 * 1000);
+    return () => clearInterval(refresh);
+  }, [load]);
+
+  useEffect(() => {
     if (drugs.length === 0) return;
+    setCurrent(0);
     setProgress(0);
 
-    intervalRef.current = setInterval(() => {
-      setCurrent((c) => (c + 1) % drugs.length);
-      setProgress(0);
-    }, 5000);
+    const startCarousel = () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (progressRef.current) clearInterval(progressRef.current);
 
-    progressRef.current = setInterval(() => {
-      setProgress((p) => Math.min(p + 2, 100));
-    }, 100);
+      intervalRef.current = setInterval(() => {
+        setCurrent((c) => (c + 1) % drugs.length);
+        setProgress(0);
+      }, 5000);
 
+      progressRef.current = setInterval(() => {
+        setProgress((p) => Math.min(p + 2, 100));
+      }, 100);
+    };
+
+    startCarousel();
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (progressRef.current) clearInterval(progressRef.current);
@@ -131,24 +185,46 @@ export default function FDAApprovalsKPI() {
         <span className="text-sm font-semibold text-foreground flex-1">
           Latest FDA Approvals
         </span>
-        <Badge variant="secondary" className="text-[10px]">
+        <span className="flex items-center gap-1 text-[10px] text-blue-500 font-medium">
+          <span className="inline-block h-1.5 w-1.5 rounded-full bg-blue-500 animate-pulse" />
           Live
-        </Badge>
+        </span>
+        <button
+          type="button"
+          onClick={load}
+          disabled={loading}
+          className="ml-1 text-muted-foreground hover:text-foreground transition-colors disabled:opacity-40"
+          title="Refresh"
+        >
+          <RefreshCw
+            className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`}
+          />
+        </button>
       </div>
 
       {/* Body */}
-      <div className="flex-1 px-4 py-4 flex flex-col gap-3 min-h-[140px] justify-center">
+      <div className="flex-1 px-4 py-4 flex flex-col gap-2 min-h-[150px] justify-center">
         {loading && (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />
             <Skeleton className="h-3 w-1/2" />
             <Skeleton className="h-3 w-2/3" />
+            <Skeleton className="h-3 w-1/3" />
           </div>
         )}
         {error && (
-          <p className="text-xs text-muted-foreground text-center">
-            Unable to load FDA data. Please try again later.
-          </p>
+          <div className="text-center space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Unable to load FDA data.
+            </p>
+            <button
+              type="button"
+              onClick={load}
+              className="text-xs text-primary underline"
+            >
+              Try again
+            </button>
+          </div>
         )}
         {!loading && !error && drug && (
           <div className="space-y-2">
@@ -164,25 +240,32 @@ export default function FDAApprovalsKPI() {
               </span>
               <ExternalLink className="h-3 w-3 text-primary flex-shrink-0 mt-0.5 opacity-60 group-hover:opacity-100" />
             </a>
-            <div className="flex flex-wrap gap-x-4 gap-y-1">
-              <span className="text-xs text-muted-foreground">
-                <span className="font-medium text-foreground">
-                  {drug.application_number}
-                </span>
-              </span>
-              {drug.sponsor_name && (
+            {getGenericName(drug) &&
+              getDrugName(drug) !== getGenericName(drug) && (
+                <p className="text-xs text-muted-foreground italic">
+                  {getGenericName(drug)}
+                </p>
+              )}
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              <Badge variant="secondary" className="text-[10px]">
+                {appNo}
+              </Badge>
+              {getSponsor(drug) && (
                 <span className="text-xs text-muted-foreground truncate max-w-[160px]">
-                  {drug.sponsor_name}
+                  {getSponsor(drug)}
                 </span>
               )}
             </div>
             {getLatestApproval(drug) && (
-              <span className="text-[11px] text-muted-foreground">
-                Approved:{" "}
-                <span className="text-foreground font-medium">
-                  {getLatestApproval(drug)}
+              <div className="flex items-center gap-1">
+                <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
+                <span className="text-[11px] text-muted-foreground">
+                  Approved:{" "}
+                  <span className="text-green-600 dark:text-green-400 font-semibold">
+                    {getLatestApproval(drug)}
+                  </span>
                 </span>
-              </span>
+              </div>
             )}
           </div>
         )}
@@ -202,18 +285,19 @@ export default function FDAApprovalsKPI() {
               type="button"
               onClick={() => goTo((current - 1 + drugs.length) % drugs.length)}
               className="text-muted-foreground hover:text-foreground transition-colors"
-              data-ocid="fda_kpi.pagination_prev"
             >
               <ChevronLeft className="h-4 w-4" />
             </button>
             <span className="text-[10px] text-muted-foreground">
               {current + 1} / {drugs.length}
+              {lastUpdated && (
+                <span className="ml-2 opacity-60">· {lastUpdated}</span>
+              )}
             </span>
             <button
               type="button"
               onClick={() => goTo((current + 1) % drugs.length)}
               className="text-muted-foreground hover:text-foreground transition-colors"
-              data-ocid="fda_kpi.pagination_next"
             >
               <ChevronRight className="h-4 w-4" />
             </button>
