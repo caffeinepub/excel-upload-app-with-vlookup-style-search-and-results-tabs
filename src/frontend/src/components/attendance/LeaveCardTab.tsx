@@ -58,6 +58,7 @@ interface LeaveCardData {
   numberOfDays: number;
   reason: string;
   managerName: string;
+  halfDayDate?: string;
   submittedAt: string;
   status: "Pending" | "Approved" | "Rejected";
 }
@@ -292,6 +293,13 @@ async function generateLeaveCardPdf(card: LeaveCardData) {
   drawField(colMid, y, "To Date", card.toDate);
   y += rowH + 2;
 
+  // Row 3b: Half Day Date (if present)
+  if (card.halfDayDate) {
+    drawField(colLeft, y, "Half Day Date", card.halfDayDate);
+    drawField(colMid, y, "Half Day Duration", "0.5 day");
+    y += rowH + 2;
+  }
+
   // Row 4: Manager Name (full width)
   drawField(colLeft, y, "Manager / Reporting To", card.managerName, contentW);
   y += rowH + 2;
@@ -395,6 +403,7 @@ function NewLeaveCardForm({
   const [toDate, setToDate] = useState("");
   const [reason, setReason] = useState("");
   const [managerName, setManagerName] = useState("");
+  const [halfDayDate, setHalfDayDate] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -406,8 +415,8 @@ function NewLeaveCardForm({
   }, [profile?.displayName, employeeName]);
 
   const numberOfDays = useMemo(
-    () => countWorkingDays(fromDate, toDate),
-    [fromDate, toDate],
+    () => countWorkingDays(fromDate, toDate) + (halfDayDate ? 0.5 : 0),
+    [fromDate, toDate, halfDayDate],
   );
 
   const buildCard = (): LeaveCardData => ({
@@ -420,6 +429,7 @@ function NewLeaveCardForm({
     numberOfDays,
     reason,
     managerName,
+    halfDayDate: halfDayDate || undefined,
     submittedAt: new Date().toISOString(),
     status: "Pending",
   });
@@ -492,6 +502,7 @@ function NewLeaveCardForm({
       setToDate("");
       setReason("");
       setManagerName("");
+      setHalfDayDate("");
     } catch (e) {
       toast.error("Failed to submit leave card. Please try again.");
       console.error(e);
@@ -632,6 +643,44 @@ function NewLeaveCardForm({
               onChange={(e) => setToDate(e.target.value)}
               data-ocid="leave-card.to_date.input"
             />
+          </div>
+
+          {/* Half Day (Optional) */}
+          <div className="space-y-1.5 md:col-span-2">
+            <Label className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              Half Day Date{" "}
+              <span className="normal-case text-[10px] text-muted-foreground/70 font-normal">
+                (Optional — adds 0.5 days)
+              </span>
+            </Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="lc-half-day"
+                tabIndex={0}
+                type="date"
+                value={halfDayDate}
+                onChange={(e) => setHalfDayDate(e.target.value)}
+                className="flex-1"
+                data-ocid="leave-card.half_day.input"
+              />
+              {halfDayDate && (
+                <button
+                  type="button"
+                  onClick={() => setHalfDayDate("")}
+                  className="text-muted-foreground hover:text-destructive transition-colors p-1 rounded"
+                  title="Clear half day"
+                  data-ocid="leave-card.half_day.close_button"
+                >
+                  <span className="text-sm leading-none">×</span>
+                </button>
+              )}
+            </div>
+            {halfDayDate && (
+              <p className="text-[11px] text-teal-400 font-medium">
+                Total leave: {numberOfDays} day{numberOfDays !== 1 ? "s" : ""}{" "}
+                (includes 0.5 half day)
+              </p>
+            )}
           </div>
 
           {/* Manager Name */}

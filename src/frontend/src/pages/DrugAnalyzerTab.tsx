@@ -689,7 +689,7 @@ export default function DrugAnalyzerTab() {
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8">
+      <div className="max-w-5xl mx-auto px-6 py-8 space-y-8 overflow-hidden">
         {/* Upload Zones */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-4">

@@ -18,6 +18,7 @@ import { useState } from "react";
 import AdminBroadcastComposer from "../components/broadcast/AdminBroadcastComposer";
 import BroadcastHistory from "../components/broadcast/BroadcastHistory";
 import FDAApprovalsKPI from "../components/dashboard/FDAApprovalsKPI";
+import MoleculeSearchPanel from "../components/dashboard/MoleculeSearchPanel";
 import OrangeBookKPI from "../components/dashboard/OrangeBookKPI";
 import ClockCalendarWidget from "../components/deskboard/ClockCalendarWidget";
 import TeamMessagesWidget from "../components/deskboard/TeamMessagesWidget";
@@ -484,7 +485,7 @@ export default function DeskboardTab({
         )}
       </div>
 
-      {/* Deep Research Section */}
+      {/* Molecule Explorer Section */}
       <div className="rounded-2xl bg-card border border-border/40 shadow-mac-soft overflow-hidden">
         <button
           type="button"
@@ -493,15 +494,15 @@ export default function DeskboardTab({
           data-ocid="dashboard.research.toggle"
         >
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-emerald-500/10 flex items-center justify-center">
-              <FlaskConical className="w-5 h-5 text-emerald-400" />
+            <div className="w-9 h-9 rounded-xl bg-teal-500/10 flex items-center justify-center">
+              <FlaskConical className="w-5 h-5 text-teal-400" />
             </div>
             <div className="text-left">
               <div className="text-sm font-bold text-foreground">
-                Deep Research
+                Molecule Explorer
               </div>
               <div className="text-xs text-muted-foreground">
-                Research any topic in depth
+                Search drug/compound structures
               </div>
             </div>
           </div>
@@ -513,7 +514,7 @@ export default function DeskboardTab({
         </button>
         {researchOpen && (
           <div className="px-5 pb-5 border-t border-border/40 pt-4">
-            <ExploreHerePanel />
+            <MoleculeSearchPanel />
           </div>
         )}
       </div>

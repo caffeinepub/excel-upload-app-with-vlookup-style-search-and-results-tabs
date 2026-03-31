@@ -69,7 +69,7 @@ async function fetchFDAApprovals(): Promise<FDADrug[]> {
   // Query NDA/BLA approvals — no nested sort (not supported by FDA API)
   // Use a recent date range to get fresh data
   const url =
-    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status%3A%22AP%22+AND+(application_number:NDA*+application_number:BLA*)&limit=20";
+    "https://api.fda.gov/drug/drugsfda.json?search=submissions.submission_status%3A%22AP%22&limit=20";
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) throw new Error(`FDA API error: ${res.status}`);
   const data = await res.json();
@@ -194,7 +194,7 @@ export default function FDAApprovalsKPI() {
         </button>
       </div>
 
-      <div className="flex-1 px-4 py-4 flex flex-col gap-2 min-h-[150px] justify-center">
+      <div className="flex-1 px-4 py-3 flex flex-col gap-2 min-h-[150px] justify-center items-center text-center">
         {loading && (
           <div className="space-y-2">
             <Skeleton className="h-4 w-3/4" />
@@ -222,12 +222,12 @@ export default function FDAApprovalsKPI() {
           </p>
         )}
         {!loading && !error && drug && (
-          <div className="space-y-2">
+          <div className="space-y-2 flex flex-col items-center text-center">
             <a
               href={labelUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="flex items-start gap-1 group"
+              className="flex items-center justify-center gap-1 group mx-4"
             >
               <span className="text-sm font-bold text-primary leading-tight group-hover:underline">
                 {getDrugName(drug)}
@@ -240,7 +240,7 @@ export default function FDAApprovalsKPI() {
                   {getGenericName(drug)}
                 </p>
               )}
-            <div className="flex flex-wrap gap-x-3 gap-y-1">
+            <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center">
               <Badge variant="secondary" className="text-[10px]">
                 {appNo}
               </Badge>
@@ -251,7 +251,7 @@ export default function FDAApprovalsKPI() {
               )}
             </div>
             {getLatestApproval(drug) && (
-              <div className="flex items-center gap-1">
+              <div className="flex items-center justify-center gap-1">
                 <span className="inline-block h-1.5 w-1.5 rounded-full bg-green-500" />
                 <span className="text-[11px] text-muted-foreground">
                   Approved:{" "}
