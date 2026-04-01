@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import jsPDF from "jspdf";
 import {
   Download,
   FileText,
@@ -126,75 +127,8 @@ function saveLeaveCards(principal: string, cards: LeaveCardData[]) {
 }
 
 // ─── PDF Generation ────────────────────────────────────────────────────────────
-
-interface jsPDFStatic {
-  new (options?: object): jsPDFInstance;
-}
-
-interface jsPDFInstance {
-  text: (
-    text: string | string[],
-    x: number,
-    y: number,
-    options?: object,
-  ) => jsPDFInstance;
-  addImage: (
-    imageData: HTMLImageElement | string,
-    format: string,
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-  ) => jsPDFInstance;
-  setFontSize: (size: number) => jsPDFInstance;
-  setFont: (fontName: string, fontStyle?: string) => jsPDFInstance;
-  setTextColor: (r: number, g?: number, b?: number) => jsPDFInstance;
-  setDrawColor: (r: number, g?: number, b?: number) => jsPDFInstance;
-  setFillColor: (r: number, g?: number, b?: number) => jsPDFInstance;
-  setLineWidth: (width: number) => jsPDFInstance;
-  line: (x1: number, y1: number, x2: number, y2: number) => jsPDFInstance;
-  rect: (
-    x: number,
-    y: number,
-    width: number,
-    height: number,
-    style?: string,
-  ) => jsPDFInstance;
-  save: (filename: string) => void;
-  getTextWidth: (text: string) => number;
-  splitTextToSize: (text: string, maxWidth: number) => string[];
-  internal: { pageSize: { width: number; height: number } };
-}
-
-let jsPDFLib: jsPDFStatic | null = null;
-
-async function loadJsPDF(): Promise<jsPDFStatic> {
-  if (jsPDFLib) return jsPDFLib;
-  return new Promise((resolve, reject) => {
-    // Check if already loaded
-    if ((window as Window & { jspdf?: { jsPDF: jsPDFStatic } }).jspdf?.jsPDF) {
-      jsPDFLib = (window as Window & { jspdf?: { jsPDF: jsPDFStatic } }).jspdf!
-        .jsPDF;
-      resolve(jsPDFLib!);
-      return;
-    }
-    const script = document.createElement("script");
-    script.src =
-      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
-    script.onload = () => {
-      const w = window as Window & { jspdf?: { jsPDF: jsPDFStatic } };
-      jsPDFLib = w.jspdf?.jsPDF ?? null;
-      if (jsPDFLib) resolve(jsPDFLib);
-      else reject(new Error("jsPDF not found after script load"));
-    };
-    script.onerror = () => reject(new Error("Failed to load jsPDF"));
-    document.head.appendChild(script);
-  });
-}
-
 async function generateLeaveCardPdf(card: LeaveCardData) {
-  const jsPDFClass = await loadJsPDF();
-  const doc = new jsPDFClass({
+  const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",

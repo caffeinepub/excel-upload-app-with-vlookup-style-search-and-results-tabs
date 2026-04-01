@@ -7,6 +7,7 @@ import {
 import {
   Bell,
   Building2,
+  Calculator,
   CalendarCheck,
   CalendarDays,
   CheckSquare,
@@ -55,6 +56,7 @@ const ACTIVITY_TABS: TabId[] = [
   "departments",
   "history",
   "drugAnalyzer",
+  "tgaCalculator",
 ];
 
 const ADMIN_TABS: TabId[] = ["adminUsers", "observeUsers"];
@@ -79,6 +81,7 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
   departments: <Building2 className="h-4 w-4" />,
   userProfile: <UserCircle className="h-4 w-4" />,
   drugAnalyzer: <FlaskConical className="h-4 w-4" />,
+  tgaCalculator: <Calculator className="h-4 w-4" />,
 };
 
 function NavButton({

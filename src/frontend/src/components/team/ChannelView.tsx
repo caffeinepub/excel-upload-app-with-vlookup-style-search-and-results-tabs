@@ -73,7 +73,7 @@ export default function ChannelView({
             .mutateAsync({
               channelId,
               senderName,
-              text: `__seen:${msgId}`,
+              text: `__seen:${msgId}:${callerPrincipal}`,
               fileUrl: null,
               fileName: null,
             })

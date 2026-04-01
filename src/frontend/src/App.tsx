@@ -31,6 +31,7 @@ import { RegularExpenseTab } from "./pages/RegularExpenseTab";
 import RemindersTab from "./pages/RemindersTab";
 import { ResultsTab } from "./pages/ResultsTab";
 import { SearchTab } from "./pages/SearchTab";
+import TGACalculatorTab from "./pages/TGACalculatorTab";
 import TeamTab from "./pages/TeamTab";
 import { TodoTab } from "./pages/TodoTab";
 import { UpdateCheckingTab } from "./pages/UpdateCheckingTab";
@@ -41,6 +42,7 @@ import { AppStateProvider, useAppState } from "./state/appState";
 import {
   Bell,
   Building2,
+  Calculator,
   CalendarCheck,
   CalendarDays,
   CheckSquare,
@@ -85,7 +87,8 @@ export type TabId =
   | "team"
   | "departments"
   | "userProfile"
-  | "drugAnalyzer";
+  | "drugAnalyzer"
+  | "tgaCalculator";
 
 export interface TabDef {
   id: TabId;
@@ -103,11 +106,13 @@ export const ALL_TABS: TabDef[] = [
   { id: "upload", label: "Upload", icon: <Upload className="h-4 w-4" /> },
   { id: "search", label: "Search", icon: <Search className="h-4 w-4" /> },
   { id: "results", label: "Results", icon: <Table2 className="h-4 w-4" /> },
+
   {
     id: "updateChecking",
     label: "Update Checking",
     icon: <RefreshCw className="h-4 w-4" />,
   },
+
   {
     id: "regularExpense",
     label: "Expenses",
@@ -116,12 +121,14 @@ export const ALL_TABS: TabDef[] = [
   { id: "reminders", label: "Reminders", icon: <Bell className="h-4 w-4" /> },
   { id: "todo", label: "Todo", icon: <CheckSquare className="h-4 w-4" /> },
   { id: "notes", label: "Notes", icon: <StickyNote className="h-4 w-4" /> },
+
   {
     id: "attendance",
     label: "Attendance",
     icon: <CalendarCheck className="h-4 w-4" />,
   },
   { id: "customers", label: "Customers", icon: <Users className="h-4 w-4" /> },
+
   {
     id: "calendar",
     label: "Calendar",
@@ -129,32 +136,42 @@ export const ALL_TABS: TabDef[] = [
   },
   { id: "team", label: "Team", icon: <MessageSquare className="h-4 w-4" /> },
   { id: "history", label: "History", icon: <History className="h-4 w-4" /> },
+
   {
     id: "adminUsers",
     label: "Admin Users",
     icon: <UserCog className="h-4 w-4" />,
     adminOnly: true,
   },
+
   {
     id: "observeUsers",
     label: "Observe Users",
     icon: <Eye className="h-4 w-4" />,
     adminOnly: true,
   },
+
   {
     id: "userProfile",
     label: "My Profile",
     icon: <UserCircle className="h-4 w-4" />,
   },
+
   {
     id: "departments",
     label: "Departments",
     icon: <Building2 className="h-4 w-4" />,
   },
+
   {
     id: "drugAnalyzer",
     label: "Drug Analyzer",
     icon: <FlaskConical className="h-4 w-4" />,
+  },
+  {
+    id: "tgaCalculator",
+    label: "TGA Calculator",
+    icon: <Calculator className="h-4 w-4" />,
   },
 ];
 
@@ -256,6 +273,8 @@ function AppContent() {
         return <UserProfileTab />;
       case "drugAnalyzer":
         return <DrugAnalyzerTab />;
+      case "tgaCalculator":
+        return <TGACalculatorTab />;
       default:
         return <DeskboardTab />;
     }

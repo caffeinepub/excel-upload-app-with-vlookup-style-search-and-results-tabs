@@ -17,6 +17,7 @@ import {
 import { useState } from "react";
 import AdminBroadcastComposer from "../components/broadcast/AdminBroadcastComposer";
 import BroadcastHistory from "../components/broadcast/BroadcastHistory";
+import AdminStatusKPI from "../components/dashboard/AdminStatusKPI";
 import FDAApprovalsKPI from "../components/dashboard/FDAApprovalsKPI";
 import MoleculeSearchPanel from "../components/dashboard/MoleculeSearchPanel";
 import OrangeBookKPI from "../components/dashboard/OrangeBookKPI";
@@ -518,6 +519,9 @@ export default function DeskboardTab({
           </div>
         )}
       </div>
+
+      {/* Admin Status KPI */}
+      <AdminStatusKPI />
 
       {/* Latest Announcement pinned at bottom */}
       {isAuthenticated && latestBroadcast && (

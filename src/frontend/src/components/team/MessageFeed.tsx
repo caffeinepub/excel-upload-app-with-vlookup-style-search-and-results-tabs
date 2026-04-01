@@ -811,8 +811,16 @@ export default function MessageFeed({
   );
   const computedBackendSeenByMap = new Map<string, string[]>();
   for (const r of seenReceipts) {
-    const msgId = r.text?.replace("__seen:", "") ?? "";
-    const name = isChannelMessage(r) ? r.senderName : "";
+    // Support both old format "__seen:msgId" and new format "__seen:msgId:principal"
+    const raw = (r.text ?? "").replace("__seen:", "");
+    const parts = raw.split(":");
+    const msgId = parts[0] ?? "";
+    const viewerPrincipal = parts[1] ?? "";
+    // Try to get name from userMap using the principal, fall back to senderName
+    const nameFromMap = viewerPrincipal
+      ? userMap.get(viewerPrincipal) || ""
+      : "";
+    const name = nameFromMap || (isChannelMessage(r) ? r.senderName : "");
     if (name && msgId) {
       const existing = computedBackendSeenByMap.get(msgId) ?? [];
       if (!existing.includes(name)) {
