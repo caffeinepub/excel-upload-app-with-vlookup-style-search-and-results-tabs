@@ -54,6 +54,14 @@ export default function DeskboardTab({
   const dismissBroadcast = useDismissBroadcast();
   const toggleTodo = useToggleTodo();
 
+  // Filter out admin-status internal broadcasts from visible display
+  const realBroadcasts = activeBroadcasts.filter(
+    (b) =>
+      !b.text.startsWith("__ADMINSTATUS__") &&
+      !b.text.startsWith("__ADMINSTATUS_CLEAR__") &&
+      !b.text.startsWith("__STATUSCOMMENT__"),
+  );
+
   const today = new Date().toISOString().split("T")[0];
   const now = Date.now();
 
@@ -85,8 +93,8 @@ export default function DeskboardTab({
   };
 
   const latestBroadcast =
-    activeBroadcasts.length > 0
-      ? [...activeBroadcasts].sort(
+    realBroadcasts.length > 0
+      ? [...realBroadcasts].sort(
           (a, b) => Number(b.createdAt) - Number(a.createdAt),
         )[0]
       : null;
@@ -106,10 +114,10 @@ export default function DeskboardTab({
         </div>
       </div>
 
-      {/* Active Broadcasts — shown to all users */}
-      {isAuthenticated && activeBroadcasts.length > 0 && (
+      {/* Active Broadcasts — shown to all users (admin-status messages excluded) */}
+      {isAuthenticated && realBroadcasts.length > 0 && (
         <div className="space-y-2" data-ocid="dashboard.broadcasts.panel">
-          {activeBroadcasts.map((broadcast) => (
+          {realBroadcasts.map((broadcast) => (
             <div
               key={broadcast.id.toString()}
               className="flex items-start gap-3 px-4 py-3 rounded-xl bg-primary/10 border border-primary/20 shadow-sm"
@@ -187,9 +195,9 @@ export default function DeskboardTab({
               <span className="text-sm font-semibold text-foreground">
                 Broadcast History
               </span>
-              {activeBroadcasts.length > 0 && (
+              {realBroadcasts.length > 0 && (
                 <Badge variant="secondary" className="text-xs">
-                  {activeBroadcasts.length}
+                  {realBroadcasts.length}
                 </Badge>
               )}
             </div>
@@ -214,6 +222,9 @@ export default function DeskboardTab({
           <OrangeBookKPI />
         </div>
       )}
+
+      {/* Admin Status KPI — immediately below FDA KPIs */}
+      <AdminStatusKPI />
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -520,10 +531,7 @@ export default function DeskboardTab({
         )}
       </div>
 
-      {/* Admin Status KPI */}
-      <AdminStatusKPI />
-
-      {/* Latest Announcement pinned at bottom */}
+      {/* Latest Announcement pinned at bottom (admin-status messages excluded) */}
       {isAuthenticated && latestBroadcast && (
         <div className="border-t border-border/40 pt-4">
           <p className="text-xs text-muted-foreground font-medium mb-2 uppercase tracking-wider">

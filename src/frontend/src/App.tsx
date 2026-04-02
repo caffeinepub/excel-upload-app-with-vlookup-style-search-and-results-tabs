@@ -191,9 +191,14 @@ function AppContent() {
 
   const [activeTab, setActiveTab] = useState<TabId>("deskboard");
 
-  // Broadcast popup tracking
-  const { data: activeBroadcasts = [] } =
-    useGetActiveBroadcasts(isAuthenticated);
+  // Broadcast popup tracking — filter out admin-status internal messages
+  const { data: rawBroadcasts = [] } = useGetActiveBroadcasts(isAuthenticated);
+  const activeBroadcasts = rawBroadcasts.filter(
+    (b) =>
+      !b.text.startsWith("__ADMINSTATUS__") &&
+      !b.text.startsWith("__ADMINSTATUS_CLEAR__") &&
+      !b.text.startsWith("__STATUSCOMMENT__"),
+  );
   const [broadcastIndex, setBroadcastIndex] = useState(0);
   const currentBroadcast =
     isAuthenticated && activeBroadcasts.length > 0
