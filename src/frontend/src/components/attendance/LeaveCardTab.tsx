@@ -426,29 +426,28 @@ function NewLeaveCardForm({
         ),
       );
 
-      // Save to localStorage history
+      // Submit to backend first so admin can see it
+      if (!actor) {
+        throw new Error(
+          "Not connected to backend. Please refresh and try again.",
+        );
+      }
+      await actor.submitLeaveRequest(
+        card.employeeName,
+        card.department,
+        card.leaveType,
+        card.fromDate,
+        card.toDate,
+        card.numberOfDays,
+        card.reason,
+        card.managerName,
+        card.halfDayDate ?? "",
+      );
+
+      // Save to localStorage history as local cache
       onSave(card);
 
-      // Also submit to backend so admin can see it across devices
-      if (actor) {
-        try {
-          await actor.submitLeaveRequest(
-            card.employeeName,
-            card.department,
-            card.leaveType,
-            card.fromDate,
-            card.toDate,
-            card.numberOfDays,
-            card.reason,
-            card.managerName,
-            card.halfDayDate ?? "",
-          );
-        } catch {
-          // Non-fatal: localStorage copy is the primary record
-        }
-      }
-
-      toast.success("Leave card submitted! Attendance calendar updated.");
+      toast.success("Leave card submitted! Admin will review your request.");
 
       // Reset form
       setDepartment("");

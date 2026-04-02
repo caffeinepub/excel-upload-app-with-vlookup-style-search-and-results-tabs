@@ -379,7 +379,8 @@ actor {
 
   // ── Leave Requests State ───────────────────────────────────────────────────
   let leaveRequests = Map.empty<Nat, LeaveRequest>();
-  var nextLeaveRequestId = 0;
+  stable var stableLeaveRequests : [(Nat, LeaveRequest)] = [];
+  stable var nextLeaveRequestId = 0;
 
   // New state for extended user profiles
   let fullUserProfiles = Map.empty<Principal, UserProfileFull>();
@@ -2126,6 +2127,7 @@ actor {
     stableChannels := channels.entries().toArray();
     stableChannelMessages := channelMessages.entries().toArray();
     stableDirectMessages := directMessages.entries().toArray();
+    stableLeaveRequests := leaveRequests.entries().toArray();
   };
 
   // Restore mutable maps from stable storage after upgrade
@@ -2139,10 +2141,14 @@ actor {
     for ((k, v) in stableDirectMessages.values()) {
       directMessages.add(k, v);
     };
+    for ((k, v) in stableLeaveRequests.values()) {
+      leaveRequests.add(k, v);
+    };
     // Clear stable backups to free memory
     stableChannels := [];
     stableChannelMessages := [];
     stableDirectMessages := [];
+    stableLeaveRequests := [];
   };
 
 
