@@ -32,6 +32,7 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { AttendanceStatus } from "../../backend";
+import { useActor } from "../../hooks/useActor";
 import { useEditAttendanceEntry } from "../../hooks/useAttendance";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../../hooks/useUserProfile";
@@ -329,6 +330,7 @@ function NewLeaveCardForm({
 }) {
   const { data: profile } = useGetCallerUserProfile();
   const editEntry = useEditAttendanceEntry();
+  const { actor } = useActor();
 
   const [employeeName, setEmployeeName] = useState(profile?.displayName ?? "");
   const [department, setDepartment] = useState("");
@@ -426,6 +428,25 @@ function NewLeaveCardForm({
 
       // Save to localStorage history
       onSave(card);
+
+      // Also submit to backend so admin can see it across devices
+      if (actor) {
+        try {
+          await actor.submitLeaveRequest(
+            card.employeeName,
+            card.department,
+            card.leaveType,
+            card.fromDate,
+            card.toDate,
+            card.numberOfDays,
+            card.reason,
+            card.managerName,
+            card.halfDayDate ?? "",
+          );
+        } catch {
+          // Non-fatal: localStorage copy is the primary record
+        }
+      }
 
       toast.success("Leave card submitted! Attendance calendar updated.");
 
@@ -824,6 +845,7 @@ function LeaveCardHistory({
 export default function LeaveCardTab() {
   const { identity } = useInternetIdentity();
   const principal = identity?.getPrincipal().toString() ?? "";
+  const { actor } = useActor();
 
   const [cards, setCards] = useState<LeaveCardData[]>(() =>
     principal ? loadLeaveCards(principal) : [],
@@ -835,6 +857,64 @@ export default function LeaveCardTab() {
       setCards(loadLeaveCards(principal));
     }
   }, [principal]);
+
+  // Load from backend and merge with localStorage
+  useEffect(() => {
+    if (!actor || !principal) return;
+    actor
+      .getMyLeaveRequests()
+      .then((backendCards) => {
+        if (backendCards.length === 0) return;
+        const localCards = loadLeaveCards(principal);
+        const localIds = new Set(localCards.map((c) => c.id));
+        // Convert backend cards to local format and add ones not already in local storage
+        const fromBackend: LeaveCardData[] = backendCards.map((bc: any) => {
+          const statusKey =
+            bc.status?.pending !== undefined
+              ? "Pending"
+              : bc.status?.approved !== undefined
+                ? "Approved"
+                : bc.status?.rejected !== undefined
+                  ? "Rejected"
+                  : "Pending";
+          return {
+            id: `backend_${bc.id.toString()}`,
+            employeeName: bc.employeeName,
+            department: bc.department,
+            leaveType: bc.leaveType,
+            fromDate: bc.fromDate,
+            toDate: bc.toDate,
+            numberOfDays: Number(bc.numberOfDays),
+            reason: bc.reason,
+            managerName: bc.managerName,
+            halfDayDate: bc.halfDayDate || undefined,
+            submittedAt: new Date(
+              Number(bc.submittedAt) / 1_000_000,
+            ).toISOString(),
+            status: statusKey,
+          };
+        });
+        // Merge: update status of matching local cards, add purely backend ones
+        const merged = [...localCards];
+        for (const bc of fromBackend) {
+          const existingIdx = merged.findIndex(
+            (c) =>
+              c.fromDate === bc.fromDate &&
+              c.toDate === bc.toDate &&
+              c.employeeName === bc.employeeName,
+          );
+          if (existingIdx >= 0) {
+            // Update status from backend
+            merged[existingIdx] = { ...merged[existingIdx], status: bc.status };
+          } else if (!localIds.has(bc.id)) {
+            merged.push(bc);
+          }
+        }
+        setCards(merged);
+        saveLeaveCards(principal, merged);
+      })
+      .catch(() => {});
+  }, [actor, principal]);
 
   // Periodically refresh to pick up admin status changes
   useEffect(() => {

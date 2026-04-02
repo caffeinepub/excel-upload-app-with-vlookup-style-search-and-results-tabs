@@ -61,7 +61,7 @@ import {
   Users,
   XCircle,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { ApprovalStatus, AttendanceStatus } from "../backend";
 import type { AttendanceDayEntry } from "../backend";
@@ -142,39 +142,128 @@ function updateLeaveCardStatus(
 // ── Admin Leave Cards Panel ────────────────────────────────────────────────────
 
 function AdminLeaveCardsPanel() {
-  const [cards, setCards] = useState<LeaveCardData[]>(() =>
-    loadAllLeaveCards(),
-  );
+  const { actor } = useActor();
+  const [cards, setCards] = useState<LeaveCardData[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const [processing, setProcessing] = useState<string | null>(null);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: actor reference is stable
+  const loadFromBackend = useCallback(async () => {
+    if (!actor) return;
+    setIsLoading(true);
+    try {
+      const backendCards = await actor.getLeaveRequestsForAdmin();
+      const mapped: LeaveCardData[] = (backendCards as any[]).map((bc) => {
+        const statusKey =
+          bc.status?.pending !== undefined
+            ? "Pending"
+            : bc.status?.approved !== undefined
+              ? "Approved"
+              : bc.status?.rejected !== undefined
+                ? "Rejected"
+                : "Pending";
+        return {
+          id: bc.id.toString(),
+          employeeName: bc.employeeName,
+          department: bc.department,
+          leaveType: bc.leaveType,
+          fromDate: bc.fromDate,
+          toDate: bc.toDate,
+          numberOfDays: Number(bc.numberOfDays),
+          reason: bc.reason,
+          managerName: bc.managerName,
+          submittedAt: new Date(
+            Number(bc.submittedAt) / 1_000_000,
+          ).toISOString(),
+          status: statusKey,
+          submitterPrincipal: bc.submitterPrincipal?.toString(),
+          backendId: bc.id,
+        };
+      });
+      // Also merge localStorage cards
+      const localCards = loadAllLeaveCards();
+      const backendKeys = new Set(
+        mapped.map((c) => `${c.fromDate}_${c.toDate}_${c.employeeName}`),
+      );
+      const localOnly = localCards.filter(
+        (c) => !backendKeys.has(`${c.fromDate}_${c.toDate}_${c.employeeName}`),
+      );
+      setCards([...mapped, ...localOnly]);
+    } catch {
+      // Fallback to localStorage only
+      setCards(loadAllLeaveCards());
+    } finally {
+      setIsLoading(false);
+    }
+    // biome-ignore lint/correctness/useExhaustiveDependencies: actor is the main dep
+  }, [actor]);
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadFromBackend is stable callback
+  useEffect(() => {
+    loadFromBackend();
+  }, [loadFromBackend]);
+
+  // Poll every 10 seconds
+  // biome-ignore lint/correctness/useExhaustiveDependencies: loadFromBackend is stable callback
+  useEffect(() => {
+    const interval = setInterval(loadFromBackend, 10000);
+    return () => clearInterval(interval);
+  }, [loadFromBackend]);
 
   const pendingCards = cards.filter((c) => c.status === "Pending");
   const historicCards = cards.filter((c) => c.status !== "Pending");
 
-  const refresh = () => setCards(loadAllLeaveCards());
+  const refresh = () => loadFromBackend();
 
-  const handleApprove = async (card: LeaveCardData) => {
-    if (!card.submitterPrincipal) return;
+  const handleApprove = async (
+    card: LeaveCardData & { backendId?: bigint },
+  ) => {
     setProcessing(card.id);
     try {
-      updateLeaveCardStatus(card.submitterPrincipal, card.id, "Approved");
-      refresh();
+      // Try backend first
+      if (actor && (card as any).backendId !== undefined) {
+        await actor.updateLeaveRequestStatus((card as any).backendId, {
+          approved: null,
+        });
+      } else if (card.submitterPrincipal) {
+        updateLeaveCardStatus(card.submitterPrincipal, card.id, "Approved");
+      }
+      await loadFromBackend();
       toast.success(`Leave approved for ${card.employeeName}`);
+    } catch {
+      toast.error("Failed to approve leave request");
     } finally {
       setProcessing(null);
     }
   };
 
-  const handleReject = async (card: LeaveCardData) => {
-    if (!card.submitterPrincipal) return;
+  const handleReject = async (card: LeaveCardData & { backendId?: bigint }) => {
     setProcessing(card.id);
     try {
-      updateLeaveCardStatus(card.submitterPrincipal, card.id, "Rejected");
-      refresh();
+      if (actor && (card as any).backendId !== undefined) {
+        await actor.updateLeaveRequestStatus((card as any).backendId, {
+          rejected: null,
+        });
+      } else if (card.submitterPrincipal) {
+        updateLeaveCardStatus(card.submitterPrincipal, card.id, "Rejected");
+      }
+      await loadFromBackend();
       toast.success(`Leave rejected for ${card.employeeName}`);
+    } catch {
+      toast.error("Failed to reject leave request");
     } finally {
       setProcessing(null);
     }
   };
+
+  if (isLoading && cards.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 gap-3">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <p className="text-sm text-muted-foreground">Loading leave requests…</p>
+      </div>
+    );
+  }
 
   if (cards.length === 0) {
     return (
@@ -186,6 +275,9 @@ function AdminLeaveCardsPanel() {
         <p className="text-sm text-muted-foreground">
           No leave card submissions yet.
         </p>
+        <Button variant="outline" size="sm" onClick={refresh}>
+          <RefreshCw className="h-3.5 w-3.5 mr-1" /> Refresh
+        </Button>
       </div>
     );
   }

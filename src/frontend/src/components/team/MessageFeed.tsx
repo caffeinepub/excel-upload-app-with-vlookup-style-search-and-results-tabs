@@ -816,11 +816,16 @@ export default function MessageFeed({
     const parts = raw.split(":");
     const msgId = parts[0] ?? "";
     const viewerPrincipal = parts[1] ?? "";
-    // Try to get name from userMap using the principal, fall back to senderName
+    // Prefer senderName (set at post time with correct display name),
+    // fall back to userMap lookup, then truncated principal
+    const nameFromSender = isChannelMessage(r) ? r.senderName : "";
     const nameFromMap = viewerPrincipal
       ? userMap.get(viewerPrincipal) || ""
       : "";
-    const name = nameFromMap || (isChannelMessage(r) ? r.senderName : "");
+    const name =
+      nameFromSender ||
+      nameFromMap ||
+      (viewerPrincipal ? `${viewerPrincipal.slice(0, 8)}…` : "");
     if (name && msgId) {
       const existing = computedBackendSeenByMap.get(msgId) ?? [];
       if (!existing.includes(name)) {

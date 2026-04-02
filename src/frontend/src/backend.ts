@@ -431,6 +431,10 @@ export interface backendInterface {
     updateHoliday(id: bigint, name: string, date: bigint, holidayType: string, applicableDepartments: Array<bigint>, description: string): Promise<void>;
     updateReminder(id: bigint, message: string, date: string, time: string, repeatUntilDate: bigint | null): Promise<void>;
     updateUserProfileFull(displayName: string, phone: string, email: string, jobTitle: string, bio: string, avatarUrl: string, departments: Array<string>): Promise<void>;
+    submitLeaveRequest(employeeName: string, department: string, leaveType: string, fromDate: string, toDate: string, numberOfDays: number, reason: string, managerName: string, halfDayDate: string): Promise<bigint>;
+    getMyLeaveRequests(): Promise<Array<any>>;
+    getLeaveRequestsForAdmin(): Promise<Array<any>>;
+    updateLeaveRequestStatus(id: bigint, newStatus: any): Promise<void>;
     uploadFile(filename: string, content: Uint8Array): Promise<bigint>;
 }
 import type { AdminUserInfo as _AdminUserInfo, ApprovalStatus as _ApprovalStatus, AttendanceConfig as _AttendanceConfig, AttendanceDayEntry as _AttendanceDayEntry, AttendanceRecord as _AttendanceRecord, AttendanceStatus as _AttendanceStatus, AttendanceSummary as _AttendanceSummary, BreakPeriod as _BreakPeriod, Budget as _Budget, ChannelMessage as _ChannelMessage, Department as _Department, DirectMessage as _DirectMessage, FileData as _FileData, HistoryEntry as _HistoryEntry, HistoryType as _HistoryType, HolidayEntry as _HolidayEntry, HolidayType as _HolidayType, Reminder as _Reminder, Shift as _Shift, Time as _Time, UserApprovalInfo as _UserApprovalInfo, UserProfile as _UserProfile, UserRole as _UserRole, UserStatusEntry as _UserStatusEntry, UserStatusKind as _UserStatusKind, _CaffeineStorageRefillInformation as __CaffeineStorageRefillInformation, _CaffeineStorageRefillResult as __CaffeineStorageRefillResult } from "./declarations/backend.did.d.ts";
@@ -1891,6 +1895,60 @@ export class Backend implements backendInterface {
         } else {
             const result = await (this.actor as any).adminBulkMarkWeekOff(arg0);
             return result;
+        }
+    }
+    async submitLeaveRequest(arg0: string, arg1: string, arg2: string, arg3: string, arg4: string, arg5: number, arg6: string, arg7: string, arg8: string): Promise<bigint> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).submitLeaveRequest(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).submitLeaveRequest(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8);
+            return result;
+        }
+    }
+    async getMyLeaveRequests(): Promise<Array<any>> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).getMyLeaveRequests();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).getMyLeaveRequests();
+            return result;
+        }
+    }
+    async getLeaveRequestsForAdmin(): Promise<Array<any>> {
+        if (this.processError) {
+            try {
+                const result = await (this.actor as any).getLeaveRequestsForAdmin();
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            const result = await (this.actor as any).getLeaveRequestsForAdmin();
+            return result;
+        }
+    }
+    async updateLeaveRequestStatus(arg0: bigint, arg1: any): Promise<void> {
+        if (this.processError) {
+            try {
+                await (this.actor as any).updateLeaveRequestStatus(arg0, arg1);
+            } catch (e) {
+                this.processError(e);
+                throw new Error('unreachable');
+            }
+        } else {
+            await (this.actor as any).updateLeaveRequestStatus(arg0, arg1);
         }
     }
 }

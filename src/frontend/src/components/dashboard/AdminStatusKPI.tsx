@@ -290,8 +290,8 @@ export default function AdminStatusKPI() {
               <img
                 src={activeStatus.photoB64}
                 alt="Admin status"
-                className="w-full object-cover rounded-none"
-                style={{ maxHeight: 280 }}
+                className="w-full object-contain rounded-none bg-black/5"
+                style={{ maxHeight: "60vh" }}
               />
             </div>
           )}

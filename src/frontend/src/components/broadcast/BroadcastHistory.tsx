@@ -79,11 +79,13 @@ export default function BroadcastHistory({
               {sorted.map((msg) => (
                 <div
                   key={msg.id.toString()}
-                  className="group rounded-lg border border-border bg-muted/40 p-3 flex items-start gap-2"
+                  className="group rounded-lg border border-border bg-muted/40 p-3 flex items-start gap-2 min-w-0"
                   data-ocid="broadcast-history.item"
                 >
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm text-foreground">{msg.text}</p>
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <p className="text-sm text-foreground break-words overflow-hidden max-w-full">
+                      {msg.text}
+                    </p>
                     <div className="flex items-center gap-1 mt-1">
                       <Clock className="h-3 w-3 text-muted-foreground" />
                       <span className="text-xs text-muted-foreground">

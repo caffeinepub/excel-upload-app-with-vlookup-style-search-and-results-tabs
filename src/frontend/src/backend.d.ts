@@ -60,6 +60,24 @@ export interface SharedReport {
     reportTitle: string;
     senderId: Principal;
 }
+
+export type LeaveRequestStatus = "pending" | "approved" | "rejected";
+export interface LeaveRequest {
+    id: bigint;
+    submitterPrincipal: any;
+    employeeName: string;
+    department: string;
+    leaveType: string;
+    fromDate: string;
+    toDate: string;
+    numberOfDays: number;
+    reason: string;
+    managerName: string;
+    halfDayDate: string;
+    submittedAt: bigint;
+    status: { pending: null } | { approved: null } | { rejected: null };
+}
+
 export interface UserStatusEntry {
     status: UserStatusKind;
     principal: Principal;
@@ -334,5 +352,9 @@ export interface backendInterface {
     updateHoliday(id: bigint, name: string, date: bigint, holidayType: string, applicableDepartments: Array<bigint>, description: string): Promise<void>;
     updateReminder(id: bigint, message: string, date: string, time: string, repeatUntilDate: bigint | null): Promise<void>;
     updateUserProfileFull(displayName: string, phone: string, email: string, jobTitle: string, bio: string, avatarUrl: string, departments: Array<string>): Promise<void>;
+    submitLeaveRequest(employeeName: string, department: string, leaveType: string, fromDate: string, toDate: string, numberOfDays: number, reason: string, managerName: string, halfDayDate: string): Promise<bigint>;
+    getMyLeaveRequests(): Promise<Array<LeaveRequest>>;
+    getLeaveRequestsForAdmin(): Promise<Array<LeaveRequest>>;
+    updateLeaveRequestStatus(id: bigint, newStatus: { pending: null } | { approved: null } | { rejected: null }): Promise<void>;
     uploadFile(filename: string, content: Uint8Array): Promise<bigint>;
 }

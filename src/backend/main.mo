@@ -280,6 +280,31 @@ actor {
     departments : [Text];
   };
 
+
+  // ── Leave Request Type ──────────────────────────────────────────────────────
+
+  public type LeaveRequestStatus = {
+    #pending;
+    #approved;
+    #rejected;
+  };
+
+  public type LeaveRequest = {
+    id : Nat;
+    submitterPrincipal : Principal;
+    employeeName : Text;
+    department : Text;
+    leaveType : Text;
+    fromDate : Text;
+    toDate : Text;
+    numberOfDays : Float;
+    reason : Text;
+    managerName : Text;
+    halfDayDate : Text;
+    submittedAt : Time.Time;
+    status : LeaveRequestStatus;
+  };
+
   // ── State ─────────────────────────────────────────────────────────────────
 
   var nextCustomerId = 0;
@@ -350,6 +375,11 @@ actor {
   var nextSharedReportId = 0;
   stable var maintenanceMode : Bool = false;
   let sharedReports = Map.empty<Nat, SharedReport>();
+
+
+  // ── Leave Requests State ───────────────────────────────────────────────────
+  let leaveRequests = Map.empty<Nat, LeaveRequest>();
+  var nextLeaveRequestId = 0;
 
   // New state for extended user profiles
   let fullUserProfiles = Map.empty<Principal, UserProfileFull>();
@@ -2024,6 +2054,74 @@ actor {
   };
 
   // Persist mutable maps to stable storage before upgrade
+
+  // === Leave Request Management ===
+
+  public shared ({ caller }) func submitLeaveRequest(
+    employeeName : Text,
+    department : Text,
+    leaveType : Text,
+    fromDate : Text,
+    toDate : Text,
+    numberOfDays : Float,
+    reason : Text,
+    managerName : Text,
+    halfDayDate : Text,
+  ) : async Nat {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can submit leave requests");
+    };
+
+    let req : LeaveRequest = {
+      id = nextLeaveRequestId;
+      submitterPrincipal = caller;
+      employeeName;
+      department;
+      leaveType;
+      fromDate;
+      toDate;
+      numberOfDays;
+      reason;
+      managerName;
+      halfDayDate;
+      submittedAt = Time.now();
+      status = #pending;
+    };
+
+    leaveRequests.add(req.id, req);
+    nextLeaveRequestId += 1;
+    req.id;
+  };
+
+  public query ({ caller }) func getMyLeaveRequests() : async [LeaveRequest] {
+    if (not AccessControl.hasPermission(accessControlState, caller, #user)) {
+      Runtime.trap("Unauthorized: Only users can view their leave requests");
+    };
+    leaveRequests.values().filter(
+      func(r : LeaveRequest) : Bool { r.submitterPrincipal == caller }
+    ).toArray();
+  };
+
+  public query ({ caller }) func getLeaveRequestsForAdmin() : async [LeaveRequest] {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can view all leave requests");
+    };
+    leaveRequests.values().toArray();
+  };
+
+  public shared ({ caller }) func updateLeaveRequestStatus(id : Nat, newStatus : LeaveRequestStatus) : async () {
+    if (not AccessControl.isAdmin(accessControlState, caller)) {
+      Runtime.trap("Unauthorized: Only admins can update leave request status");
+    };
+
+    switch (leaveRequests.get(id)) {
+      case (null) { Runtime.trap("Leave request not found") };
+      case (?existing) {
+        leaveRequests.add(id, { existing with status = newStatus });
+      };
+    };
+  };
+
   system func preupgrade() {
     stableChannels := channels.entries().toArray();
     stableChannelMessages := channelMessages.entries().toArray();

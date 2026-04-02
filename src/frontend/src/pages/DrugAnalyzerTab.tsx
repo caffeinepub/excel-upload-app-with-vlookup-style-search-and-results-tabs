@@ -668,7 +668,7 @@ export default function DrugAnalyzerTab() {
   const similarity = bothDone ? computeSimilarity(drugA, drugB) : 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground min-h-screen">
+    <div className="bg-background text-foreground overflow-x-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-primary/20 to-primary/5 border-b border-border">
         <div className="max-w-5xl mx-auto px-6 py-8">
@@ -776,7 +776,7 @@ export default function DrugAnalyzerTab() {
               </CardHeader>
               {/* Fix 1: overflow-hidden + table-fixed */}
               <CardContent className="p-0 overflow-hidden">
-                <div className="w-full overflow-x-auto">
+                <div className="w-full overflow-x-auto max-w-full">
                   <table className="w-full table-fixed min-w-[480px]">
                     <thead>
                       <tr className="border-b border-border/50 bg-muted/50">
