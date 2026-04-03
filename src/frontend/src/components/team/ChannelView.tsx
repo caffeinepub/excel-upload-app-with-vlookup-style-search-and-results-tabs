@@ -46,6 +46,8 @@ export default function ChannelView({
     }
   }, [channelIdStr]);
 
+  const hasPostedInitialSeenRef = useRef(false);
+
   // biome-ignore lint/correctness/useExhaustiveDependencies: postMessage is stable mutation
   useEffect(() => {
     if (!callerPrincipal || messages.length === 0) return;
@@ -53,8 +55,11 @@ export default function ChannelView({
     const newIds = messageIds.filter(
       (id) => !prevMessagesRef.current.includes(id),
     );
-    if (newIds.length > 0) {
-      markMessagesSeen(channelIdStr, callerPrincipal, newIds);
+    // Post seen receipts if there are new messages OR on initial channel load
+    const isInitialLoad = !hasPostedInitialSeenRef.current;
+    if (newIds.length > 0 || isInitialLoad) {
+      hasPostedInitialSeenRef.current = true;
+      markMessagesSeen(channelIdStr, callerPrincipal, messageIds);
       prevMessagesRef.current = messageIds;
 
       const storageKey = `seenPosted_${channelIdStr}`;

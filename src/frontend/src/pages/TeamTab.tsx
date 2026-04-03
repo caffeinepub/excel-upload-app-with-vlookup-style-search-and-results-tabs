@@ -54,6 +54,14 @@ import { getInitials } from "../lib/avatarUtils";
 
 const DM_USERS_KEY_PREFIX = "dmUsers_";
 
+// Mark all team messages as seen in the dashboard widget
+const LAST_SEEN_KEY = "teamMessagesLastSeen";
+function markTeamMessagesSeen() {
+  try {
+    localStorage.setItem(LAST_SEEN_KEY, String(Date.now()));
+  } catch {}
+}
+
 function loadDmUsers(principal: string): TeamUser[] {
   try {
     const raw = localStorage.getItem(`${DM_USERS_KEY_PREFIX}${principal}`);
@@ -182,6 +190,11 @@ export default function TeamTab() {
     }
   }, [callerPrincipal]);
 
+  // Mark all messages as seen whenever Team tab is visited
+  useEffect(() => {
+    markTeamMessagesSeen();
+  }, []);
+
   useEffect(() => {
     if (allUsers.length === 0) return;
     setDmUsers((prev) => {
@@ -228,6 +241,7 @@ export default function TeamTab() {
     setSelectedDmPrincipal(null);
     setSearchQuery("");
     setShowSearch(false);
+    markTeamMessagesSeen();
   }, []);
 
   const handleSelectDm = useCallback(

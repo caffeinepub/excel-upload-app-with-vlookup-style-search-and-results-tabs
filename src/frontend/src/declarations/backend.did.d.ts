@@ -155,6 +155,24 @@ export interface Holiday {
 export interface HolidayEntry { 'holidayType' : HolidayType, 'date' : string }
 export type HolidayType = { 'festival' : null } |
   { 'companyLeave' : null };
+export interface LeaveRequest {
+  'id' : bigint,
+  'submitterPrincipal' : Principal,
+  'employeeName' : string,
+  'department' : string,
+  'leaveType' : string,
+  'fromDate' : string,
+  'toDate' : string,
+  'numberOfDays' : number,
+  'reason' : string,
+  'managerName' : string,
+  'halfDayDate' : string,
+  'submittedAt' : Time,
+  'status' : LeaveRequestStatus,
+}
+export type LeaveRequestStatus = { 'pending' : null } |
+  { 'approved' : null } |
+  { 'rejected' : null };
 export interface Note { 'id' : bigint, 'text' : string, 'lastUpdated' : Time }
 export interface PublicUserInfo {
   'principal' : Principal,
@@ -378,7 +396,14 @@ export interface _SERVICE {
     [string, string, string, string, string, string, Array<string>],
     undefined
   >,
-  'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,
+  'submitLeaveRequest' : ActorMethod<
+    [string, string, string, string, string, number, string, string, string],
+    bigint
+  >,
+  'getMyLeaveRequests' : ActorMethod<[], Array<LeaveRequest>>,
+  'getLeaveRequestsForAdmin' : ActorMethod<[], Array<LeaveRequest>>,
+  'updateLeaveRequestStatus' : ActorMethod<[bigint, LeaveRequestStatus], undefined>,
+    'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];
