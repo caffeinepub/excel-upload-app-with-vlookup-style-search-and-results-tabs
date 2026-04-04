@@ -139,6 +139,35 @@ function updateLeaveCardStatus(
   }
 }
 
+// Helper: get all calendar dates between two date strings
+function getDatesInRange(from: string, to: string): string[] {
+  if (!from || !to) return [];
+  const dates: string[] = [];
+  const start = new Date(from);
+  const end = new Date(to);
+  if (end < start) return [];
+  const current = new Date(start);
+  while (current <= end) {
+    dates.push(current.toISOString().slice(0, 10));
+    current.setDate(current.getDate() + 1);
+  }
+  return dates;
+}
+
+// Helper: map leave type string to AttendanceStatus
+function leaveTypeToAttendanceStatus(leaveType: string): AttendanceStatus {
+  switch (leaveType) {
+    case "Festival Leave":
+      return AttendanceStatus.festival;
+    case "Half Day":
+      return AttendanceStatus.halfDay;
+    case "Company Leave":
+      return AttendanceStatus.companyLeave;
+    default:
+      return AttendanceStatus.leave;
+  }
+}
+
 // ── Admin Leave Cards Panel ────────────────────────────────────────────────────
 
 function AdminLeaveCardsPanel() {
@@ -216,21 +245,58 @@ function AdminLeaveCardsPanel() {
   const refresh = () => loadFromBackend();
 
   const handleApprove = async (
-    card: LeaveCardData & { backendId?: bigint },
+    card: LeaveCardData & { backendId?: bigint; submitterPrincipal?: string },
   ) => {
     setProcessing(card.id);
     try {
-      // Try backend first
-      if (actor && (card as any).backendId !== undefined) {
+      if (!actor) throw new Error("No backend actor");
+
+      // 1. Update leave request status to approved
+      if ((card as any).backendId !== undefined) {
         await actor.updateLeaveRequestStatus((card as any).backendId, {
           approved: null,
         });
       } else if (card.submitterPrincipal) {
         updateLeaveCardStatus(card.submitterPrincipal, card.id, "Approved");
       }
+
+      // 2. Mark attendance for all leave dates for the submitter user
+      if (card.submitterPrincipal && card.fromDate && card.toDate) {
+        const { Principal } = await import("@dfinity/principal");
+        const employeePrincipal = Principal.fromText(card.submitterPrincipal);
+        const leaveStatus = leaveTypeToAttendanceStatus(card.leaveType);
+        const dates = getDatesInRange(card.fromDate, card.toDate);
+        await Promise.all(
+          dates.map((date) =>
+            actor.adminUpdateUserAttendance(
+              employeePrincipal,
+              date,
+              { [leaveStatus]: null } as any,
+              [],
+              [],
+              card.reason || "Approved Leave",
+            ),
+          ),
+        );
+        // Also mark half day date if present
+        if ((card as any).halfDayDate) {
+          await actor.adminUpdateUserAttendance(
+            employeePrincipal,
+            (card as any).halfDayDate,
+            { [AttendanceStatus.halfDay]: null } as any,
+            [],
+            [],
+            "Half Day Leave",
+          );
+        }
+      }
+
       await loadFromBackend();
-      toast.success(`Leave approved for ${card.employeeName}`);
-    } catch {
+      toast.success(
+        `Leave approved for ${card.employeeName} — attendance updated`,
+      );
+    } catch (err) {
+      console.error("Failed to approve leave:", err);
       toast.error("Failed to approve leave request");
     } finally {
       setProcessing(null);

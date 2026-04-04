@@ -31,9 +31,7 @@ import {
 } from "lucide-react";
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { AttendanceStatus } from "../../backend";
 import { useActor } from "../../hooks/useActor";
-import { useEditAttendanceEntry } from "../../hooks/useAttendance";
 import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../../hooks/useUserProfile";
 import { loadLogoAsImage } from "../../lib/export/branding";
@@ -80,33 +78,6 @@ function countWorkingDays(from: string, to: string): number {
     current.setDate(current.getDate() + 1);
   }
   return count;
-}
-
-function getLeaveStatus(leaveType: LeaveType): AttendanceStatus {
-  switch (leaveType) {
-    case "Festival Leave":
-      return AttendanceStatus.festival;
-    case "Half Day":
-      return AttendanceStatus.halfDay;
-    case "Company Leave":
-      return AttendanceStatus.companyLeave;
-    default:
-      return AttendanceStatus.leave;
-  }
-}
-
-function getDatesInRange(from: string, to: string): string[] {
-  if (!from || !to) return [];
-  const dates: string[] = [];
-  const start = new Date(from);
-  const end = new Date(to);
-  if (end < start) return [];
-  const current = new Date(start);
-  while (current <= end) {
-    dates.push(current.toISOString().slice(0, 10));
-    current.setDate(current.getDate() + 1);
-  }
-  return dates;
 }
 
 function getLocalStorageKey(principal: string) {
@@ -329,7 +300,6 @@ function NewLeaveCardForm({
   onSave: (card: LeaveCardData) => void;
 }) {
   const { data: profile } = useGetCallerUserProfile();
-  const editEntry = useEditAttendanceEntry();
   const { actor } = useActor();
 
   const [employeeName, setEmployeeName] = useState(profile?.displayName ?? "");
@@ -407,26 +377,9 @@ function NewLeaveCardForm({
 
     try {
       const card = buildCard();
-      const leaveStatus = getLeaveStatus(leaveType);
-      const dates = getDatesInRange(fromDate, toDate);
 
-      // Save each date to attendance calendar
-      await Promise.all(
-        dates.map((date) =>
-          editEntry.mutateAsync({
-            date,
-            entry: {
-              status: leaveStatus,
-              checkIn: undefined,
-              checkOut: undefined,
-              note: reason,
-              workingTime: BigInt(0),
-            },
-          }),
-        ),
-      );
-
-      // Submit to backend first so admin can see it
+      // Only submit to backend — do NOT mark attendance yet.
+      // Attendance will be marked only after admin approves the request.
       if (!actor) {
         throw new Error(
           "Not connected to backend. Please refresh and try again.",
@@ -694,7 +647,7 @@ function NewLeaveCardForm({
 
           <Button
             onClick={handleSubmit}
-            disabled={isSubmitting || editEntry.isPending}
+            disabled={isSubmitting}
             className="gap-2"
             data-ocid="leave-card.submit_button"
             tabIndex={0}
@@ -709,8 +662,9 @@ function NewLeaveCardForm({
         </div>
 
         <p className="text-xs text-muted-foreground mt-3">
-          Submitting will automatically update your attendance calendar for the
-          selected dates. You can also download a PDF copy for your records.
+          Your leave request will be sent to admin for approval. Attendance will
+          be updated only after admin approves your request. You can also
+          download a PDF copy for your records.
         </p>
       </CardContent>
     </Card>
