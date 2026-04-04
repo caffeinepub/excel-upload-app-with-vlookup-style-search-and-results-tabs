@@ -740,7 +740,27 @@ export const idlFactory = ({ IDL }) => {
     'createdBy' : IDL.Principal,
   });
   
-  return IDL.Service({
+  const LeaveRequestStatus = IDL.Variant({
+    'pending' : IDL.Null,
+    'approved' : IDL.Null,
+    'rejected' : IDL.Null,
+  });
+  const LeaveRequest = IDL.Record({
+    'id' : IDL.Nat,
+    'submitterPrincipal' : IDL.Principal,
+    'employeeName' : IDL.Text,
+    'department' : IDL.Text,
+    'leaveType' : IDL.Text,
+    'fromDate' : IDL.Text,
+    'toDate' : IDL.Text,
+    'numberOfDays' : IDL.Float64,
+    'reason' : IDL.Text,
+    'managerName' : IDL.Text,
+    'halfDayDate' : IDL.Text,
+    'submittedAt' : Time,
+    'status' : LeaveRequestStatus,
+  });
+    return IDL.Service({
     '_caffeineStorageBlobIsLive' : IDL.Func(
         [IDL.Vec(IDL.Nat8)],
         [IDL.Bool],
@@ -976,6 +996,14 @@ export const idlFactory = ({ IDL }) => {
         [],
         [],
       ),
+    'submitLeaveRequest' : IDL.Func(
+        [IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Text, IDL.Float64, IDL.Text, IDL.Text, IDL.Text],
+        [IDL.Nat],
+        [],
+      ),
+    'getMyLeaveRequests' : IDL.Func([], [IDL.Vec(LeaveRequest)], ['query']),
+    'getLeaveRequestsForAdmin' : IDL.Func([], [IDL.Vec(LeaveRequest)], ['query']),
+    'updateLeaveRequestStatus' : IDL.Func([IDL.Nat, LeaveRequestStatus], [], []),
     'uploadFile' : IDL.Func([IDL.Text, IDL.Vec(IDL.Nat8)], [IDL.Nat], []),
   });
 };
