@@ -19,6 +19,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Loader2,
   Pencil,
@@ -38,7 +39,6 @@ import {
   useGetCustomers,
   useUpdateCustomer,
 } from "../hooks/useCustomers";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 export default function CustomersTab() {
   const { identity } = useInternetIdentity();

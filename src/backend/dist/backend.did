@@ -1,0 +1,450 @@
+type _ImmutableObjectStorageRefillResult = 
+ record {
+   success: opt bool;
+   topped_up_amount: opt nat;
+ };
+type _ImmutableObjectStorageRefillInformation = record {
+                                                  proposed_top_up_amount:
+                                                   opt nat;};
+type _ImmutableObjectStorageCreateCertificateResult = 
+ record {
+   blob_hash: text;
+   method: text;
+ };
+type UserStatusKind = 
+ variant {
+   away;
+   busy;
+   offline;
+   online;
+ };
+type UserStatusEntry = 
+ record {
+   "principal": principal;
+   status: UserStatusKind;
+   updatedAt: Time;
+ };
+type UserRole = 
+ variant {
+   admin;
+   guest;
+   user;
+ };
+type UserProfileFull = 
+ record {
+   avatarUrl: text;
+   bio: text;
+   departments: vec text;
+   displayName: text;
+   email: text;
+   jobTitle: text;
+   phone: text;
+ };
+type UserProfile = 
+ record {
+   departmentId: opt nat;
+   displayName: text;
+   profilePicture: opt blob;
+ };
+type UserApprovalInfo = 
+ record {
+   "principal": principal;
+   status: ApprovalStatus;
+ };
+type TodoItem = 
+ record {
+   completed: bool;
+   id: nat;
+   "text": text;
+   timestamp: Time;
+ };
+type Time = int;
+type Shift = 
+ record {
+   clockIn: Time;
+   clockOut: opt Time;
+ };
+type SharedReport = 
+ record {
+   id: nat;
+   recipientIds: vec principal;
+   reportData: text;
+   reportTitle: text;
+   senderId: principal;
+   timestamp: Time;
+ };
+type Reminder = 
+ record {
+   createdAt: Time;
+   date: text;
+   id: nat;
+   message: text;
+   repeatUntilDate: opt int;
+   time: text;
+   updatedAt: opt Time;
+ };
+type PublicUserInfo = 
+ record {
+   displayName: text;
+   "principal": principal;
+ };
+type Note = 
+ record {
+   id: nat;
+   lastUpdated: Time;
+   "text": text;
+ };
+type LeaveRequestStatus = 
+ variant {
+   approved;
+   pending;
+   rejected;
+ };
+type LeaveRequest = 
+ record {
+   department: text;
+   employeeName: text;
+   fromDate: text;
+   halfDayDate: text;
+   id: nat;
+   leaveType: text;
+   managerName: text;
+   numberOfDays: float64;
+   reason: text;
+   status: LeaveRequestStatus;
+   submittedAt: Time;
+   submitterPrincipal: principal;
+   toDate: text;
+ };
+type HolidayType = 
+ variant {
+   companyLeave;
+   festival;
+ };
+type HolidayEntry = 
+ record {
+   date: text;
+   holidayType: HolidayType;
+ };
+type Holiday = 
+ record {
+   applicableDepartments: vec nat;
+   date: int;
+   description: text;
+   holidayType: text;
+   id: nat;
+   name: text;
+ };
+type HistoryType = 
+ variant {
+   budgetChange;
+   expenseChange;
+   results;
+   search;
+   updateChecking;
+   upload;
+ };
+type HistoryEntry = 
+ record {
+   details: text;
+   entryType: HistoryType;
+   id: nat;
+   timestamp: Time;
+   user: principal;
+ };
+type FileData = 
+ record {
+   content: blob;
+   filename: text;
+   id: nat;
+   uploadedAt: Time;
+   uploader: principal;
+ };
+type ExpenseEntry = 
+ record {
+   amount: nat;
+   category: text;
+   date: text;
+   description: text;
+   id: nat;
+   time: Time;
+ };
+type DirectMessage = 
+ record {
+   createdAt: Time;
+   fileName: opt text;
+   fileUrl: opt text;
+   fromPrincipal: principal;
+   id: nat;
+   "text": text;
+   toPrincipal: principal;
+ };
+type Department = 
+ record {
+   createdBy: principal;
+   id: nat;
+   name: text;
+ };
+type Customer = 
+ record {
+   address: text;
+   company: text;
+   createdAt: Time;
+   email: text;
+   id: nat;
+   name: text;
+   phoneNumber: text;
+   workDetails: text;
+ };
+type ChannelMessage = 
+ record {
+   channelId: nat;
+   createdAt: Time;
+   fileName: opt text;
+   fileUrl: opt text;
+   id: nat;
+   senderId: principal;
+   senderName: text;
+   "text": text;
+ };
+type Channel = 
+ record {
+   createdAt: Time;
+   createdBy: principal;
+   id: nat;
+   name: text;
+ };
+type CalendarEvent = 
+ record {
+   createdBy: principal;
+   dateTime: nat;
+   description: text;
+   id: nat;
+   isAdminOnly: bool;
+   title: text;
+ };
+type Budget = 
+ record {
+   dayLimit: nat;
+   lastUpdated: text;
+   monthlyLimit: nat;
+   savingsGoal: nat;
+ };
+type BroadcastMessage = 
+ record {
+   createdAt: Time;
+   createdBy: principal;
+   id: nat;
+   "text": text;
+ };
+type BreakPeriod = 
+ record {
+   end: Time;
+   start: Time;
+ };
+type AttendanceSummary = 
+ record {
+   breakdown: vec record {
+                    text;
+                    AttendanceDayEntry;
+                  };
+   companyLeaveDays: nat;
+   festivalDays: nat;
+   halfDays: nat;
+   leaveDays: nat;
+   presentDays: nat;
+   totalDays: nat;
+   totalWorkingTime: nat;
+   weeklyOffDays: nat;
+ };
+type AttendanceStatus = 
+ variant {
+   companyLeave;
+   festival;
+   halfDay;
+   holiday;
+   leave;
+   present;
+   weeklyOff;
+ };
+type AttendanceRecord = 
+ record {
+   breaks: vec BreakPeriod;
+   date: text;
+   employeePrincipal: principal;
+   notes: opt text;
+   shifts: vec Shift;
+ };
+type AttendanceDayEntry = 
+ record {
+   checkIn: opt Time;
+   checkOut: opt Time;
+   note: text;
+   status: AttendanceStatus;
+   workingTime: nat;
+ };
+type AttendanceConfig = 
+ record {
+   leavePolicy: nat;
+   regularWorkingTime: nat;
+   weeklyOffDays: vec nat;
+ };
+type ApprovalStatus = 
+ variant {
+   approved;
+   pending;
+   rejected;
+ };
+type AdminUserInfo = 
+ record {
+   displayName: text;
+   "principal": principal;
+   status: ApprovalStatus;
+ };
+service : {
+  _immutableObjectStorageBlobsAreLive: (hashes: vec blob) -> (vec bool) query;
+  _immutableObjectStorageBlobsToDelete: () -> (vec blob) query;
+  _immutableObjectStorageConfirmBlobDeletion: (blobs: vec blob) -> ();
+  _immutableObjectStorageCreateCertificate: (blobHash: text) ->
+   (_ImmutableObjectStorageCreateCertificateResult);
+  _immutableObjectStorageRefillCashier: (refillInformation:
+   opt _ImmutableObjectStorageRefillInformation) ->
+   (_ImmutableObjectStorageRefillResult);
+  _immutableObjectStorageUpdateGatewayPrincipals: () -> ();
+  _initializeAccessControl: () -> ();
+  addBreakToRecord: (date: text, newBreak: BreakPeriod) -> ();
+  addCustomer: (name: text, email: text, phoneNumber: text, address: 
+   text, company: text, workDetails: text) -> (nat);
+  addExpense: (amount: nat, category: text, description: text, date: 
+   text) -> (nat);
+  addGlobalHoliday: (date: text, holidayType: HolidayType) -> ();
+  addHistory: (entryType: HistoryType, details: text) -> (nat);
+  addTodo: ("text": text) -> (nat);
+  adminAssignUserToDepartment: (user: principal, departmentId: nat) -> ();
+  adminBulkMarkWeekOff: (date: text) -> (nat);
+  adminUpdateUserAttendance: (employee: principal, date: text, dayType:
+   AttendanceStatus, checkInNs: opt int, checkOutNs: opt int, workNote:
+   text) -> ();
+  assignCallerUserRole: (user: principal, role: UserRole) -> ();
+  assignToDepartment: (departmentId: nat) -> ();
+  createBroadcast: ("text": text) -> (nat);
+  createCalendarEvent: (title: text, dateTime: nat, description: text,
+   isAdminOnly: bool) -> (nat);
+  createChannel: (name: text) -> (nat);
+  createDepartment: (name: text) -> (nat);
+  createHoliday: (name: text, date: int, holidayType: text,
+   applicableDepartments: vec nat, description: text) -> (nat);
+  createOrUpdateAttendanceRecord: (date: text, shift: Shift, breaks:
+   vec BreakPeriod, notes: opt text) -> ();
+  createReminder: (message: text, date: text, time: text, repeatUntilDate:
+   opt int) -> (nat);
+  deleteCalendarEvent: (id: nat) -> ();
+  deleteChannel: (id: nat) -> ();
+  deleteChannelMessage: (messageId: nat) -> ();
+  deleteCustomer: (id: nat) -> ();
+  deleteDepartment: (id: nat) -> ();
+  deleteDirectMessage: (messageId: nat) -> ();
+  deleteExpense: (id: nat) -> ();
+  deleteHoliday: (id: nat) -> ();
+  deleteNote: (id: nat) -> ();
+  deleteReminder: (id: nat) -> ();
+  deleteSharedExpenseReport: (reportId: nat) -> ();
+  deleteTodo: (id: nat) -> ();
+  dismissBroadcast: (id: nat) -> ();
+  editChannelMessage: (messageId: nat, newText: text) -> ();
+  editDirectMessage: (messageId: nat, newText: text) -> ();
+  forceClaimAdmin: (userToken: text) -> (bool);
+  getActiveBroadcasts: () -> (vec BroadcastMessage) query;
+  getAllCalendarEvents: () -> (vec CalendarEvent) query;
+  getAllRegisteredUsersPublic: () -> (vec PublicUserInfo) query;
+  getAllUsersForAdmin: () -> (vec AdminUserInfo) query;
+  getAttendanceConfig: () -> (opt AttendanceConfig) query;
+  getAttendanceEntries: () -> (vec record {
+                                     text;
+                                     AttendanceDayEntry;
+                                   }) query;
+  getAttendanceRecords: () -> (vec record {
+                                     text;
+                                     AttendanceRecord;
+                                   }) query;
+  getAttendanceSummary: (month: text) -> (AttendanceSummary) query;
+  getBroadcastHistory: () -> (vec BroadcastMessage) query;
+  getBudget: () -> (opt Budget) query;
+  getCalendarEvents: () -> (vec CalendarEvent) query;
+  getCallerUserProfile: () -> (opt UserProfile) query;
+  getCallerUserRole: () -> (UserRole) query;
+  getChannelMessages: (channelId: nat) -> (vec ChannelMessage) query;
+  getCustomers: () -> (vec Customer) query;
+  getDepartment: (departmentId: nat) -> (opt Department) query;
+  getDirectMessages: (otherPrincipal: principal) -> (vec DirectMessage) query;
+  getEmployeeAttendanceDayEntries: (employee: principal) ->
+   (vec record {
+          text;
+          AttendanceDayEntry;
+        }) query;
+  getEmployeeAttendanceRecords: (employee: principal) ->
+   (vec record {
+          text;
+          AttendanceRecord;
+        }) query;
+  getExpenses: () -> (vec ExpenseEntry) query;
+  getFile: (id: nat) -> (opt FileData) query;
+  getGlobalHolidays: () -> (vec HolidayEntry) query;
+  getHistory: () -> (vec HistoryEntry) query;
+  getHolidays: () -> (vec Holiday) query;
+  getLeaveRequestsForAdmin: () -> (vec LeaveRequest) query;
+  getMaintenanceMode: () -> (bool) query;
+  getMyLeaveRequests: () -> (vec LeaveRequest) query;
+  getNotes: () -> (vec Note) query;
+  getReminders: () -> (vec Reminder) query;
+  getRemindersForDate: (dateMs: int) -> (vec Reminder) query;
+  getSharedReports: () -> (vec SharedReport) query;
+  getTodos: () -> (vec TodoItem) query;
+  getUserProfile: (user: principal) -> (opt UserProfile) query;
+  getUserStatuses: () -> (vec UserStatusEntry) query;
+  getUsersInDepartment: (departmentId: text) -> (vec UserProfileFull) query;
+  grantCustomDatePermission: (user: principal) -> ();
+  hasCustomDatePermission: () -> (bool) query;
+  isAdminInitialized: () -> (bool) query;
+  isCallerAdmin: () -> (bool) query;
+  isCallerApproved: () -> (bool) query;
+  isHolidayDate: (dateStr: text) -> (bool) query;
+  listApprovals: () -> (vec UserApprovalInfo) query;
+  listChannels: () -> (vec Channel) query;
+  listDepartments: () -> (vec Department) query;
+  postChannelMessage: (channelId: nat, senderName: text, "text": text,
+   fileUrl: opt text, fileName: opt text) -> (nat);
+  removeGlobalHoliday: (date: text) -> ();
+  removeUserCompletely: (user: principal) -> ();
+  requestApproval: () -> ();
+  revokeCustomDatePermission: (user: principal) -> ();
+  saveAttendanceConfig: (config: AttendanceConfig) -> ();
+  saveAttendanceEntry: (date: text, entry: AttendanceDayEntry) -> ();
+  saveBudget: (budget: Budget) -> ();
+  saveCallerUserProfile: (profile: UserProfile) -> ();
+  saveNote: (id: nat, "text": text) -> (nat);
+  sendDirectMessage: (toPrincipal: principal, "text": text, fileUrl:
+   opt text, fileName: opt text) -> (nat);
+  setApproval: (user: principal, status: ApprovalStatus) -> ();
+  setHolidayForAllUsers: (date: text, holidayName: text, holidayType:
+   text) -> ();
+  setMaintenanceMode: (enabled: bool) -> (bool);
+  setUserStatus: (status: UserStatusKind) -> ();
+  shareExpenseReport: (recipientIds: vec principal, reportTitle: text,
+   reportData: text) -> ();
+  submitLeaveRequest: (employeeName: text, department: text, leaveType: 
+   text, fromDate: text, toDate: text, numberOfDays: float64, reason: 
+   text, managerName: text, halfDayDate: text) -> (nat);
+  toggleTodo: (id: nat) -> ();
+  updateCustomer: (id: nat, name: text, email: text, phoneNumber: text,
+   address: text, company: text, workDetails: text) -> ();
+  updateDepartment: (id: nat, newName: text) -> ();
+  updateHoliday: (id: nat, name: text, date: int, holidayType: text,
+   applicableDepartments: vec nat, description: text) -> ();
+  updateLeaveRequestStatus: (id: nat, newStatus: LeaveRequestStatus) -> ();
+  updateReminder: (id: nat, message: text, date: text, time: text,
+   repeatUntilDate: opt int) -> ();
+  updateUserProfileFull: (displayName: text, phone: text, email: text,
+   jobTitle: text, bio: text, avatarUrl: text, departments: vec text) -> ();
+  uploadFile: (filename: text, content: blob) -> (nat);
+}

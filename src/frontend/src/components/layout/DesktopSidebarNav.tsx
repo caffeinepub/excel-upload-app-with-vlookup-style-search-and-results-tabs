@@ -5,7 +5,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
+  Atom,
   Bell,
+  BookOpen,
   Building2,
   Calculator,
   CalendarCheck,
@@ -57,6 +59,8 @@ const ACTIVITY_TABS: TabId[] = [
   "history",
   "drugAnalyzer",
   "tgaCalculator",
+  "xrpdCalculator",
+  "patentTracker",
 ];
 
 const ADMIN_TABS: TabId[] = ["adminUsers", "observeUsers"];
@@ -82,6 +86,8 @@ const TAB_ICONS: Record<TabId, React.ReactNode> = {
   userProfile: <UserCircle className="h-4 w-4" />,
   drugAnalyzer: <FlaskConical className="h-4 w-4" />,
   tgaCalculator: <Calculator className="h-4 w-4" />,
+  xrpdCalculator: <Atom className="h-4 w-4" />,
+  patentTracker: <BookOpen className="h-4 w-4" />,
 };
 
 function NavButton({

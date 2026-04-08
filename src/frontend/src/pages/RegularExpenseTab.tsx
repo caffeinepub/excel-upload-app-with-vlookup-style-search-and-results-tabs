@@ -36,6 +36,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertCircle,
   DollarSign,
@@ -51,7 +52,6 @@ import {
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useObserveUsers } from "../hooks/useObserveUsers";
 import {
   useAddExpense,

@@ -26,6 +26,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   CalendarDays,
   Clock,
@@ -44,7 +45,6 @@ import {
   useDeleteCalendarEvent,
   useGetCalendarEvents,
 } from "../hooks/useCalendarEvents";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 function formatEventTime(dateTime: bigint): string {
   const ms = Number(dateTime);

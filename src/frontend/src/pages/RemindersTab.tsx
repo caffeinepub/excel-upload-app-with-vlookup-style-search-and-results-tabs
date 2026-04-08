@@ -10,6 +10,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Bell,
   Loader2,
@@ -24,7 +25,6 @@ import React, { useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../hooks/useActor";
 import { useIsCallerAdmin } from "../hooks/useApproval";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateReminder,
   useDeleteReminder,

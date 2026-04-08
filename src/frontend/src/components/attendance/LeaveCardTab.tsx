@@ -20,7 +20,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
-import jsPDF from "jspdf";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Download,
   FileText,
@@ -32,7 +32,6 @@ import {
 import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useActor } from "../../hooks/useActor";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../../hooks/useUserProfile";
 import { loadLogoAsImage } from "../../lib/export/branding";
 import { PDF_COMPANY_INFO } from "../../lib/export/pdfCompanyInfo";
@@ -99,8 +98,29 @@ function saveLeaveCards(principal: string, cards: LeaveCardData[]) {
 }
 
 // ─── PDF Generation ────────────────────────────────────────────────────────────
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function loadJsPDF(): Promise<any> {
+  // Load from CDN
+  await new Promise<void>((resolve, reject) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).jspdf) {
+      resolve();
+      return;
+    }
+    const s = document.createElement("script");
+    s.src =
+      "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js";
+    s.onload = () => resolve();
+    s.onerror = () => reject(new Error("Failed to load jsPDF"));
+    document.head.appendChild(s);
+  });
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return (window as any).jspdf.jsPDF;
+}
+
 async function generateLeaveCardPdf(card: LeaveCardData) {
-  const doc = new jsPDF({
+  const JsPDF = await loadJsPDF();
+  const doc = new JsPDF({
     orientation: "portrait",
     unit: "mm",
     format: "a4",

@@ -1,5 +1,6 @@
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertTriangle,
   Calendar,
@@ -26,7 +27,6 @@ import {
   useHasCustomDatePermission,
 } from "../hooks/useAttendance";
 import { useGetHolidays } from "../hooks/useHolidays";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../hooks/useUserProfile";
 
 export default function AttendanceTab() {

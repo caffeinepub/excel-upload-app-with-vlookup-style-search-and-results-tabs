@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Check,
   Copy,
@@ -38,7 +39,6 @@ import DirectMessageView from "../components/team/DirectMessageView";
 import StatusSelector from "../components/team/StatusSelector";
 import TeamSidebar from "../components/team/TeamSidebar";
 import { useAvatarUrl } from "../hooks/useAvatarUrl";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   type TeamUser,
   useCreateChannel,

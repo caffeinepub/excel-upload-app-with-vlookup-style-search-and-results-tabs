@@ -1,3 +1,4 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type {
@@ -7,7 +8,6 @@ import type {
 } from "../backend";
 import { AttendanceStatus } from "../backend";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 /**
  * Query to fetch the current user's attendance configuration

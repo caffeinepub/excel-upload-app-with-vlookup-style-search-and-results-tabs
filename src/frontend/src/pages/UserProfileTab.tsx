@@ -10,13 +10,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Building2, Camera, Loader2, Save, User } from "lucide-react";
 import type React from "react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { setBirthdayForUser } from "../components/BirthdayPopup";
 import { useListDepartments } from "../hooks/useDepartments";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useGetCallerUserProfile,
   useSaveCallerUserProfile,

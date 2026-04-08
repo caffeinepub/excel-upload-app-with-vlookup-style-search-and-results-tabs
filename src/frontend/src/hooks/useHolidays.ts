@@ -1,7 +1,7 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Holiday } from "../backend";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 /**
  * Query to fetch all holidays (new Holiday system)

@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   AlertCircle,
@@ -23,7 +24,6 @@ import { useState } from "react";
 import { useActor } from "../../hooks/useActor";
 import { useIsCallerAdmin, useIsCallerApproved } from "../../hooks/useApproval";
 import { useRequestApproval } from "../../hooks/useApprovalMutations";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 
 interface ApprovalGateProps {
   children: ReactNode;

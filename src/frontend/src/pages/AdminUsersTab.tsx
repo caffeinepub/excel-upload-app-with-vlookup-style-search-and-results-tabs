@@ -63,7 +63,7 @@ import {
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
-import { ApprovalStatus, AttendanceStatus } from "../backend";
+import { AttendanceStatus, LeaveRequestStatus } from "../backend";
 import type { AttendanceDayEntry } from "../backend";
 import { useActor } from "../hooks/useActor";
 import { useGetAllUsersForAdmin, useIsCallerAdmin } from "../hooks/useApproval";
@@ -81,6 +81,7 @@ import {
   useSetMaintenanceMode,
 } from "../hooks/useMaintenanceMode";
 import { useGetAllUsers } from "../hooks/useTeamMessaging";
+import { ApprovalStatus } from "../types/approvalStatus";
 import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
@@ -253,9 +254,10 @@ function AdminLeaveCardsPanel() {
 
       // 1. Update leave request status to approved
       if ((card as any).backendId !== undefined) {
-        await actor.updateLeaveRequestStatus((card as any).backendId, {
-          approved: null,
-        });
+        await actor.updateLeaveRequestStatus(
+          (card as any).backendId,
+          LeaveRequestStatus.approved,
+        );
       } else if (card.submitterPrincipal) {
         updateLeaveCardStatus(card.submitterPrincipal, card.id, "Approved");
       }
@@ -272,8 +274,8 @@ function AdminLeaveCardsPanel() {
               employeePrincipal,
               date,
               { [leaveStatus]: null } as any,
-              [],
-              [],
+              null,
+              null,
               card.reason || "Approved Leave",
             ),
           ),
@@ -284,8 +286,8 @@ function AdminLeaveCardsPanel() {
             employeePrincipal,
             (card as any).halfDayDate,
             { [AttendanceStatus.halfDay]: null } as any,
-            [],
-            [],
+            null,
+            null,
             "Half Day Leave",
           );
         }
@@ -307,9 +309,10 @@ function AdminLeaveCardsPanel() {
     setProcessing(card.id);
     try {
       if (actor && (card as any).backendId !== undefined) {
-        await actor.updateLeaveRequestStatus((card as any).backendId, {
-          rejected: null,
-        });
+        await actor.updateLeaveRequestStatus(
+          (card as any).backendId,
+          LeaveRequestStatus.rejected,
+        );
       } else if (card.submitterPrincipal) {
         updateLeaveCardStatus(card.submitterPrincipal, card.id, "Rejected");
       }
@@ -617,12 +620,12 @@ function AdminEmployeeAttendancePanel() {
         const ms = new Date(`${dateStr}T${timeStr}:00`).getTime();
         return BigInt(ms) * BigInt(1_000_000);
       };
-      const checkInOpt: [] | [bigint] = editCheckIn.trim()
-        ? [toNs(editingEntry.date, editCheckIn.trim())]
-        : [];
-      const checkOutOpt: [] | [bigint] = editCheckOut.trim()
-        ? [toNs(editingEntry.date, editCheckOut.trim())]
-        : [];
+      const checkInOpt: bigint | null = editCheckIn.trim()
+        ? toNs(editingEntry.date, editCheckIn.trim())
+        : null;
+      const checkOutOpt: bigint | null = editCheckOut.trim()
+        ? toNs(editingEntry.date, editCheckOut.trim())
+        : null;
       await actor.adminUpdateUserAttendance(
         principal,
         editingEntry.date,

@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Bell,
   CalendarClock,
@@ -21,6 +22,7 @@ import AdminStatusKPI from "../components/dashboard/AdminStatusKPI";
 import FDAApprovalsKPI from "../components/dashboard/FDAApprovalsKPI";
 import MoleculeSearchPanel from "../components/dashboard/MoleculeSearchPanel";
 import OrangeBookKPI from "../components/dashboard/OrangeBookKPI";
+import PatentUpdatesKPI from "../components/dashboard/PatentUpdatesKPI";
 import ClockCalendarWidget from "../components/deskboard/ClockCalendarWidget";
 import TeamMessagesWidget from "../components/deskboard/TeamMessagesWidget";
 import ExploreHerePanel from "../components/search/ExploreHerePanel";
@@ -31,7 +33,6 @@ import {
   useGetBroadcastHistory,
 } from "../hooks/useBroadcasts";
 import { useGetCalendarEvents } from "../hooks/useCalendarEvents";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useToggleTodo } from "../hooks/useProductivityMutations";
 import { useGetReminders, useGetTodos } from "../hooks/useProductivityQueries";
 
@@ -225,6 +226,9 @@ export default function DeskboardTab({
 
       {/* Admin Status KPI — immediately below FDA KPIs */}
       <AdminStatusKPI />
+
+      {/* Patent Tracker Updates KPI — below Admin Status */}
+      {isAuthenticated && <PatentUpdatesKPI />}
 
       {/* Main Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

@@ -1,3 +1,4 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
@@ -13,7 +14,6 @@ import DailyRemindersStartupModal from "./components/reminders/DailyRemindersSta
 import { ReminderEventsProvider } from "./context/ReminderEventsContext";
 import { useIsCallerAdmin } from "./hooks/useApproval";
 import { useGetActiveBroadcasts } from "./hooks/useBroadcasts";
-import { useInternetIdentity } from "./hooks/useInternetIdentity";
 import { useMaintenanceMode } from "./hooks/useMaintenanceMode";
 import { useGetCallerUserProfile } from "./hooks/useUserProfile";
 import { AdminUsersTab } from "./pages/AdminUsersTab";
@@ -26,6 +26,7 @@ import DrugAnalyzerTab from "./pages/DrugAnalyzerTab";
 import { HistoryTab } from "./pages/HistoryTab";
 import { NotesTab } from "./pages/NotesTab";
 import { ObserveUsersTab } from "./pages/ObserveUsersTab";
+import PatentTrackerTab from "./pages/PatentTrackerTab";
 import { ProfilePage } from "./pages/ProfilePage";
 import { RegularExpenseTab } from "./pages/RegularExpenseTab";
 import RemindersTab from "./pages/RemindersTab";
@@ -37,10 +38,13 @@ import { TodoTab } from "./pages/TodoTab";
 import { UpdateCheckingTab } from "./pages/UpdateCheckingTab";
 import { UploadTab } from "./pages/UploadTab";
 import UserProfileTab from "./pages/UserProfileTab";
+import XRPDCalculatorTab from "./pages/XRPDCalculatorTab";
 import { AppStateProvider, useAppState } from "./state/appState";
 
 import {
+  Atom,
   Bell,
+  BookOpen,
   Building2,
   Calculator,
   CalendarCheck,
@@ -88,7 +92,9 @@ export type TabId =
   | "departments"
   | "userProfile"
   | "drugAnalyzer"
-  | "tgaCalculator";
+  | "tgaCalculator"
+  | "xrpdCalculator"
+  | "patentTracker";
 
 export interface TabDef {
   id: TabId;
@@ -172,6 +178,16 @@ export const ALL_TABS: TabDef[] = [
     id: "tgaCalculator",
     label: "TGA Calculator",
     icon: <Calculator className="h-4 w-4" />,
+  },
+  {
+    id: "xrpdCalculator",
+    label: "XRPD Calculator",
+    icon: <Atom className="h-4 w-4" />,
+  },
+  {
+    id: "patentTracker",
+    label: "Patent Tracker",
+    icon: <BookOpen className="h-4 w-4" />,
   },
 ];
 
@@ -280,6 +296,10 @@ function AppContent() {
         return <DrugAnalyzerTab />;
       case "tgaCalculator":
         return <TGACalculatorTab />;
+      case "xrpdCalculator":
+        return <XRPDCalculatorTab />;
+      case "patentTracker":
+        return <PatentTrackerTab />;
       default:
         return <DeskboardTab />;
     }

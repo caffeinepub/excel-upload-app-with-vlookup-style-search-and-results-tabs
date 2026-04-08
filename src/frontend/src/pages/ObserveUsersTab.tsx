@@ -20,9 +20,9 @@ import {
 import { AlertCircle, CheckCircle, Copy, Search, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ApprovalStatus } from "../backend";
 import { useIsCallerAdmin } from "../hooks/useApproval";
 import { useObserveUsers } from "../hooks/useObserveUsers";
+import { ApprovalStatus } from "../types/approvalStatus";
 import { getUserFriendlyError } from "../utils/errors/userFriendlyError";
 
 export function ObserveUsersTab() {

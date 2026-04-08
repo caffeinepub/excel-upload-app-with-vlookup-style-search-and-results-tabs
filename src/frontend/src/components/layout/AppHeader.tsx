@@ -1,7 +1,7 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { RotateCcw, Upload, User, UserCheck } from "lucide-react";
 import { useRef, useState } from "react";
 import { useAvatarUrl } from "../../hooks/useAvatarUrl";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../../hooks/useUserProfile";
 import { useAppState } from "../../state/appState";
 import { LoginButton } from "../auth/LoginButton";

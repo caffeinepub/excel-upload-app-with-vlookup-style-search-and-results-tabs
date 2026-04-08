@@ -8,15 +8,16 @@ import Blob "mo:core/Blob";
 import Principal "mo:core/Principal";
 import Iter "mo:core/Iter";
 import Runtime "mo:core/Runtime";
-import AccessControl "authorization/access-control";
-import UserApproval "user-approval/approval";
-import MixinAuthorization "authorization/MixinAuthorization";
-import MixinStorage "blob-storage/Mixin";
+import AccessControl "mo:caffeineai-authorization/access-control";
+import UserApproval "mo:caffeineai-user-approval/approval";
+import MixinAuthorization "mo:caffeineai-authorization/MixinAuthorization";
+import MixinObjectStorage "mo:caffeineai-object-storage/Mixin";
 
 
 
 actor {
-  include MixinStorage();
+  include MixinObjectStorage();
+  // Use Authorization & Approval mixins
 
   public type AttendanceDayEntry = {
     checkIn : ?Time.Time;

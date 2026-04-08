@@ -1,7 +1,7 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useGetCallerUserProfile } from "../hooks/useUserProfile";
 
 const DAILY_MESSAGES = [

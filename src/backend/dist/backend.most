@@ -1,0 +1,373 @@
+// Version: 1.0.0
+type ApprovalStatus__575141016 = {#approved; #pending; #rejected};
+type AttendanceConfig__758477600 =
+  {leavePolicy : Nat; regularWorkingTime : Nat; weeklyOffDays : [Nat]};
+type AttendanceDayEntry__1003420411 =
+  {
+    checkIn : ?Time__900049286;
+    checkOut : ?Time__900049286;
+    note : Text;
+    status : AttendanceStatus__244828072;
+    workingTime : Nat
+  };
+type AttendanceRecord__852829031 =
+  {
+    breaks : [BreakPeriod__969602908];
+    date : Text;
+    employeePrincipal : Principal;
+    notes : ?Text;
+    shifts : [Shift__261115225]
+  };
+type AttendanceStatus__244828072 =
+  {
+    #companyLeave;
+    #festival;
+    #halfDay;
+    #holiday;
+    #leave;
+    #present;
+    #weeklyOff
+  };
+type BreakPeriod__969602908 =
+  {end : Time__900049286; start : Time__900049286};
+type BroadcastMessage__770296246 =
+  {createdAt : Time__900049286; createdBy : Principal; id : Nat; text : Text};
+type Budget__466816703 =
+  {dayLimit : Nat; lastUpdated : Text; monthlyLimit : Nat; savingsGoal : Nat};
+type CalendarEvent__740917318 =
+  {
+    createdBy : Principal;
+    dateTime : Nat;
+    description : Text;
+    id : Nat;
+    isAdminOnly : Bool;
+    title : Text
+  };
+type ChannelMessage__804611096 =
+  {
+    channelId : Nat;
+    createdAt : Time__900049286;
+    fileName : ?Text;
+    fileUrl : ?Text;
+    id : Nat;
+    senderId : Principal;
+    senderName : Text;
+    text : Text
+  };
+type Channel__349342183 =
+  {createdAt : Time__900049286; createdBy : Principal; id : Nat; name : Text};
+type Customer__263943254 =
+  {
+    address : Text;
+    company : Text;
+    createdAt : Time__900049286;
+    email : Text;
+    id : Nat;
+    name : Text;
+    phoneNumber : Text;
+    workDetails : Text
+  };
+type Data__791452850<K, V> =
+  {var count : Nat__490723111; kvs : [var ?(K, V)]};
+type Department__1001924832 = {createdBy : Principal; id : Nat; name : Text};
+type DirectMessage__546033946 =
+  {
+    createdAt : Time__900049286;
+    fileName : ?Text;
+    fileUrl : ?Text;
+    fromPrincipal : Principal;
+    id : Nat;
+    text : Text;
+    toPrincipal : Principal
+  };
+type ExpenseEntry__804719860 =
+  {
+    amount : Nat;
+    category : Text;
+    date : Text;
+    description : Text;
+    id : Nat;
+    time : Time__900049286
+  };
+type FileData__101855194 =
+  {
+    content : Blob;
+    filename : Text;
+    id : Nat;
+    uploadedAt : Time__900049286;
+    uploader : Principal
+  };
+type HistoryEntry__1019301519 =
+  {
+    details : Text;
+    entryType : HistoryType__424454054;
+    id : Nat;
+    timestamp : Time__900049286;
+    user : Principal
+  };
+type HistoryType__424454054 =
+  {
+    #budgetChange;
+    #expenseChange;
+    #results;
+    #search;
+    #updateChecking;
+    #upload
+  };
+type HolidayEntry__209402952 =
+  {date : Text; holidayType : HolidayType__247963916};
+type HolidayType__247963916 = {#companyLeave; #festival};
+type Holiday__491596039 =
+  {
+    applicableDepartments : [Nat];
+    date : Int;
+    description : Text;
+    holidayType : Text;
+    id : Nat;
+    name : Text
+  };
+type Int__270357528 = Int__616954475;
+type Int__616954475 = Int;
+type Internal__8484328<K, V> =
+  {children : [var ?Node__46230540<K, V>]; data : Data__791452850<K, V>};
+type Leaf__809889148<K, V> = {data : Data__791452850<K, V>};
+type LeaveRequestStatus__822110489 = {#approved; #pending; #rejected};
+type LeaveRequest__514145687 =
+  {
+    department : Text;
+    employeeName : Text;
+    fromDate : Text;
+    halfDayDate : Text;
+    id : Nat;
+    leaveType : Text;
+    managerName : Text;
+    numberOfDays : Float;
+    reason : Text;
+    status : LeaveRequestStatus__822110489;
+    submittedAt : Time__900049286;
+    submitterPrincipal : Principal;
+    toDate : Text
+  };
+type Map__158565046<K, V> = Map__297112838<K, V>;
+type Map__297112838<K, V> =
+  {var root : Node__46230540<K, V>; var size : Nat__490723111};
+type Map__605269027<K, V> = Map__158565046<K, V>;
+type Nat__490723111 = Nat__920180692;
+type Nat__920180692 = Nat;
+type Node__46230540<K, V> =
+  {#internal : Internal__8484328<K, V>; #leaf : Leaf__809889148<K, V>};
+type Note__74666102 = {id : Nat; lastUpdated : Time__900049286; text : Text};
+type Reminder__187289248 =
+  {
+    createdAt : Time__900049286;
+    date : Text;
+    id : Nat;
+    message : Text;
+    repeatUntilDate : ?Int;
+    time : Text;
+    updatedAt : ?Time__900049286
+  };
+type SharedReport__388540599 =
+  {
+    id : Nat;
+    recipientIds : [Principal];
+    reportData : Text;
+    reportTitle : Text;
+    senderId : Principal;
+    timestamp : Time__900049286
+  };
+type Shift__261115225 =
+  {clockIn : Time__900049286; clockOut : ?Time__900049286};
+type Time__796480547 = Int__270357528;
+type Time__900049286 = Time__796480547;
+type TodoItem__953182797 =
+  {completed : Bool; id : Nat; text : Text; timestamp : Time__900049286};
+type UserProfileFull__835928532 =
+  {
+    avatarUrl : Text;
+    bio : Text;
+    departments : [Text];
+    displayName : Text;
+    email : Text;
+    jobTitle : Text;
+    phone : Text
+  };
+type UserProfile__491224006 =
+  {departmentId : ?Nat; displayName : Text; profilePicture : ?Blob};
+type UserRole__1054455867 = {#admin; #guest; #user};
+type UserStatusEntry__995382843 =
+  {
+    principal : Principal;
+    status : UserStatusKind__248681221;
+    updatedAt : Time__900049286
+  };
+type UserStatusKind__248681221 = {#away; #busy; #offline; #online};
+actor {
+  stable accessControlState :
+    {
+      var adminAssigned : Bool;
+      userRoles : Map__605269027<Principal, UserRole__1054455867>
+    };
+  stable approvalState :
+    {
+      var approvalStatus :
+        Map__605269027<Principal, ApprovalStatus__575141016>
+    };
+  stable attendanceConfigs :
+    {
+      var root : Node__46230540<Principal, AttendanceConfig__758477600>;
+      var size : Nat__490723111
+    };
+  stable attendanceEntries :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<Text, AttendanceDayEntry__1003420411>>;
+      var size : Nat__490723111
+    };
+  stable attendanceRecords :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<Text, AttendanceRecord__852829031>>;
+      var size : Nat__490723111
+    };
+  stable broadcasts :
+    {
+      var root : Node__46230540<Nat, BroadcastMessage__770296246>;
+      var size : Nat__490723111
+    };
+  stable budgets :
+    {
+      var root : Node__46230540<Principal, Budget__466816703>;
+      var size : Nat__490723111
+    };
+  stable calendarEvents :
+    {
+      var root : Node__46230540<Nat, CalendarEvent__740917318>;
+      var size : Nat__490723111
+    };
+  stable channelMessages :
+    {
+      var root : Node__46230540<Nat, ChannelMessage__804611096>;
+      var size : Nat__490723111
+    };
+  stable channels :
+    {
+      var root : Node__46230540<Nat, Channel__349342183>;
+      var size : Nat__490723111
+    };
+  stable customDatePermissions :
+    {var root : Node__46230540<Principal, Bool>; var size : Nat__490723111};
+  stable customers :
+    {
+      var root :
+        Node__46230540<Principal, Map__605269027<Nat, Customer__263943254>>;
+      var size : Nat__490723111
+    };
+  stable departments :
+    {
+      var root : Node__46230540<Nat, Department__1001924832>;
+      var size : Nat__490723111
+    };
+  stable directMessages :
+    {
+      var root : Node__46230540<Nat, DirectMessage__546033946>;
+      var size : Nat__490723111
+    };
+  stable dismissedBroadcasts :
+    {var root : Node__46230540<Principal, [Nat]>; var size : Nat__490723111};
+  stable expenses :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<Nat, ExpenseEntry__804719860>>;
+      var size : Nat__490723111
+    };
+  stable files :
+    {
+      var root : Node__46230540<Nat, FileData__101855194>;
+      var size : Nat__490723111
+    };
+  stable fullUserProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfileFull__835928532>;
+      var size : Nat__490723111
+    };
+  stable globalHolidays :
+    {
+      var root : Node__46230540<Text, HolidayEntry__209402952>;
+      var size : Nat__490723111
+    };
+  stable histories :
+    {
+      var root :
+        Node__46230540<Principal,
+                        Map__605269027<Nat, HistoryEntry__1019301519>>;
+      var size : Nat__490723111
+    };
+  stable holidays :
+    {
+      var root : Node__46230540<Nat, Holiday__491596039>;
+      var size : Nat__490723111
+    };
+  stable leaveRequests :
+    {
+      var root : Node__46230540<Nat, LeaveRequest__514145687>;
+      var size : Nat__490723111
+    };
+  stable var maintenanceMode : Bool;
+  stable var nextBroadcastId : Nat;
+  stable var nextChannelId : Nat;
+  stable var nextCustomerId : Nat;
+  stable var nextDepartmentId : Nat;
+  stable var nextDirectMessageId : Nat;
+  stable var nextEventId : Nat;
+  stable var nextExpenseId : Nat;
+  stable var nextFileId : Nat;
+  stable var nextHistoryId : Nat;
+  stable var nextHolidayId : Nat;
+  stable var nextLeaveRequestId : Nat;
+  stable var nextMessageId : Nat;
+  stable var nextNoteId : Nat;
+  stable var nextReminderId : Nat;
+  stable var nextSharedReportId : Nat;
+  stable var nextTodoId : Nat;
+  stable notes :
+    {
+      var root :
+        Node__46230540<Principal, Map__605269027<Nat, Note__74666102>>;
+      var size : Nat__490723111
+    };
+  stable reminders :
+    {
+      var root :
+        Node__46230540<Principal, Map__605269027<Nat, Reminder__187289248>>;
+      var size : Nat__490723111
+    };
+  stable sharedReports :
+    {
+      var root : Node__46230540<Nat, SharedReport__388540599>;
+      var size : Nat__490723111
+    };
+  stable var stableChannelMessages : [(Nat, ChannelMessage__804611096)];
+  stable var stableChannels : [(Nat, Channel__349342183)];
+  stable var stableDirectMessages : [(Nat, DirectMessage__546033946)];
+  stable var stableLeaveRequests : [(Nat, LeaveRequest__514145687)];
+  stable todos :
+    {
+      var root :
+        Node__46230540<Principal, Map__605269027<Nat, TodoItem__953182797>>;
+      var size : Nat__490723111
+    };
+  stable userProfiles :
+    {
+      var root : Node__46230540<Principal, UserProfile__491224006>;
+      var size : Nat__490723111
+    };
+  stable userStatuses :
+    {
+      var root : Node__46230540<Principal, UserStatusEntry__995382843>;
+      var size : Nat__490723111
+    }
+};

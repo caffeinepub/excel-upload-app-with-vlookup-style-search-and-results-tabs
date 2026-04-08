@@ -1,6 +1,7 @@
 import type { Principal } from "@dfinity/principal";
 import { useQuery } from "@tanstack/react-query";
-import type { ApprovalStatus, UserProfile } from "../backend";
+import type { UserProfile } from "../backend";
+import type { ApprovalStatus } from "../types/approvalStatus";
 import { useActor } from "./useActor";
 
 export interface ObservableUser {

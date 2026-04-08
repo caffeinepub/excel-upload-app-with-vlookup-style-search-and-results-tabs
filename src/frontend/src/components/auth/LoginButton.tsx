@@ -1,7 +1,7 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQueryClient } from "@tanstack/react-query";
 import { LogIn, LogOut } from "lucide-react";
 import React from "react";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import { Button } from "../ui/button";
 
 export function LoginButton() {

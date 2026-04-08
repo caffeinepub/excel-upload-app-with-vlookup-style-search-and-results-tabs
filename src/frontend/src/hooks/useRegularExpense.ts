@@ -1,9 +1,9 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Budget, ExpenseEntry, SharedReport } from "../backend";
 import { HistoryType } from "../backend";
 import { parseNatBigInt } from "../utils/number/parseNatBigInt";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 import { useAddHistoryEntry } from "./useQueries";
 
 /**

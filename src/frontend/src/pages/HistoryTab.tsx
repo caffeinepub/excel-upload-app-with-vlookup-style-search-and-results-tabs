@@ -1,4 +1,5 @@
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   AlertCircle,
   Clock,
@@ -40,7 +41,6 @@ import {
   TabsList,
   TabsTrigger,
 } from "../components/ui/tabs";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import { useClearHistory, useListHistory } from "../hooks/useQueries";
 import {
   exportHistoryToExcel,

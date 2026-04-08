@@ -7,11 +7,6 @@ export interface None {
     __kind__: "None";
 }
 export type Option<T> = Some<T> | None;
-export interface UserProfile {
-    displayName: string;
-    profilePicture?: Uint8Array;
-    departmentId?: bigint;
-}
 export interface Budget {
     monthlyLimit: bigint;
     lastUpdated: string;
@@ -24,6 +19,10 @@ export interface BroadcastMessage {
     createdBy: Principal;
     text: string;
 }
+export interface BreakPeriod {
+    end: Time;
+    start: Time;
+}
 export type Time = bigint;
 export interface HistoryEntry {
     id: bigint;
@@ -32,9 +31,10 @@ export interface HistoryEntry {
     timestamp: Time;
     details: string;
 }
-export interface BreakPeriod {
-    end: Time;
-    start: Time;
+export interface AttendanceConfig {
+    leavePolicy: bigint;
+    weeklyOffDays: Array<bigint>;
+    regularWorkingTime: bigint;
 }
 export interface FileData {
     id: bigint;
@@ -47,11 +47,6 @@ export interface Shift {
     clockOut?: Time;
     clockIn: Time;
 }
-export interface AttendanceConfig {
-    leavePolicy: bigint;
-    weeklyOffDays: Array<bigint>;
-    regularWorkingTime: bigint;
-}
 export interface SharedReport {
     id: bigint;
     recipientIds: Array<Principal>;
@@ -60,24 +55,21 @@ export interface SharedReport {
     reportTitle: string;
     senderId: Principal;
 }
-
-export type LeaveRequestStatus = "pending" | "approved" | "rejected";
 export interface LeaveRequest {
     id: bigint;
-    submitterPrincipal: any;
+    status: LeaveRequestStatus;
     employeeName: string;
+    submitterPrincipal: Principal;
+    numberOfDays: number;
+    submittedAt: Time;
+    toDate: string;
+    fromDate: string;
+    halfDayDate: string;
     department: string;
     leaveType: string;
-    fromDate: string;
-    toDate: string;
-    numberOfDays: number;
     reason: string;
     managerName: string;
-    halfDayDate: string;
-    submittedAt: bigint;
-    status: { pending: null } | { approved: null } | { rejected: null };
 }
-
 export interface UserStatusEntry {
     status: UserStatusKind;
     principal: Principal;
@@ -112,11 +104,6 @@ export interface AttendanceRecord {
     employeePrincipal: Principal;
     notes?: string;
 }
-export interface Note {
-    id: bigint;
-    text: string;
-    lastUpdated: Time;
-}
 export interface DirectMessage {
     id: bigint;
     createdAt: Time;
@@ -125,6 +112,11 @@ export interface DirectMessage {
     toPrincipal: Principal;
     fromPrincipal: Principal;
     fileUrl?: string;
+}
+export interface Note {
+    id: bigint;
+    text: string;
+    lastUpdated: Time;
 }
 export interface ChannelMessage {
     id: bigint;
@@ -142,6 +134,16 @@ export interface Channel {
     createdAt: Time;
     createdBy: Principal;
 }
+export interface Customer {
+    id: bigint;
+    name: string;
+    createdAt: Time;
+    email: string;
+    company: string;
+    workDetails: string;
+    address: string;
+    phoneNumber: string;
+}
 export interface AttendanceSummary {
     halfDays: bigint;
     weeklyOffDays: bigint;
@@ -152,16 +154,6 @@ export interface AttendanceSummary {
     festivalDays: bigint;
     totalWorkingTime: bigint;
     leaveDays: bigint;
-}
-export interface Customer {
-    id: bigint;
-    name: string;
-    createdAt: Time;
-    email: string;
-    company: string;
-    workDetails: string;
-    address: string;
-    phoneNumber: string;
 }
 export interface UserApprovalInfo {
     status: ApprovalStatus;
@@ -218,10 +210,10 @@ export interface HolidayEntry {
     holidayType: HolidayType;
     date: string;
 }
-export enum ApprovalStatus {
-    pending = "pending",
-    approved = "approved",
-    rejected = "rejected"
+export interface UserProfile {
+    displayName: string;
+    profilePicture?: Uint8Array;
+    departmentId?: bigint;
 }
 export enum AttendanceStatus {
     halfDay = "halfDay",
@@ -244,6 +236,11 @@ export enum HolidayType {
     festival = "festival",
     companyLeave = "companyLeave"
 }
+export enum LeaveRequestStatus {
+    pending = "pending",
+    approved = "approved",
+    rejected = "rejected"
+}
 export enum UserRole {
     admin = "admin",
     user = "user",
@@ -263,7 +260,8 @@ export interface backendInterface {
     addHistory(entryType: HistoryType, details: string): Promise<bigint>;
     addTodo(text: string): Promise<bigint>;
     adminAssignUserToDepartment(user: Principal, departmentId: bigint): Promise<void>;
-    adminUpdateUserAttendance(employee: Principal, date: string, dayType: { [key: string]: null }, checkInNs: [] | [bigint], checkOutNs: [] | [bigint], workNote: string): Promise<void>;
+    adminBulkMarkWeekOff(date: string): Promise<bigint>;
+    adminUpdateUserAttendance(employee: Principal, date: string, dayType: AttendanceStatus, checkInNs: bigint | null, checkOutNs: bigint | null, workNote: string): Promise<void>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
     assignToDepartment(departmentId: bigint): Promise<void>;
     createBroadcast(text: string): Promise<bigint>;
@@ -282,15 +280,13 @@ export interface backendInterface {
     deleteExpense(id: bigint): Promise<void>;
     deleteHoliday(id: bigint): Promise<void>;
     deleteNote(id: bigint): Promise<void>;
-    deleteSharedExpenseReport(reportId: bigint): Promise<void>;
-    getMaintenanceMode(): Promise<boolean>;
-    setMaintenanceMode(enabled: boolean): Promise<boolean>;
-    adminBulkMarkWeekOff(date: string): Promise<bigint>;
     deleteReminder(id: bigint): Promise<void>;
+    deleteSharedExpenseReport(reportId: bigint): Promise<void>;
     deleteTodo(id: bigint): Promise<void>;
     dismissBroadcast(id: bigint): Promise<void>;
     editChannelMessage(messageId: bigint, newText: string): Promise<void>;
     editDirectMessage(messageId: bigint, newText: string): Promise<void>;
+    forceClaimAdmin(userToken: string): Promise<boolean>;
     getActiveBroadcasts(): Promise<Array<BroadcastMessage>>;
     getAllCalendarEvents(): Promise<Array<CalendarEvent>>;
     getAllRegisteredUsersPublic(): Promise<Array<PublicUserInfo>>;
@@ -315,6 +311,9 @@ export interface backendInterface {
     getGlobalHolidays(): Promise<Array<HolidayEntry>>;
     getHistory(): Promise<Array<HistoryEntry>>;
     getHolidays(): Promise<Array<Holiday>>;
+    getLeaveRequestsForAdmin(): Promise<Array<LeaveRequest>>;
+    getMaintenanceMode(): Promise<boolean>;
+    getMyLeaveRequests(): Promise<Array<LeaveRequest>>;
     getNotes(): Promise<Array<Note>>;
     getReminders(): Promise<Array<Reminder>>;
     getRemindersForDate(dateMs: bigint): Promise<Array<Reminder>>;
@@ -344,17 +343,17 @@ export interface backendInterface {
     saveNote(id: bigint, text: string): Promise<bigint>;
     sendDirectMessage(toPrincipal: Principal, text: string, fileUrl: string | null, fileName: string | null): Promise<bigint>;
     setApproval(user: Principal, status: ApprovalStatus): Promise<void>;
+    setHolidayForAllUsers(date: string, holidayName: string, holidayType: string): Promise<void>;
+    setMaintenanceMode(enabled: boolean): Promise<boolean>;
     setUserStatus(status: UserStatusKind): Promise<void>;
     shareExpenseReport(recipientIds: Array<Principal>, reportTitle: string, reportData: string): Promise<void>;
+    submitLeaveRequest(employeeName: string, department: string, leaveType: string, fromDate: string, toDate: string, numberOfDays: number, reason: string, managerName: string, halfDayDate: string): Promise<bigint>;
     toggleTodo(id: bigint): Promise<void>;
     updateCustomer(id: bigint, name: string, email: string, phoneNumber: string, address: string, company: string, workDetails: string): Promise<void>;
     updateDepartment(id: bigint, newName: string): Promise<void>;
     updateHoliday(id: bigint, name: string, date: bigint, holidayType: string, applicableDepartments: Array<bigint>, description: string): Promise<void>;
+    updateLeaveRequestStatus(id: bigint, newStatus: LeaveRequestStatus): Promise<void>;
     updateReminder(id: bigint, message: string, date: string, time: string, repeatUntilDate: bigint | null): Promise<void>;
     updateUserProfileFull(displayName: string, phone: string, email: string, jobTitle: string, bio: string, avatarUrl: string, departments: Array<string>): Promise<void>;
-    submitLeaveRequest(employeeName: string, department: string, leaveType: string, fromDate: string, toDate: string, numberOfDays: number, reason: string, managerName: string, halfDayDate: string): Promise<bigint>;
-    getMyLeaveRequests(): Promise<Array<LeaveRequest>>;
-    getLeaveRequestsForAdmin(): Promise<Array<LeaveRequest>>;
-    updateLeaveRequestStatus(id: bigint, newStatus: { pending: null } | { approved: null } | { rejected: null }): Promise<void>;
     uploadFile(filename: string, content: Uint8Array): Promise<bigint>;
 }

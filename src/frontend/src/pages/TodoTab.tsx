@@ -13,11 +13,11 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useQueryClient } from "@tanstack/react-query";
 import { AlertCircle, CheckSquare, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { useActor } from "../hooks/useActor";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useCreateTodo,
   useDeleteTodo,

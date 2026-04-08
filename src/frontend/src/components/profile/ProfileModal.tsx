@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import {
   Briefcase,
   Building2,
@@ -24,7 +25,6 @@ import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { useAvatarUrl } from "../../hooks/useAvatarUrl";
 import { useListDepartments } from "../../hooks/useDepartments";
-import { useInternetIdentity } from "../../hooks/useInternetIdentity";
 import {
   useGetCallerUserProfile,
   useSaveCallerUserProfile,

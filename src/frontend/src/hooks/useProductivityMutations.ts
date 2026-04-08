@@ -1,6 +1,6 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 // ── Reminders ─────────────────────────────────────────────────────────────────
 

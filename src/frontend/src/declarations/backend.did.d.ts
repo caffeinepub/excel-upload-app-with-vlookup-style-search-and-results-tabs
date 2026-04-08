@@ -157,18 +157,18 @@ export type HolidayType = { 'festival' : null } |
   { 'companyLeave' : null };
 export interface LeaveRequest {
   'id' : bigint,
-  'submitterPrincipal' : Principal,
+  'status' : LeaveRequestStatus,
   'employeeName' : string,
+  'submitterPrincipal' : Principal,
+  'numberOfDays' : number,
+  'submittedAt' : Time,
+  'toDate' : string,
+  'fromDate' : string,
+  'halfDayDate' : string,
   'department' : string,
   'leaveType' : string,
-  'fromDate' : string,
-  'toDate' : string,
-  'numberOfDays' : number,
   'reason' : string,
   'managerName' : string,
-  'halfDayDate' : string,
-  'submittedAt' : Time,
-  'status' : LeaveRequestStatus,
 }
 export type LeaveRequestStatus = { 'pending' : null } |
   { 'approved' : null } |
@@ -233,34 +233,37 @@ export type UserStatusKind = { 'away' : null } |
   { 'busy' : null } |
   { 'offline' : null } |
   { 'online' : null };
-export interface _CaffeineStorageCreateCertificateResult {
+export interface _ImmutableObjectStorageCreateCertificateResult {
   'method' : string,
   'blob_hash' : string,
 }
-export interface _CaffeineStorageRefillInformation {
+export interface _ImmutableObjectStorageRefillInformation {
   'proposed_top_up_amount' : [] | [bigint],
 }
-export interface _CaffeineStorageRefillResult {
+export interface _ImmutableObjectStorageRefillResult {
   'success' : [] | [boolean],
   'topped_up_amount' : [] | [bigint],
 }
 export interface _SERVICE {
-  '_caffeineStorageBlobIsLive' : ActorMethod<[Uint8Array], boolean>,
-  '_caffeineStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
-  '_caffeineStorageConfirmBlobDeletion' : ActorMethod<
+  '_immutableObjectStorageBlobsAreLive' : ActorMethod<
+    [Array<Uint8Array>],
+    Array<boolean>
+  >,
+  '_immutableObjectStorageBlobsToDelete' : ActorMethod<[], Array<Uint8Array>>,
+  '_immutableObjectStorageConfirmBlobDeletion' : ActorMethod<
     [Array<Uint8Array>],
     undefined
   >,
-  '_caffeineStorageCreateCertificate' : ActorMethod<
+  '_immutableObjectStorageCreateCertificate' : ActorMethod<
     [string],
-    _CaffeineStorageCreateCertificateResult
+    _ImmutableObjectStorageCreateCertificateResult
   >,
-  '_caffeineStorageRefillCashier' : ActorMethod<
-    [[] | [_CaffeineStorageRefillInformation]],
-    _CaffeineStorageRefillResult
+  '_immutableObjectStorageRefillCashier' : ActorMethod<
+    [[] | [_ImmutableObjectStorageRefillInformation]],
+    _ImmutableObjectStorageRefillResult
   >,
-  '_caffeineStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
-  '_initializeAccessControlWithSecret' : ActorMethod<[string], undefined>,
+  '_immutableObjectStorageUpdateGatewayPrincipals' : ActorMethod<[], undefined>,
+  '_initializeAccessControl' : ActorMethod<[], undefined>,
   'addBreakToRecord' : ActorMethod<[string, BreakPeriod], undefined>,
   'addCustomer' : ActorMethod<
     [string, string, string, string, string, string],
@@ -271,7 +274,11 @@ export interface _SERVICE {
   'addHistory' : ActorMethod<[HistoryType, string], bigint>,
   'addTodo' : ActorMethod<[string], bigint>,
   'adminAssignUserToDepartment' : ActorMethod<[Principal, bigint], undefined>,
-  'adminUpdateUserAttendance' : ActorMethod<[Principal, string, AttendanceStatus, [] | [bigint], [] | [bigint], string], undefined>,
+  'adminBulkMarkWeekOff' : ActorMethod<[string], bigint>,
+  'adminUpdateUserAttendance' : ActorMethod<
+    [Principal, string, AttendanceStatus, [] | [bigint], [] | [bigint], string],
+    undefined
+  >,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
   'assignToDepartment' : ActorMethod<[bigint], undefined>,
   'createBroadcast' : ActorMethod<[string], bigint>,
@@ -308,6 +315,7 @@ export interface _SERVICE {
   'dismissBroadcast' : ActorMethod<[bigint], undefined>,
   'editChannelMessage' : ActorMethod<[bigint, string], undefined>,
   'editDirectMessage' : ActorMethod<[bigint, string], undefined>,
+  'forceClaimAdmin' : ActorMethod<[string], boolean>,
   'getActiveBroadcasts' : ActorMethod<[], Array<BroadcastMessage>>,
   'getAllCalendarEvents' : ActorMethod<[], Array<CalendarEvent>>,
   'getAllRegisteredUsersPublic' : ActorMethod<[], Array<PublicUserInfo>>,
@@ -338,6 +346,9 @@ export interface _SERVICE {
   'getGlobalHolidays' : ActorMethod<[], Array<HolidayEntry>>,
   'getHistory' : ActorMethod<[], Array<HistoryEntry>>,
   'getHolidays' : ActorMethod<[], Array<Holiday>>,
+  'getLeaveRequestsForAdmin' : ActorMethod<[], Array<LeaveRequest>>,
+  'getMaintenanceMode' : ActorMethod<[], boolean>,
+  'getMyLeaveRequests' : ActorMethod<[], Array<LeaveRequest>>,
   'getNotes' : ActorMethod<[], Array<Note>>,
   'getReminders' : ActorMethod<[], Array<Reminder>>,
   'getRemindersForDate' : ActorMethod<[bigint], Array<Reminder>>,
@@ -373,10 +384,16 @@ export interface _SERVICE {
     bigint
   >,
   'setApproval' : ActorMethod<[Principal, ApprovalStatus], undefined>,
+  'setHolidayForAllUsers' : ActorMethod<[string, string, string], undefined>,
+  'setMaintenanceMode' : ActorMethod<[boolean], boolean>,
   'setUserStatus' : ActorMethod<[UserStatusKind], undefined>,
   'shareExpenseReport' : ActorMethod<
     [Array<Principal>, string, string],
     undefined
+  >,
+  'submitLeaveRequest' : ActorMethod<
+    [string, string, string, string, string, number, string, string, string],
+    bigint
   >,
   'toggleTodo' : ActorMethod<[bigint], undefined>,
   'updateCustomer' : ActorMethod<
@@ -388,6 +405,10 @@ export interface _SERVICE {
     [bigint, string, bigint, string, Array<bigint>, string],
     undefined
   >,
+  'updateLeaveRequestStatus' : ActorMethod<
+    [bigint, LeaveRequestStatus],
+    undefined
+  >,
   'updateReminder' : ActorMethod<
     [bigint, string, string, string, [] | [bigint]],
     undefined
@@ -396,14 +417,7 @@ export interface _SERVICE {
     [string, string, string, string, string, string, Array<string>],
     undefined
   >,
-  'submitLeaveRequest' : ActorMethod<
-    [string, string, string, string, string, number, string, string, string],
-    bigint
-  >,
-  'getMyLeaveRequests' : ActorMethod<[], Array<LeaveRequest>>,
-  'getLeaveRequestsForAdmin' : ActorMethod<[], Array<LeaveRequest>>,
-  'updateLeaveRequestStatus' : ActorMethod<[bigint, LeaveRequestStatus], undefined>,
-    'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,
+  'uploadFile' : ActorMethod<[string, Uint8Array], bigint>,
 }
 export declare const idlService: IDL.ServiceClass;
 export declare const idlInitArgs: IDL.Type[];

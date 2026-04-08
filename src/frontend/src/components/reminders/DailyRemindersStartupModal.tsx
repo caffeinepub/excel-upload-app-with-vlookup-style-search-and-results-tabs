@@ -6,8 +6,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useInternetIdentity } from "@/hooks/useInternetIdentity";
 import { useGetRemindersForDate } from "@/hooks/useProductivityQueries";
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { Bell, Calendar, Clock, Repeat, X } from "lucide-react";
 import React, { useState, useEffect } from "react";
 

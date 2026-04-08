@@ -1,6 +1,6 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 // Birthday data is stored in localStorage under this key.
 // Format: Record<principalStr, { name: string; mmdd: string }>

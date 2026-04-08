@@ -1,9 +1,10 @@
+import { useInternetIdentity } from "@caffeineai/core-infrastructure";
 import type { Principal } from "@icp-sdk/core/principal";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { ApprovalStatus, UserRole } from "../backend";
+import { UserRole } from "../backend";
+import { ApprovalStatus } from "../types/approvalStatus";
 import { parsePrincipal } from "../utils/principal/parsePrincipal";
 import { useActor } from "./useActor";
-import { useInternetIdentity } from "./useInternetIdentity";
 
 /**
  * Mutation to request approval for the current user
