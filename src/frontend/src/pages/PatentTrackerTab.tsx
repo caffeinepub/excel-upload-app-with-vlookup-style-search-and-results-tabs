@@ -275,10 +275,11 @@ function buildUSPTOResult(p: PatentsViewPatent, url: string): SourceResult {
 /**
  * USPTO PatentsView API — multi-strategy with CORS proxy fallback.
  *
- * Strategy 1: PatentsView v1 GET via allorigins CORS proxy
- * Strategy 2: PatentsView GET direct (may work if CORS policy is relaxed)
- * Strategy 3: allorigins with alternate query format
- * All fail → return error with USPTO.gov link
+ * Strategy 1: PatentsView POST via allorigins CORS proxy
+ * Strategy 2: PatentsView GET via allorigins CORS proxy
+ * Strategy 3: corsproxy.io fallback
+ * Strategy 4: OpenFDA drug label search for patent number
+ * All fail → return link_only (not an error) with USPTO.gov link
  */
 async function fetchUSPTO(pn: string): Promise<SourceResult> {
   const googleUrl = buildGooglePatentsUrl(pn);
@@ -301,19 +302,46 @@ async function fetchUSPTO(pn: string): Promise<SourceResult> {
     "inventors.inventor_first_name",
   ];
 
-  // Build PatentsView GET URL (URL-encoded query)
-  const buildPatentsViewUrl = (num: string) => {
+  const buildPatentsViewGetUrl = (num: string) => {
     const q = JSON.stringify({ patent_number: num });
     const f = JSON.stringify(fields);
     const o = JSON.stringify({ per_page: 1 });
     return `https://api.patentsview.org/patents/query?q=${encodeURIComponent(q)}&f=${encodeURIComponent(f)}&o=${encodeURIComponent(o)}`;
   };
 
-  // Strategy 1: Use allorigins CORS proxy with GET request
-  const tryWithProxy = async (
+  // Strategy 1: POST via allorigins proxy
+  const tryPostViaProxy = async (
     patentNum: string,
   ): Promise<PatentsViewPatent | null> => {
-    const targetUrl = buildPatentsViewUrl(patentNum);
+    const body = JSON.stringify({
+      q: { patent_number: patentNum },
+      f: fields,
+      o: { per_page: 1 },
+    });
+    const targetUrl = "https://api.patentsview.org/patents/query";
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
+    const res = await withTimeout(
+      fetch(proxyUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body,
+        cache: "no-store",
+      }),
+      12000,
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data?.patents?.[0] ?? null;
+  };
+
+  // Strategy 2: GET via allorigins proxy
+  const tryGetViaProxy = async (
+    patentNum: string,
+  ): Promise<PatentsViewPatent | null> => {
+    const targetUrl = buildPatentsViewGetUrl(patentNum);
     const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(targetUrl)}`;
     const res = await withTimeout(
       fetch(proxyUrl, {
@@ -327,32 +355,11 @@ async function fetchUSPTO(pn: string): Promise<SourceResult> {
     return data?.patents?.[0] ?? null;
   };
 
-  // Strategy 2: Direct GET (no proxy - might work for some browsers/environments)
-  const tryDirect = async (
-    patentNum: string,
-  ): Promise<PatentsViewPatent | null> => {
-    const targetUrl = buildPatentsViewUrl(patentNum);
-    const res = await withTimeout(
-      fetch(targetUrl, {
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        mode: "cors",
-      }),
-      10000,
-    );
-    if (!res.ok) return null;
-    const data = await res.json();
-    return data?.patents?.[0] ?? null;
-  };
-
-  // Strategy 3: corsproxy.io fallback
+  // Strategy 3: corsproxy.io GET fallback
   const tryCorsproxy = async (
     patentNum: string,
   ): Promise<PatentsViewPatent | null> => {
-    const targetUrl = buildPatentsViewUrl(patentNum);
+    const targetUrl = buildPatentsViewGetUrl(patentNum);
     const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
     const res = await withTimeout(
       fetch(proxyUrl, {
@@ -366,30 +373,25 @@ async function fetchUSPTO(pn: string): Promise<SourceResult> {
     return data?.patents?.[0] ?? null;
   };
 
-  const attempts = [
-    () => tryWithProxy(queryNum),
-    () => tryDirect(queryNum),
-    () => tryCorsproxy(queryNum),
-    // Try with zero-padded version if numeric
-    () =>
-      /^\d+$/.test(queryNum) ? tryWithProxy(queryNum.padStart(7, "0")) : null,
-  ];
+  const numVariants = [queryNum];
+  if (/^\d+$/.test(queryNum) && queryNum.length < 7) {
+    numVariants.push(queryNum.padStart(7, "0"));
+  }
 
-  for (const attempt of attempts) {
-    try {
-      const patent = await attempt();
-      if (patent) {
-        return buildUSPTOResult(patent, googleUrl);
+  for (const num of numVariants) {
+    for (const tryFn of [tryPostViaProxy, tryGetViaProxy, tryCorsproxy]) {
+      try {
+        const patent = await tryFn(num);
+        if (patent) return buildUSPTOResult(patent, googleUrl);
+      } catch {
+        // try next
       }
-    } catch {
-      // Try next strategy
     }
   }
 
-  // All strategies failed — show useful fallback
+  // All strategies failed — show as link_only (not a scary red error)
   return {
-    status: "error",
-    error: "USPTO data unavailable via API — click to view on USPTO.gov",
+    status: "link_only",
     url: usptoDirectUrl,
   };
 }
@@ -553,8 +555,7 @@ async function fetchPatentInfo(pn: string, drugName = ""): Promise<PatentInfo> {
     usptoResult.status === "fulfilled"
       ? usptoResult.value
       : {
-          status: "error",
-          error: "USPTO data unavailable — click to view on USPTO.gov",
+          status: "link_only",
           url: `https://ppubs.uspto.gov/pubwebapp/external.html?q=pn/${getUSPTOQueryNumber(pn)}&type=pbn&db=USPAT`,
         };
   sources.FDA =
@@ -862,12 +863,14 @@ function SourceCard({
       )}
       {result.status === "error" && (
         <p className="text-[10px] text-amber-600 dark:text-amber-400">
-          ⚠ {result.error}
+          ⚠ {result.error ?? "Data unavailable — click to view on source"}
         </p>
       )}
       {result.status === "link_only" && (
         <p className="text-[10px] text-muted-foreground italic">
-          Search on external database →
+          {sourceKey === "USPTO"
+            ? "Click below to search on USPTO database →"
+            : "Search on external database →"}
         </p>
       )}
 
@@ -1406,7 +1409,9 @@ export default function PatentTrackerTab() {
           : `Patent ${pn} added`,
       );
     } catch {
-      toast.error(`Could not fetch data for ${pn} — check sources manually`);
+      toast.error(
+        `Could not fetch data for ${pn} — use the source links to view manually`,
+      );
     } finally {
       setAddingPatent(false);
     }

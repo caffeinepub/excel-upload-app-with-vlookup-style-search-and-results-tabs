@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import type React from "react";
 import { useEffect, useState } from "react";
 import { BirthdayPopup } from "./components/BirthdayPopup";
+import { CrystalAtlasIntro } from "./components/CrystalAtlasIntro";
 import { MaintenanceOverlay } from "./components/MaintenanceOverlay";
 import { WelcomeSplash } from "./components/WelcomeSplash";
 import { ApprovalGate } from "./components/auth/ApprovalGate";
@@ -355,18 +356,33 @@ function RootRouter() {
   const path = window.location.pathname;
   const isProfilePage = path === "/profile" || path.endsWith("/profile");
 
+  // One-per-session Crystal Atlas intro
+  const [showIntro, setShowIntro] = useState(
+    () => !sessionStorage.getItem("_crystalIntroShown"),
+  );
+
   if (isProfilePage) {
     return <ProfilePage />;
   }
 
   return (
-    <AppStateProvider>
-      {({ reset }) => (
-        <AppErrorBoundary onReset={reset}>
-          <AppContent />
-        </AppErrorBoundary>
+    <>
+      {showIntro && (
+        <CrystalAtlasIntro
+          onComplete={() => {
+            sessionStorage.setItem("_crystalIntroShown", "1");
+            setShowIntro(false);
+          }}
+        />
       )}
-    </AppStateProvider>
+      <AppStateProvider>
+        {({ reset }) => (
+          <AppErrorBoundary onReset={reset}>
+            <AppContent />
+          </AppErrorBoundary>
+        )}
+      </AppStateProvider>
+    </>
   );
 }
 

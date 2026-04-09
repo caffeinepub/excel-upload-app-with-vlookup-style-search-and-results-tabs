@@ -15,36 +15,7 @@ import { toast } from "sonner";
 interface XRPDPeak {
   index: number;
   twotheta: number;
-  theta: number;
-  dSpacing: number;
   relIntensity: number;
-}
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const LAMBDA = 1.5406; // Cu Kα wavelength in Å
-
-// ─── Bragg's Law Calculator ───────────────────────────────────────────────────
-
-function calcDSpacing(twotheta: number): number {
-  const theta = twotheta / 2;
-  const thetaRad = (theta * Math.PI) / 180;
-  return LAMBDA / (2 * Math.sin(thetaRad));
-}
-
-function buildPeaks(twothetaValues: number[]): XRPDPeak[] {
-  if (twothetaValues.length === 0) return [];
-  const sorted = [...twothetaValues].sort((a, b) => a - b);
-  const dSpacings = sorted.map(calcDSpacing);
-  // tallest d-spacing corresponds to smallest 2θ but we need to assign intensities
-  // For manual entry we assign equal intensities; canvas analysis assigns real heights
-  return sorted.map((tt, i) => ({
-    index: i + 1,
-    twotheta: tt,
-    theta: tt / 2,
-    dSpacing: dSpacings[i],
-    relIntensity: 100,
-  }));
 }
 
 // ─── Canvas-Based Peak Detection ─────────────────────────────────────────────
@@ -61,9 +32,7 @@ function detectPeaksFromCanvas(
   const imageData = ctx.getImageData(0, 0, width, height);
   const data = imageData.data;
 
-  // ── Step 1: find plot area by looking for dark border lines ──
-  // Scan from edges inward to find the first solid dark line (axis border)
-  const DARK_THRESHOLD = 80; // pixel brightness below this = "dark"
+  const DARK_THRESHOLD = 80;
 
   function isBrightAt(x: number, y: number): boolean {
     if (x < 0 || y < 0 || x >= width || y >= height) return false;
@@ -74,7 +43,6 @@ function detectPeaksFromCanvas(
     return (r + g + b) / 3 > 200;
   }
 
-  // Column darkness profile: for each x, count dark pixels in the column
   function colDarkness(x: number): number {
     let count = 0;
     for (let y = 0; y < height; y++) {
@@ -87,7 +55,6 @@ function detectPeaksFromCanvas(
     return count;
   }
 
-  // Row darkness profile
   function rowDarkness(y: number): number {
     let count = 0;
     for (let x = 0; x < width; x++) {
@@ -100,7 +67,6 @@ function detectPeaksFromCanvas(
     return count;
   }
 
-  // Find left axis: first column from left with significant dark pixels
   let plotLeft = Math.round(width * 0.08);
   for (let x = Math.round(width * 0.05); x < Math.round(width * 0.25); x++) {
     if (colDarkness(x) > height * 0.3) {
@@ -109,7 +75,6 @@ function detectPeaksFromCanvas(
     }
   }
 
-  // Find right axis
   let plotRight = Math.round(width * 0.95);
   for (let x = width - 1; x > Math.round(width * 0.7); x--) {
     if (colDarkness(x) > height * 0.3) {
@@ -118,7 +83,6 @@ function detectPeaksFromCanvas(
     }
   }
 
-  // Find bottom axis
   let plotBottom = Math.round(height * 0.88);
   for (let y = height - 1; y > Math.round(height * 0.5); y--) {
     if (rowDarkness(y) > width * 0.3) {
@@ -127,19 +91,11 @@ function detectPeaksFromCanvas(
     }
   }
 
-  // Find top of plot area
-  let plotTop = Math.round(height * 0.05);
-
+  const plotTop = Math.round(height * 0.05);
   const plotWidth = plotRight - plotLeft;
   const plotHeight = plotBottom - plotTop;
   if (plotWidth < 20 || plotHeight < 20) return [];
 
-  // ── Step 2: scan each column in the plot area for minimum y (peak of signal) ──
-  // In an XRPD plot, peaks are HIGH intensity = tall spikes
-  // Image is bright background with dark peaks (or dark bg with bright peaks)
-  // We detect peak as minimum brightness (dark spike on bright bg) or max (bright on dark)
-
-  // Detect background: sample corners of plot area
   const cornerBrightness = [
     isBrightAt(plotLeft + 5, plotTop + 5),
     isBrightAt(plotRight - 5, plotTop + 5),
@@ -148,7 +104,6 @@ function detectPeaksFromCanvas(
   ];
   const brightBg = cornerBrightness.filter(Boolean).length >= 3;
 
-  // For each x column in plot area, find the most extreme row (min y for bright-bg = highest peak)
   const colSignal: number[] = [];
   for (let x = plotLeft; x <= plotRight; x++) {
     let extremeVal = brightBg ? 255 : 0;
@@ -164,17 +119,15 @@ function detectPeaksFromCanvas(
         extremeRow = y;
       }
     }
-    // Convert row to intensity: distance from baseline (plotBottom)
     const intensity = plotBottom - extremeRow;
     colSignal.push(intensity);
   }
 
-  // ── Step 3: detect local maxima (peaks) with prominence filter ──
   const maxSignal = Math.max(...colSignal);
   if (maxSignal === 0) return [];
 
-  const PROMINENCE_THRESHOLD = 0.1; // 10% of max height
-  const MIN_SEPARATION = Math.round(plotWidth * 0.01); // min 1% of plot width between peaks
+  const PROMINENCE_THRESHOLD = 0.1;
+  const MIN_SEPARATION = Math.round(plotWidth * 0.01);
 
   const peaks: { colIdx: number; signal: number }[] = [];
   const windowHalf = Math.max(3, Math.round(plotWidth * 0.008));
@@ -183,7 +136,6 @@ function detectPeaksFromCanvas(
     const val = colSignal[i] ?? 0;
     if (val / maxSignal < PROMINENCE_THRESHOLD) continue;
 
-    // Check local maximum in window
     let isMax = true;
     for (let j = i - windowHalf; j <= i + windowHalf; j++) {
       if (j !== i && (colSignal[j] ?? 0) >= val) {
@@ -193,12 +145,10 @@ function detectPeaksFromCanvas(
     }
     if (!isMax) continue;
 
-    // Enforce minimum separation from last peak
     if (
       peaks.length > 0 &&
       i - (peaks[peaks.length - 1]?.colIdx ?? 0) < MIN_SEPARATION
     ) {
-      // Keep the taller one
       const last = peaks[peaks.length - 1];
       if (last && val > last.signal) {
         peaks[peaks.length - 1] = { colIdx: i, signal: val };
@@ -211,27 +161,20 @@ function detectPeaksFromCanvas(
 
   if (peaks.length === 0) return [];
 
-  // ── Step 4: map column index to 2θ value ──
   const twothetaRange = maxTwoTheta - minTwoTheta;
   const maxPeakSignal = Math.max(...peaks.map((p) => p.signal));
 
   const result: XRPDPeak[] = peaks.map((p, idx) => {
     const fraction = p.colIdx / (colSignal.length - 1);
     const twotheta = minTwoTheta + fraction * twothetaRange;
-    const theta = twotheta / 2;
-    const thetaRad = (theta * Math.PI) / 180;
-    const dSpacing = LAMBDA / (2 * Math.sin(thetaRad));
     const relIntensity = (p.signal / maxPeakSignal) * 100;
     return {
       index: idx + 1,
       twotheta: Math.round(twotheta * 100) / 100,
-      theta: Math.round(theta * 100) / 100,
-      dSpacing: Math.round(dSpacing * 10000) / 10000,
       relIntensity: Math.round(relIntensity * 10) / 10,
     };
   });
 
-  // Re-index sorted by 2θ
   result.sort((a, b) => a.twotheta - b.twotheta);
   result.forEach((p, i) => {
     p.index = i + 1;
@@ -240,13 +183,29 @@ function detectPeaksFromCanvas(
   return result;
 }
 
-// ─── CSV Generator ────────────────────────────────────────────────────────────
+// ─── Manual peaks builder (equal intensity) ───────────────────────────────────
+
+function buildPeaks(twothetaValues: number[]): XRPDPeak[] {
+  if (twothetaValues.length === 0) return [];
+  return [...twothetaValues]
+    .sort((a, b) => a - b)
+    .map((tt, i) => ({ index: i + 1, twotheta: tt, relIntensity: 100 }));
+}
+
+// ─── CSV / Copy generators ────────────────────────────────────────────────────
 
 function generateCSV(peaks: XRPDPeak[]): string {
-  const header = "#,2θ (°),θ (°),d-spacing (Å),Relative Intensity (%)";
+  const header = "#,2θ (°),Intensity (%)";
   const rows = peaks.map(
-    (p) =>
-      `${p.index},${p.twotheta.toFixed(2)},${p.theta.toFixed(2)},${p.dSpacing.toFixed(4)},${p.relIntensity.toFixed(1)}`,
+    (p) => `${p.index},${p.twotheta.toFixed(2)},${p.relIntensity.toFixed(1)}`,
+  );
+  return [header, ...rows].join("\n");
+}
+
+function generateCopyText(peaks: XRPDPeak[]): string {
+  const header = "2θ (°) | Intensity (%)";
+  const rows = peaks.map(
+    (p) => `${p.twotheta.toFixed(2)} | ${p.relIntensity.toFixed(1)}`,
   );
   return [header, ...rows].join("\n");
 }
@@ -362,21 +321,13 @@ export default function XRPDCalculatorTab() {
       setError("Enter comma-separated 2θ values (e.g. 5.24, 12.6, 18.3).");
       return;
     }
-    const raw = buildPeaks(values);
-    // Use intensity 100 for strongest, relative for others (equal here)
-    setPeaks(raw);
+    setPeaks(buildPeaks(values));
   };
 
   const handleCopy = () => {
     if (!peaks) return;
-    const header = "2θ (°) | d-spacing (Å) | Rel. Intensity (%)";
-    const rows = peaks.map(
-      (p) =>
-        `${p.twotheta.toFixed(2)} | ${p.dSpacing.toFixed(4)} | ${p.relIntensity.toFixed(1)}`,
-    );
-    const text = [header, ...rows].join("\n");
     navigator.clipboard
-      .writeText(text)
+      .writeText(generateCopyText(peaks))
       .then(() => {
         setCopied(true);
         toast.success("Copied to clipboard!");
@@ -387,8 +338,7 @@ export default function XRPDCalculatorTab() {
 
   const handleDownloadCSV = () => {
     if (!peaks) return;
-    const csv = generateCSV(peaks);
-    const blob = new Blob([csv], { type: "text/csv" });
+    const blob = new Blob([generateCSV(peaks)], { type: "text/csv" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
@@ -416,7 +366,7 @@ export default function XRPDCalculatorTab() {
     : null;
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="max-w-3xl mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
@@ -425,7 +375,7 @@ export default function XRPDCalculatorTab() {
         <div>
           <h1 className="text-lg font-bold text-foreground">XRPD Calculator</h1>
           <p className="text-xs text-muted-foreground">
-            X-Ray Powder Diffraction — Peak Analysis &amp; d-Spacing Calculator
+            X-Ray Powder Diffraction — Peak Extraction
           </p>
         </div>
       </div>
@@ -560,7 +510,7 @@ export default function XRPDCalculatorTab() {
             ) : (
               <>
                 <Zap className="h-4 w-4 mr-2" />
-                Analyze Peaks
+                Extract Peaks
               </>
             )}
           </Button>
@@ -575,7 +525,7 @@ export default function XRPDCalculatorTab() {
         </div>
       </div>
 
-      {/* Canvas (hidden — used for pixel analysis) */}
+      {/* Canvas (hidden) */}
       <canvas ref={canvasRef} className="hidden" />
 
       {/* Manual Input */}
@@ -587,8 +537,7 @@ export default function XRPDCalculatorTab() {
         </div>
         <div className="p-5 space-y-3">
           <p className="text-xs text-muted-foreground">
-            If image analysis doesn't work well, enter 2θ values manually
-            (comma-separated):
+            Enter 2θ values manually (comma-separated):
           </p>
           <div className="flex gap-2">
             <input
@@ -605,25 +554,25 @@ export default function XRPDCalculatorTab() {
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shrink-0"
               data-ocid="xrpd.calculate_button"
             >
-              Calculate
+              Extract
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Results Table */}
+      {/* Results Table — only 2θ and Intensity */}
       {peaks && peaks.length > 0 && (
         <div
           className="rounded-2xl border border-indigo-500/30 bg-indigo-950/10 shadow-mac-soft overflow-hidden"
           style={{ boxShadow: "0 0 24px rgba(99,102,241,0.08)" }}
           data-ocid="xrpd.results_panel"
         >
-          {/* Results header */}
+          {/* Header */}
           <div className="bg-indigo-500/10 border-b border-indigo-500/20 px-5 py-3 flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-indigo-400 animate-pulse" />
               <p className="text-xs font-bold uppercase tracking-wider text-indigo-400">
-                Peak Analysis Results
+                Peak Values
               </p>
               <span className="ml-2 text-xs bg-indigo-500/20 text-indigo-300 rounded-full px-2 py-0.5 font-semibold">
                 {peaks.length} peak{peaks.length !== 1 ? "s" : ""} detected
@@ -653,7 +602,7 @@ export default function XRPDCalculatorTab() {
             </div>
           </div>
 
-          {/* Table */}
+          {/* Table — only 2θ and Intensity */}
           <div className="overflow-x-auto">
             <table className="w-full text-sm" data-ocid="xrpd.peaks_table">
               <thead>
@@ -665,13 +614,7 @@ export default function XRPDCalculatorTab() {
                     2θ (°)
                   </th>
                   <th className="px-4 py-2.5 text-right text-xs font-bold text-muted-foreground">
-                    θ (°)
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-xs font-bold text-muted-foreground">
-                    d-spacing (Å)
-                  </th>
-                  <th className="px-4 py-2.5 text-right text-xs font-bold text-muted-foreground">
-                    Rel. Intensity (%)
+                    Intensity (%)
                   </th>
                 </tr>
               </thead>
@@ -693,10 +636,8 @@ export default function XRPDCalculatorTab() {
                     >
                       <td className="px-4 py-2 text-xs text-muted-foreground font-mono">
                         {isStrongest ? (
-                          <span className="inline-flex items-center gap-1">
-                            <span className="w-4 h-4 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-400 text-[9px] font-bold">
-                              ★
-                            </span>
+                          <span className="w-4 h-4 rounded-full bg-yellow-400/20 flex items-center justify-center text-yellow-400 text-[9px] font-bold">
+                            ★
                           </span>
                         ) : (
                           peak.index
@@ -708,16 +649,6 @@ export default function XRPDCalculatorTab() {
                         }`}
                       >
                         {peak.twotheta.toFixed(2)}
-                      </td>
-                      <td className="px-4 py-2 text-right font-mono text-muted-foreground">
-                        {peak.theta.toFixed(2)}
-                      </td>
-                      <td
-                        className={`px-4 py-2 text-right font-mono font-semibold ${
-                          isStrongest ? "text-yellow-400" : "text-indigo-300"
-                        }`}
-                      >
-                        {peak.dSpacing.toFixed(4)}
                       </td>
                       <td className="px-4 py-2 text-right">
                         <div className="flex items-center justify-end gap-2">
@@ -745,58 +676,19 @@ export default function XRPDCalculatorTab() {
             </table>
           </div>
 
-          {/* Footer note */}
+          {/* Footer */}
           <div className="px-5 py-3 border-t border-indigo-500/15 bg-indigo-500/5 flex flex-wrap items-center justify-between gap-2">
             <p className="text-xs font-mono text-muted-foreground">
-              λ = 1.5406 Å (Cu Kα radiation) · Bragg's law: d = λ / (2 × sin θ)
+              Intensity shown as % relative to strongest peak
             </p>
             {strongestPeak && (
               <p className="text-xs text-yellow-400 font-semibold">
-                ★ Strongest peak: 2θ = {strongestPeak.twotheta.toFixed(2)}° · d
-                = {strongestPeak.dSpacing.toFixed(4)} Å
+                ★ Strongest peak: 2θ = {strongestPeak.twotheta.toFixed(2)}°
               </p>
             )}
           </div>
         </div>
       )}
-
-      {/* Formula Reference */}
-      <div className="rounded-2xl border border-border/40 bg-card shadow-mac-soft overflow-hidden">
-        <div className="bg-muted/30 border-b border-border/40 px-5 py-3">
-          <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-            Formula Reference
-          </p>
-        </div>
-        <div className="p-5 space-y-2 font-mono text-xs text-muted-foreground">
-          <p>
-            <span className="text-foreground font-semibold">Bragg's Law:</span>{" "}
-            nλ = 2d sin θ
-          </p>
-          <p>
-            <span className="text-indigo-400">d-spacing</span> = λ / (2 × sin θ)
-            where θ = 2θ / 2
-          </p>
-          <p>
-            <span className="text-indigo-400">λ</span> = 1.5406 Å (Cu Kα)
-          </p>
-          <p>
-            <span className="text-indigo-400">Typical 2θ range:</span> 5° – 50°
-            for pharmaceutical XRPD
-          </p>
-          <div className="border-t border-border/40 pt-2 mt-2 space-y-1 font-sans not-font-mono">
-            <p>
-              <span className="text-amber-400 font-semibold">
-                Relative Intensity:
-              </span>{" "}
-              (peak height / tallest peak height) × 100
-            </p>
-            <p>
-              <span className="text-amber-400 font-semibold">★ Gold row:</span>{" "}
-              strongest peak (100% relative intensity reference)
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
   );
 }
